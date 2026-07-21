@@ -1,0 +1,29 @@
+model:
+  hidden_channels: 64
+  num_layers: 2
+  dropout: 0.3
+  pos_weight: 10
+
+thresholds:
+  block_probability: 0.85
+  escalate_probability: 0.50
+  benford_chi2_critical: 15.51
+  min_benford_samples: 20
+  velocity_zscore: 3.0
+  geo_velocity_max_kmh: 900
+
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  velocity_ttl_seconds: 3600
+  baseline_ttl_seconds: 86400
+
+ollama:
+  model: llama3.1:8b
+  temperature: 0.1
+  base_url: http://localhost:11434
+
+feature_drift:
+  psi_threshold: 0.25
+  check_interval_minutes: 60

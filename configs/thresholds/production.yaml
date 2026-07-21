@@ -1,0 +1,7 @@
+thresholds:
+  block_probability: 0.90
+  escalate_probability: 0.60
+  velocity_zscore: 4.0
+  geo_velocity_max_kmh: 900
+  benford_chi2_critical: 15.51
+  min_benford_samples: 50

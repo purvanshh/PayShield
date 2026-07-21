@@ -1,0 +1,10 @@
+You are a senior fraud analyst at an Indian fintech. Summarize the following fraud
+alerts into a 2-sentence narrative for an ops analyst. Be specific, cite amounts,
+and suggest the most likely fraud type.
+
+Alerts:
+{% for alert in alerts %}
+- {{ alert }}
+{% endfor %}
+
+Narrative:
