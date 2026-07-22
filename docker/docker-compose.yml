@@ -12,12 +12,38 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    command: celery -A worker.celery_app worker --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
         condition: service_started
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
 
   ollama:
     image: ollama/ollama:latest
@@ -25,6 +51,11 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   dashboard:
     build:
@@ -33,7 +64,9 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - api
+      api:
+        condition: service_started
 
 volumes:
+  redis_data:
   ollama_data:
