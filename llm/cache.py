@@ -12,7 +12,9 @@ class LLMCache:
         return f"llm_cache:{hashlib.sha256(raw.encode()).hexdigest()}"
 
     def get(self, evidence: dict) -> str | None:
-        pass
+        key = self._make_key(evidence)
+        return self.redis.get(key)
 
     def set(self, evidence: dict, narrative: str):
-        pass
+        key = self._make_key(evidence)
+        self.redis.set(key, narrative, ttl=self.ttl)

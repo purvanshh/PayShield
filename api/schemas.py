@@ -25,7 +25,7 @@ class FraudScoreResponse(BaseModel):
     txn_id: str
     decision: Literal["ALLOW", "BLOCK", "REVIEW"]
     fraud_probability: float
-    layer_triggered: Literal["L1_STATISTICAL", "L2_GNN", "L3_MANUAL"]
+    layer_triggered: Literal["L1_STATISTICAL", "L2_GNN", "L3_LLM"]
     evidence: dict
     latency_ms: float
     model_version: str
