@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest
 
-from api.routes import score, investigation, health, feedback
+from api.routes import score, investigation, health, feedback, stream
 from observability.logging_config import configure_logging
 from store.redis_client import RedisClient
 from store.feature_store import FeatureStore
