@@ -71,6 +71,10 @@ class SyntheticUPIGenerator:
         self._generate_merchants()
         self._generate_devices()
         df = self._generate_transactions()
+        if self.fraud_ratio > 0:
+            from data.synthetic.fraud_injector import FraudInjector
+            injector = FraudInjector(self.rng, self.users, self.merchants, self.devices)
+            df = injector.inject_all(df, fraud_ratio=self.fraud_ratio)
         return df
 
     def _generate_users(self):
