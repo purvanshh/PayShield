@@ -11,6 +11,7 @@ dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.29.0",
     "pydantic>=2.7.0",
+    "pydantic-settings>=2.0.0",
     "redis>=5.0.0",
     "torch>=2.2.0",
     "torch-geometric>=2.5.0",
@@ -26,8 +27,43 @@ dependencies = [
     "pyyaml>=6.0.0",
     "ollama>=0.1.0",
     "shap>=0.44.0",
+    "celery>=5.4.0",
+    "faker>=22.0.0",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "ARG"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["tests/", "scripts/", "notebooks/"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "scripts", "notebooks"]
+skips = ["B101", "B303", "B311", "B324"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["api", "engine", "llm", "data", "store", "observability"]
+omit = ["tests/*", "scripts/*", "notebooks/*"]
+
+[tool.coverage.report]
+fail_under = 70
