@@ -251,3 +251,128 @@ class GraphNormalizer:
             else:
                 setattr(normalized, field_name, 0.0)
         return normalized
+
+
+@dataclass
+class FraudGraphFeatures:
+    user_id: str
+    cycle_count: int = 0
+    cycle_total_amount: float = 0.0
+    merchant_concentration_ratio: float = 0.0
+    device_sharing_depth: int = 0
+    temporal_edge_density_24h: float = 0.0
+    mutual_partner_count: int = 0
+    shell_merchant_neighbor_count: int = 0
+    avg_cycle_length: float = 0.0
+
+    def to_dict(self) -> dict[str, float | int | str]:
+        return {
+            "cycle_count": self.cycle_count,
+            "cycle_total_amount": self.cycle_total_amount,
+            "merchant_concentration_ratio": self.merchant_concentration_ratio,
+            "device_sharing_depth": self.device_sharing_depth,
+            "temporal_edge_density_24h": self.temporal_edge_density_24h,
+            "mutual_partner_count": self.mutual_partner_count,
+            "shell_merchant_neighbor_count": self.shell_merchant_neighbor_count,
+            "avg_cycle_length": self.avg_cycle_length,
+        }
+
+
+class FraudGraphFeatureExtractor:
+    def extract_money_flow_cycles(self, graph: nx.Graph, user_id: str) -> list[list[str]]:
+        try:
+            all_cycles = list(nx.simple_cycles(graph.to_directed()))
+        except Exception:
+            return []
+
+        user_cycles = []
+        for cycle in all_cycles:
+            if user_id in cycle and 2 < len(cycle) <= 5:
+                user_cycles.append(cycle)
+
+        return user_cycles
+
+    def extract_merchant_concentration(self, graph: nx.Graph, user_id: str) -> float:
+        merchant_txns: dict[str, int] = {}
+        for u, v, d in graph.edges(data=True):
+            edge_type = d.get("edge_type", "")
+            if (u == user_id and edge_type == "performed") or (v == user_id):
+                ntype = graph.nodes[v].get("node_type", "")
+                if ntype == "Merchant":
+                    merchant_txns[v] = merchant_txns.get(v, 0) + 1
+
+        if not merchant_txns:
+            return 0.0
+
+        total = sum(merchant_txns.values())
+        top = max(merchant_txns.values())
+        return round(top / total, 4) if total > 0 else 0.0
+
+    def extract_device_sharing_depth(self, graph: nx.Graph, user_id: str) -> int:
+        if not graph.has_node(user_id):
+            return 0
+
+        visited = {user_id}
+        queue = [(user_id, 0)]
+        max_depth = 0
+
+        while queue:
+            current, depth = queue.pop(0)
+            ntype = graph.nodes[current].get("node_type", "")
+
+            if ntype == "Device" and depth > 0:
+                device_users = [
+                    n for n in graph.neighbors(current)
+                    if graph.nodes[n].get("node_type") == "User"
+                ]
+                if len(device_users) > 1:
+                    max_depth = max(max_depth, depth)
+
+            for neighbor in graph.neighbors(current):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, depth + 1))
+
+        return max_depth
+
+    def extract_temporal_edge_density(self, graph: nx.Graph, window_hours: int = 24) -> float:
+        n = graph.number_of_nodes()
+        if n < 2:
+            return 0.0
+
+        max_possible = n * (n - 1) / 2
+        if max_possible == 0:
+            return 0.0
+
+        return round(graph.number_of_edges() / max_possible, 6)
+
+    def extract_mutual_transaction_partners(
+        self, graph: nx.Graph, user_id_a: str, user_id_b: str
+    ) -> int:
+        def get_merchants(user_id: str) -> set[str]:
+            merchants = set()
+            for neighbor in graph.neighbors(user_id):
+                if graph.nodes[neighbor].get("node_type") == "Merchant":
+                    merchants.add(neighbor)
+            return merchants
+
+        merchants_a = get_merchants(user_id_a)
+        merchants_b = get_merchants(user_id_b)
+        return len(merchants_a & merchants_b)
+
+    def extract_all(self, graph: nx.Graph, user_id: str) -> FraudGraphFeatures:
+        features = FraudGraphFeatures(user_id=user_id)
+
+        cycles = self.extract_money_flow_cycles(graph, user_id)
+        features.cycle_count = len(cycles)
+        if cycles:
+            features.avg_cycle_length = round(float(np.mean([len(c) for c in cycles])), 2)
+
+        features.merchant_concentration_ratio = self.extract_merchant_concentration(graph, user_id)
+        features.device_sharing_depth = self.extract_device_sharing_depth(graph, user_id)
+        features.temporal_edge_density_24h = self.extract_temporal_edge_density(graph)
+
+        if features.cycle_count > 0:
+            features.cycle_total_amount = features.cycle_count * 100.0
+
+        return features
