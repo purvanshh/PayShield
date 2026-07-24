@@ -1,0 +1,189 @@
+features:
+  - name: txn_count_1m
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Transaction count in last 1 minute"
+    nullable: false
+    min_val: 0
+    max_val: 1000
+
+  - name: txn_count_5m
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Transaction count in last 5 minutes"
+    nullable: false
+    min_val: 0
+
+  - name: txn_count_15m
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Transaction count in last 15 minutes"
+    nullable: false
+    min_val: 0
+
+  - name: txn_count_1h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Transaction count in last 1 hour"
+    nullable: false
+    min_val: 0
+
+  - name: txn_count_24h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Transaction count in last 24 hours"
+    nullable: false
+    min_val: 0
+
+  - name: amount_total_1h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Total transaction amount in last 1 hour"
+    nullable: false
+    min_val: 0
+
+  - name: amount_avg_1h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Average transaction amount in last 1 hour"
+    nullable: false
+    min_val: 0
+
+  - name: burst_score
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Velocity burst score (max/min rate ratio)"
+    nullable: false
+    min_val: 0
+
+  - name: distinct_merchants_1h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Distinct merchants in last 1 hour"
+    nullable: false
+    min_val: 0
+
+  - name: distinct_countries_1h
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Distinct countries in last 1 hour"
+    nullable: false
+    min_val: 0
+
+  - name: device_is_emulator
+    type: numeric
+    source: device
+    version: 1
+    description: "Device is an emulator (0/1)"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+  - name: device_multi_device_count
+    type: numeric
+    source: device
+    version: 1
+    description: "Number of devices associated with user"
+    nullable: false
+    min_val: 1
+
+  - name: device_jaccard_similarity
+    type: numeric
+    source: device
+    version: 1
+    description: "Jaccard similarity across user's devices"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+  - name: device_new_flag
+    type: numeric
+    source: device
+    version: 1
+    description: "Device is new/unknown (0/1)"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+  - name: device_proxy_score
+    type: numeric
+    source: device
+    version: 1
+    description: "Proxy/VPN detection score"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+  - name: amount_z_score
+    type: numeric
+    source: baseline
+    version: 1
+    description: "Amount Z-score vs historical baseline"
+    nullable: false
+
+  - name: time_hour_z_score
+    type: numeric
+    source: baseline
+    version: 1
+    description: "Transaction hour Z-score vs historical baseline"
+    nullable: false
+
+  - name: interarrival_z_score
+    type: numeric
+    source: baseline
+    version: 1
+    description: "Interarrival time Z-score vs historical baseline"
+    nullable: false
+
+  - name: combined_anomaly_score
+    type: numeric
+    source: baseline
+    version: 1
+    description: "Combined behavioral anomaly score"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+  - name: amount
+    type: numeric
+    source: transaction
+    version: 1
+    description: "Transaction amount"
+    nullable: false
+    min_val: 0
+
+  - name: transaction_hour
+    type: numeric
+    source: transaction
+    version: 1
+    description: "Hour of transaction (0-23)"
+    nullable: false
+    min_val: 0
+    max_val: 23
+
+  - name: is_weekend
+    type: numeric
+    source: transaction
+    version: 1
+    description: "Transaction on weekend (0/1)"
+    nullable: false
+    min_val: 0
+    max_val: 1
+
+skew_detection:
+  psi_threshold: 0.25
+  min_samples: 100
+  check_interval_minutes: 60
+  alert_channels:
+    - log
+    - metrics
