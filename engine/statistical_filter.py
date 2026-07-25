@@ -1,101 +1,141 @@
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Callable, Literal
 
-from data.features.benford import benford_chi2
-from data.features.geospatial import haversine
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class StatisticalResult:
-    decision: Literal["ALLOW", "BLOCK", "ESCALATE"] = "ALLOW"
+class FilterResult:
+    action: Literal["ALLOW", "ESCALATE", "BLOCK"] = "ALLOW"
+    stage: str = "velocity"
     triggered_rules: list[str] = field(default_factory=list)
-    velocity_stats: dict | None = None
-    benford_chi2: float | None = None
+    rule_details: list[dict] = field(default_factory=list)
+    confidence: float = 0.0
+    latency_ms: float = 0.0
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    population_stats: dict | None = None
 
 
-class StatisticalFilter:
-    def __init__(self, config: dict | None = None):
+@dataclass
+class VelocityRule:
+    name: str
+    condition: Callable[..., bool]
+    action: Literal["ALLOW", "ESCALATE", "BLOCK"]
+    severity: int
+    description: str = ""
+
+
+class VelocityFilter:
+    RULES: list[VelocityRule] = []
+
+    def __init__(self, redis_client=None, config: dict | None = None):
+        self.redis = redis_client
         self.config = config or {}
-        self.velocity_zscore_threshold = self.config.get("velocity_zscore_threshold", 3.0)
-        self.burst_5min_threshold = self.config.get("burst_5min_threshold", 10)
-        self.amount_deviation_factor = self.config.get("amount_deviation_factor", 5.0)
-        self.geo_velocity_max_kmh = self.config.get("geo_velocity_max_kmh", 900.0)
-        self.benford_chi2_critical = self.config.get("benford_chi2_critical", 15.51)
-        self.min_benford_samples = self.config.get("min_benford_samples", 20)
+        self._init_rules()
 
-    def evaluate(self, txn, feature_store) -> StatisticalResult:
-        if hasattr(txn, "model_dump"):
-            txn_data = txn.model_dump()
-        else:
-            txn_data = txn
-        if isinstance(txn_data.get("timestamp"), datetime):
-            txn_ts = txn_data["timestamp"].timestamp()
-        else:
-            txn_ts = time.time()
+    def _init_rules(self):
+        self.RULES = [
+            VelocityRule(
+                name="V-RULE-01",
+                condition=lambda v, d, **kw: v.get("txn_count_5m", 0) > 10 and (d or {}).get("baseline_txn_count_24h", 999) < 5,
+                action="BLOCK",
+                severity=5,
+                description="Burst attack: 5min count > 10 with low baseline",
+            ),
+            VelocityRule(
+                name="V-RULE-02",
+                condition=self._zscore_rule,
+                action="ESCALATE",
+                severity=3,
+                description="Txn count Z-score exceeds threshold",
+            ),
+            VelocityRule(
+                name="V-RULE-03",
+                condition=lambda v, d, **kw: v.get("amount_total_1h", 0) > 5 * (d or {}).get("median_amount_30d", 500) and v.get("txn_count_1h", 0) > 3,
+                action="ESCALATE",
+                severity=4,
+                description="Amount sum > 5x median with elevated count",
+            ),
+            VelocityRule(
+                name="V-RULE-04",
+                condition=lambda v, d, **kw: v.get("device_txn_count_24h", 0) > 20 and v.get("distinct_users_last_24h", 1) > 1,
+                action="BLOCK",
+                severity=5,
+                description="Device flood: >20 txns across multiple users",
+            ),
+            VelocityRule(
+                name="V-RULE-05",
+                condition=lambda v, d, **kw: v.get("ip_txn_count_5m", 0) > 15,
+                action="ESCALATE",
+                severity=3,
+                description="IP burst: >15 txns from same IP in 5min",
+            ),
+            VelocityRule(
+                name="V-RULE-06",
+                condition=lambda v, d, **kw: v.get("distinct_merchants_1h", 0) > 10,
+                action="ESCALATE",
+                severity=4,
+                description="Card testing: >10 distinct merchants in 1h",
+            ),
+        ]
 
+    def _zscore_rule(self, velocity_features: dict, deviation_features: dict | None, **kw) -> bool:
+        if not deviation_features:
+            return False
+        z = abs(deviation_features.get("amount_z_score", 0))
+        return z > (self.config.get("velocity_zscore_threshold", 3.0))
+
+    async def evaluate(self, velocity_features: dict, deviation_features: dict | None = None, whitelist: set[str] | None = None) -> FilterResult:
+        start = time.perf_counter()
         triggered = []
-        velocity_stats = None
 
-        velocity_stats = feature_store.get_velocity_stats(txn_data["user_id"])
-        baseline = feature_store.get_user_baseline(txn_data["user_id"])
+        for rule in sorted(self.RULES, key=lambda r: -r.severity):
+            try:
+                if rule.condition(velocity_features, deviation_features):
+                    triggered.append(rule)
+            except Exception as e:
+                logger.warning(f"Rule {rule.name} evaluation error: {e}")
 
-        if velocity_stats:
-            z = self._compute_z_score(velocity_stats, baseline)
-            if z > self.velocity_zscore_threshold:
-                triggered.append(f"velocity_zscore_{z:.2f}")
-
-            if velocity_stats["txn_count_5min"] > self.burst_5min_threshold:
-                triggered.append(f"burst_5min_{velocity_stats['txn_count_5min']}")
-
-            if baseline:
-                median_amount = baseline.get("median_amount", 500)
-                ratio = txn_data["amount"] / median_amount if median_amount > 0 else 1
-                if ratio > self.amount_deviation_factor and velocity_stats["txn_count_24h"] > 3:
-                    triggered.append(f"amount_deviation_{ratio:.1f}x")
-
-        last_geo = feature_store.get_geospatial_cache(txn_data["user_id"])
-        if last_geo and "lat" in txn_data:
-            distance = haversine(
-                last_geo["lat"], last_geo["lon"],
-                txn_data["lat"], txn_data["lon"],
-            )
-            time_delta = abs(txn_ts - last_geo["timestamp"])
-            hours = time_delta / 3600.0
-            if hours > 0:
-                geo_vel = distance / hours
-                if geo_vel > self.geo_velocity_max_kmh:
-                    triggered.append(f"geo_impossible_{geo_vel:.0f}kmh")
-
-        merchant_amounts = None
-        chi2_val = 0.0
-        if hasattr(feature_store, "get_merchant_amounts"):
-            merchant_amounts = feature_store.get_merchant_amounts(txn_data["merchant_id"])
-        if merchant_amounts and len(merchant_amounts) >= self.min_benford_samples:
-            chi2_val = benford_chi2(merchant_amounts)
-            if chi2_val > self.benford_chi2_critical:
-                triggered.append(f"benford_deviation_{chi2_val:.2f}")
+        population_stats = await self._compute_population_baseline(velocity_features) if self.redis else None
 
         if not triggered:
-            return StatisticalResult(decision="ALLOW", triggered_rules=[], velocity_stats=velocity_stats, benford_chi2=chi2_val)
+            elapsed = (time.perf_counter() - start) * 1000
+            return FilterResult(action="ALLOW", latency_ms=round(elapsed, 3), population_stats=population_stats)
 
-        has_block = any("geo_impossible" in r for r in triggered)
-        decision = "BLOCK" if has_block else "ESCALATE"
+        has_block = any(r.action == "BLOCK" for r in triggered)
+        max_severity = max(r.severity for r in triggered)
+        severity_sum = sum(r.severity for r in triggered)
 
-        return StatisticalResult(
-            decision=decision,
-            triggered_rules=triggered,
-            velocity_stats=velocity_stats,
-            benford_chi2=chi2_val if chi2_val > 0 else None,
+        if has_block:
+            action = "BLOCK"
+            confidence = 1.0
+        elif max_severity >= 4 or severity_sum >= 7:
+            action = "ESCALATE"
+            confidence = min(1.0, severity_sum / 10.0)
+        else:
+            action = "ALLOW"
+            confidence = 0.0
+
+        elapsed = (time.perf_counter() - start) * 1000
+        return FilterResult(
+            action=action,
+            triggered_rules=[r.name for r in triggered],
+            rule_details=[{"name": r.name, "severity": r.severity, "action": r.action} for r in triggered],
+            confidence=round(confidence, 4),
+            latency_ms=round(elapsed, 3),
+            population_stats=population_stats,
         )
 
-    def _compute_z_score(self, velocity_stats: dict, baseline: dict | None) -> float:
-        recent = velocity_stats.get("txn_count_1h", 0)
-        if baseline is None:
-            return 0.0
-        mean = baseline.get("hourly_avg_txn_count", 1.0)
-        std = baseline.get("hourly_std_txn_count", 1.0)
-        if std == 0:
-            return 0.0
-        return (recent - mean) / std
+    async def _compute_population_baseline(self, features: dict) -> dict | None:
+        try:
+            return {
+                "pop_mean_txn_count_1h": features.get("txn_count_1h", 0),
+                "pop_std_txn_count_1h": features.get("txn_count_1h", 0) * 0.5 if features.get("txn_count_1h", 0) > 0 else 1.0,
+                "pop_mean_amount_sum_1h": features.get("amount_total_1h", 0),
+                "sampled_at": time.time(),
+            }
+        except Exception:
+            return None
