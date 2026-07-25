@@ -139,3 +139,98 @@ class VelocityFilter:
             }
         except Exception:
             return None
+
+
+import math
+from dataclasses import dataclass
+
+
+@dataclass
+class GeoPoint:
+    lat: float
+    lon: float
+    timestamp: float = 0.0
+
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def geo_velocity_kmh(last_loc: GeoPoint, current_loc: GeoPoint) -> float:
+    distance_km = haversine(last_loc.lat, last_loc.lon, current_loc.lat, current_loc.lon)
+    hours = abs(current_loc.timestamp - last_loc.timestamp) / 3600.0
+    return distance_km / hours if hours > 0 else float("inf")
+
+
+class GeoSpatialFilter:
+    HIGH_RISK_COUNTRIES: list[str] = []
+    GEO_FENCE_ENABLED = True
+
+    def __init__(self, redis_client=None, config: dict | None = None):
+        self.redis = redis_client
+        self.config = config or {}
+        self.max_velocity_kmh = self.config.get("geo_velocity_max_kmh", 900.0)
+        self.HIGH_RISK_COUNTRIES = self.config.get("high_risk_countries", [])
+
+    async def evaluate(self, current_loc: GeoPoint, last_loc: GeoPoint | None, baseline: dict | None = None, account_age_days: float = 365.0, user_country: str | None = None, txn_country: str | None = None) -> FilterResult:
+        start = time.perf_counter()
+        triggered: list[dict] = []
+
+        if last_loc and last_loc.timestamp > 0:
+            velocity = geo_velocity_kmh(last_loc, current_loc)
+
+            if velocity > self.max_velocity_kmh:
+                triggered.append({"name": "G-RULE-01", "severity": 5, "action": "BLOCK", "detail": f"geo_velocity_{velocity:.0f}kmh"})
+
+            if velocity > 200 and baseline:
+                max_dist = baseline.get("max_location_distance_km", 100)
+                dist = haversine(last_loc.lat, last_loc.lon, current_loc.lat, current_loc.lon)
+                if dist > 3 * max_dist:
+                    triggered.append({"name": "G-RULE-02", "severity": 4, "action": "ESCALATE", "detail": f"location_deviation_{dist:.0f}km"})
+
+        if user_country and txn_country and user_country != txn_country:
+            if account_age_days < 30 and self._is_domestic_only(user_country):
+                triggered.append({"name": "G-RULE-03", "severity": 3, "action": "ESCALATE", "detail": f"new_international_{user_country}_to_{txn_country}"})
+
+        if baseline and account_age_days < 7:
+            centroid_lat = baseline.get("centroid_lat", current_loc.lat)
+            centroid_lon = baseline.get("centroid_lon", current_loc.lon)
+            dist_from_centroid = haversine(centroid_lat, centroid_lon, current_loc.lat, current_loc.lon)
+            if dist_from_centroid > 500:
+                triggered.append({"name": "G-RULE-04", "severity": 4, "action": "BLOCK", "detail": f"new_account_distant_{dist_from_centroid:.0f}km"})
+
+        if not triggered:
+            elapsed = (time.perf_counter() - start) * 1000
+            return FilterResult(action="ALLOW", stage="geo", latency_ms=round(elapsed, 3))
+
+        has_block = any(t["action"] == "BLOCK" for t in triggered)
+        max_severity = max(t["severity"] for t in triggered)
+        severity_sum = sum(t["severity"] for t in triggered)
+
+        if has_block:
+            action = "BLOCK"
+            confidence = 1.0
+        elif max_severity >= 4 or severity_sum >= 7:
+            action = "ESCALATE"
+            confidence = min(1.0, severity_sum / 10.0)
+        else:
+            action = "ALLOW"
+            confidence = 0.0
+
+        elapsed = (time.perf_counter() - start) * 1000
+        return FilterResult(
+            action=action,
+            stage="geo",
+            triggered_rules=[t["name"] for t in triggered],
+            rule_details=triggered,
+            confidence=round(confidence, 4),
+            latency_ms=round(elapsed, 3),
+        )
+
+    def _is_domestic_only(self, user_country: str) -> bool:
+        return user_country not in self.HIGH_RISK_COUNTRIES
