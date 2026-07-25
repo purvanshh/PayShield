@@ -234,3 +234,120 @@ class GeoSpatialFilter:
 
     def _is_domestic_only(self, user_country: str) -> bool:
         return user_country not in self.HIGH_RISK_COUNTRIES
+
+
+BENFORD_EXPECTED = [math.log10(1 + 1.0 / d) for d in range(1, 10)]
+
+
+def first_digit(amount: float) -> int:
+    s = str(abs(amount)).lstrip("0").replace(".", "")
+    return int(s[0]) if s else 1
+
+
+def benford_chi2(observed_counts: list[int]) -> float:
+    n = sum(observed_counts)
+    if n == 0:
+        return 0.0
+    expected = [n * p for p in BENFORD_EXPECTED]
+    chi2 = sum((o - e) ** 2 / e for o, e in zip(observed_counts, expected) if e > 0)
+    return round(chi2, 4)
+
+
+@dataclass
+class BenfordStats:
+    merchant_id: str
+    observed_counts: list[int] = field(default_factory=lambda: [0] * 9)
+    total_transactions: int = 0
+    chi2_statistic: float = 0.0
+    is_anomalous: bool = False
+
+
+class BenfordFilter:
+    CHI2_CRITICAL_005 = 15.51
+    CHI2_CRITICAL_001 = 20.09
+    MIN_SAMPLES = 20
+    BENFORD_PREFIX = "benford"
+
+    def __init__(self, redis_client=None, config: dict | None = None):
+        self.redis = redis_client
+        self.config = config or {}
+        self.critical_005 = self.config.get("benford_chi2_critical", self.CHI2_CRITICAL_005)
+        self.critical_001 = self.config.get("benford_chi2_critical_001", self.CHI2_CRITICAL_001)
+        self.min_samples = self.config.get("min_benford_samples", self.MIN_SAMPLES)
+        self.whitelisted_merchants: set[str] = set(self.config.get("benford_whitelist", []))
+
+    def _merchant_key(self, merchant_id: str) -> str:
+        return f"{self.BENFORD_PREFIX}:{merchant_id}"
+
+    async def update_merchant_distribution(self, merchant_id: str, amount: float):
+        if merchant_id in self.whitelisted_merchants:
+            return
+        digit = first_digit(amount)
+        if digit < 1 or digit > 9:
+            return
+        key = self._merchant_key(merchant_id)
+        if self.redis:
+            await self.redis.hincrby(key, str(digit), 1)
+            await self.redis.hincrby(key, "total", 1)
+            await self.redis.expire(key, 604800)
+
+    async def get_merchant_stats(self, merchant_id: str) -> BenfordStats | None:
+        if not self.redis:
+            return None
+        key = self._merchant_key(merchant_id)
+        data = await self.redis.hgetall(key)
+        if not data:
+            return None
+        counts = [int(data.get(str(d), 0)) for d in range(1, 10)]
+        total = int(data.get("total", 0))
+        if total < self.min_samples:
+            return None
+        chi2_val = benford_chi2(counts)
+        return BenfordStats(
+            merchant_id=merchant_id,
+            observed_counts=counts,
+            total_transactions=total,
+            chi2_statistic=chi2_val,
+            is_anomalous=chi2_val > self.critical_005,
+        )
+
+    async def evaluate(self, merchant_id: str, amount: float, is_shell_merchant: bool = False) -> FilterResult:
+        start = time.perf_counter()
+        triggered: list[dict] = []
+
+        if merchant_id in self.whitelisted_merchants:
+            elapsed = (time.perf_counter() - start) * 1000
+            return FilterResult(action="ALLOW", stage="benford", latency_ms=round(elapsed, 3))
+
+        await self.update_merchant_distribution(merchant_id, amount)
+        stats = await self.get_merchant_stats(merchant_id)
+
+        if stats and stats.total_transactions >= self.min_samples:
+            if stats.chi2_statistic > self.critical_001 and is_shell_merchant:
+                triggered.append({"name": "B-RULE-02", "severity": 5, "action": "BLOCK",
+                                  "detail": f"benford_chi2_{stats.chi2_statistic:.2f}_shell"})
+
+            if stats.chi2_statistic > self.critical_001:
+                triggered.append({"name": "B-RULE-01", "severity": 4, "action": "ESCALATE",
+                                  "detail": f"benford_chi2_{stats.chi2_statistic:.2f}"})
+
+        if not triggered:
+            elapsed = (time.perf_counter() - start) * 1000
+            return FilterResult(action="ALLOW", stage="benford", latency_ms=round(elapsed, 3))
+
+        has_block = any(t["action"] == "BLOCK" for t in triggered)
+        max_severity = max(t["severity"] for t in triggered)
+        severity_sum = sum(t["severity"] for t in triggered)
+
+        action = "BLOCK" if has_block else ("ESCALATE" if max_severity >= 4 or severity_sum >= 7 else "ALLOW")
+        confidence = 1.0 if has_block else min(1.0, severity_sum / 10.0)
+
+        elapsed = (time.perf_counter() - start) * 1000
+        return FilterResult(
+            action=action,
+            stage="benford",
+            triggered_rules=[t["name"] for t in triggered],
+            rule_details=triggered,
+            confidence=round(confidence, 4),
+            latency_ms=round(elapsed, 3),
+        )
