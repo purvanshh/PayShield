@@ -179,3 +179,147 @@ class ExplanationFormatter:
     @staticmethod
     def classify_pattern(result: ExplanationResult) -> FraudPattern:
         return result.fraud_pattern
+
+
+try:
+    import numpy as np
+    _has_numpy = True
+except ImportError:
+    _has_numpy = False
+
+try:
+    import shap
+    _has_shap = True
+except ImportError:
+    _has_shap = False
+
+
+@dataclass
+class SHAPResult:
+    feature_names: list[str] = field(default_factory=list)
+    shap_values: list[float] = field(default_factory=list)
+    base_value: float = 0.0
+    expected_value: float = 0.0
+    top_positive_features: list[dict] = field(default_factory=list)
+    top_negative_features: list[dict] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "feature_names": self.feature_names,
+            "shap_values": [round(v, 6) for v in self.shap_values],
+            "base_value": round(self.base_value, 4),
+            "expected_value": round(self.expected_value, 4),
+            "top_positive_features": self.top_positive_features[:5],
+            "top_negative_features": self.top_negative_features[:5],
+        }
+
+
+class SHAPBridge:
+    def __init__(self, model, background_data: list | None = None):
+        self.model = model
+        self.background_data = background_data or []
+        self.device = next(model.parameters()).device
+
+    def explain_tabular(self, tabular_tensor: torch.Tensor, feature_names: list[str]) -> SHAPResult:
+        if not _has_shap:
+            raise ImportError("shap library is required for SHAP explanations")
+        if not _has_numpy:
+            raise ImportError("numpy is required for SHAP explanations")
+
+        self.model.eval()
+        tabular_np = tabular_tensor.detach().cpu().numpy()
+
+        if self.background_data:
+            background_np = np.array(self.background_data)
+            explainer = shap.Explainer(
+                lambda x: self._predict_on_tabular(torch.tensor(x, dtype=torch.float32)),
+                background_np,
+            )
+        else:
+            explainer = shap.Explainer(
+                lambda x: self._predict_on_tabular(torch.tensor(x, dtype=torch.float32)),
+                tabular_np,
+            )
+
+        shap_values = explainer(tabular_np)
+
+        values = shap_values.values.flatten().tolist() if hasattr(shap_values, "values") else [0.0] * len(feature_names)
+        base_value = float(shap_values.base_values.flatten()[0]) if hasattr(shap_values, "base_values") else 0.0
+        expected_value = base_value
+
+        indexed = list(enumerate(values))
+        indexed.sort(key=lambda x: -x[1])
+        top_pos = [
+            {"feature": feature_names[i], "value": float(values[i]) if i < len(values) else 0.0, "shap": round(v, 6)}
+            for i, v in indexed[:5] if v > 0
+        ]
+        indexed.sort(key=lambda x: x[1])
+        top_neg = [
+            {"feature": feature_names[i], "value": float(values[i]) if i < len(values) else 0.0, "shap": round(v, 6)}
+            for i, v in indexed[:5] if v < 0
+        ]
+
+        return SHAPResult(
+            feature_names=feature_names,
+            shap_values=[round(v, 6) for v in values],
+            base_value=round(base_value, 4),
+            expected_value=round(expected_value, 4),
+            top_positive_features=top_pos,
+            top_negative_features=top_neg,
+        )
+
+    def _predict_on_tabular(self, x: torch.Tensor) -> np.ndarray:
+        with torch.no_grad():
+            x = x.to(self.device)
+            dummy = {"user": torch.randn(x.size(0), 5), "transaction": torch.randn(x.size(0), 4)}
+            out = torch.sigmoid(self.model.classifier(torch.cat([dummy["user"], dummy["transaction"]], dim=-1)))
+            return out.cpu().numpy()
+
+
+@dataclass
+class UnifiedEvidence:
+    graph_explanation: ExplanationResult | None = None
+    tabular_explanation: SHAPResult | None = None
+    combined_summary: str = ""
+    fraud_pattern: FraudPattern = FraudPattern.UNKNOWN
+
+    def to_dict(self) -> dict:
+        return {
+            "fraud_pattern": self.fraud_pattern.value,
+            "graph": {
+                "fidelity": self.graph_explanation.fidelity if self.graph_explanation else None,
+                "top_nodes": [n["node_id"] for n in (self.graph_explanation.important_nodes if self.graph_explanation else [])[:5]],
+                "subgraph_size": self.graph_explanation.subgraph_size if self.graph_explanation else 0,
+            } if self.graph_explanation else None,
+            "tabular": self.tabular_explanation.to_dict() if self.tabular_explanation else None,
+            "summary": self.combined_summary,
+        }
+
+
+class DualExplanationMerger:
+    @staticmethod
+    def merge(graph_explanation: ExplanationResult | None,
+              shap_result: SHAPResult | None) -> UnifiedEvidence:
+        lines = []
+
+        pattern = graph_explanation.fraud_pattern if graph_explanation else FraudPattern.UNKNOWN
+
+        if graph_explanation:
+            lines.append(f"Graph Structure: {pattern.value}")
+            lines.append(f"  Top nodes: {', '.join(n['node_id'] for n in graph_explanation.important_nodes[:3])}")
+            lines.append(f"  Subgraph size: {graph_explanation.subgraph_size}")
+            lines.append(f"  Graph fidelity: {graph_explanation.fidelity:.2f}")
+
+        if shap_result:
+            lines.append(f"Tabular Features:")
+            for f in shap_result.top_positive_features[:3]:
+                lines.append(f"  +{f['feature']}: SHAP={f['shap']:.4f}")
+            for f in shap_result.top_negative_features[:3]:
+                lines.append(f"  -{f['feature']}: SHAP={f['shap']:.4f}")
+
+        return UnifiedEvidence(
+            graph_explanation=graph_explanation,
+            tabular_explanation=shap_result,
+            combined_summary="\n".join(lines),
+            fraud_pattern=pattern,
+        )
