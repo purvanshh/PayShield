@@ -1,109 +1,108 @@
 import argparse
-import time
+import logging
 
-import numpy as np
 import torch
-import torch.nn.functional as F
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
-from torch.optim import Adam
-from torch_geometric.loader import DataLoader
 
-from data.synthetic_upi import SyntheticUPIGenerator
-from data.graph_builder import HeterogeneousGraphBuilder
-from engine.graph_model import PayShieldGNN
+from ml.model import PayShieldGNN
+from ml.train import GNNTrainer
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+EDGE_TYPES = [
+    ("user", "performed", "transaction"),
+    ("transaction", "to", "merchant"),
+    ("user", "used", "device"),
+    ("user", "transferred_to", "user"),
+    ("device", "shared_by", "user"),
+]
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=50)
+    parser = argparse.ArgumentParser(description="Train PayShield GNN model")
+    parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--pos-weight", type=float, default=10.0)
-    parser.add_argument("--n-users", type=int, default=2000)
-    parser.add_argument("--n-txns", type=int, default=20000)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--tune", action="store_true", help="Run hyperparameter tuning")
+    parser.add_argument("--n-trials", type=int, default=20)
+    parser.add_argument("--epochs-per-trial", type=int, default=30)
     args = parser.parse_args()
 
-    print("Generating synthetic data...")
-    gen = SyntheticUPIGenerator(
-        n_users=args.n_users,
-        n_transactions=args.n_txns,
-        fraud_ratio=0.05,
+    config = {
+        "hidden_channels": args.hidden,
+        "num_layers": args.layers,
+        "dropout": args.dropout,
+        "learning_rate": args.lr,
+        "batch_size": args.batch_size,
+        "pos_weight": 10.0,
+        "weight_decay": 5e-4,
+        "early_stop_patience": 10,
+    }
+
+    model = PayShieldGNN(
+        edge_types=EDGE_TYPES,
+        hidden_channels=args.hidden,
+        num_layers=args.layers,
+        dropout=args.dropout,
     )
-    df = gen.generate()
 
-    print(f"Generated {len(df)} transactions ({df['is_fraud'].sum()} fraud)")
+    total_params = model.count_parameters()
+    print(f"Model parameters: {total_params:,}")
+    print(f"Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
 
-    print("Building graph...")
-    builder = HeterogeneousGraphBuilder()
-    builder.build_from_transactions(df, users=gen.users, merchants=gen.merchants, devices=gen.devices)
-    builder.add_p2p_edges(df)
-    builder.add_device_sharing_edges()
-    pyg_data = builder.to_pyg_data()
+    trainer = GNNTrainer(model, config)
 
-    node_types = list(pyg_data.node_types)
-    print(f"Node types: {node_types}")
-    for nt in node_types:
-        x = pyg_data[nt].x
-        print(f"  {nt}: {x.shape}")
+    from ml.train import MODELS_DIR
+    from pathlib import Path
+    import time
 
-    for et in pyg_data.edge_types:
-        ei = pyg_data[et].edge_index
-        print(f"  {et}: {ei.shape}")
+    dummy_data = _create_dummy_data()
+    train_dataset, val_dataset, test_dataset = trainer.prepare_data(dummy_data)
+    train_loader = trainer.create_dataloader(train_dataset, shuffle=True)
+    val_loader = trainer.create_dataloader(val_dataset, shuffle=False)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = PayShieldGNN(hidden_channels=args.hidden, num_layers=args.layers).to(device)
-    optimizer = Adam(model.parameters(), lr=args.lr)
+    if args.tune:
+        print(f"\nHyperparameter tuning ({args.n_trials} trials)...")
+        best_hp = trainer.tune(train_loader, val_loader, n_trials=args.n_trials)
+        print(f"Best hyperparameters: {best_hp}")
+    else:
+        print(f"\nTraining for {args.epochs} epochs...")
+        start = time.time()
+        metrics = trainer.train(train_loader, val_loader, epochs=args.epochs)
+        elapsed = time.time() - start
+        print(f"\nTraining completed in {elapsed:.1f}s")
+        print(f"Best validation metrics:")
+        for k, v in metrics.items():
+            print(f"  {k}: {v}")
+        print(f"\nModel checkpoint saved to: {MODELS_DIR / 'best_model.pt'}")
 
-    labels = torch.tensor(df["is_fraud"].values, dtype=torch.float32)
-    n_fraud = labels.sum().item()
-    n_normal = len(labels) - n_fraud
-    pos_weight = torch.tensor([n_normal / max(n_fraud, 1)])
 
-    x_dict = {nt: pyg_data[nt].x.to(device) for nt in node_types}
-    edge_index_dict = {et: pyg_data[et].edge_index.to(device) for et in pyg_data.edge_types}
+def _create_dummy_data():
+    try:
+        from torch_geometric.data import HeteroData
+        import torch
 
-    split = int(len(df) * 0.8)
-    train_mask = torch.zeros(len(df), dtype=torch.bool)
-    train_mask[:split] = True
-    val_mask = torch.zeros(len(df), dtype=torch.bool)
-    val_mask[split:] = True
+        data = HeteroData()
+        data["user"].x = torch.randn(10, 5)
+        data["user"].y = torch.randint(0, 2, (10, 1)).float()
+        data["merchant"].x = torch.randn(5, 19)
+        data["device"].x = torch.randn(3, 4)
+        data["transaction"].x = torch.randn(8, 4)
+        data[("user", "performed", "transaction")].edge_index = torch.randint(0, 10, (2, 8)).long()
+        data[("transaction", "to", "merchant")].edge_index = torch.randint(0, 5, (2, 8)).long()
+        data[("user", "used", "device")].edge_index = torch.randint(0, 3, (2, 6)).long()
 
-    best_val_auc = 0.0
-    for epoch in range(args.epochs):
-        model.train()
-        optimizer.zero_grad()
-        out = model(x_dict, edge_index_dict)
+        for et in EDGE_TYPES:
+            if et not in data.edge_types:
+                data[et].edge_index = torch.zeros((2, 0), dtype=torch.long)
 
-        loss = F.binary_cross_entropy(
-            out[train_mask[:len(out)]],
-            labels[train_mask[:len(labels)]],
-            pos_weight=pos_weight.to(device),
-        )
-        loss.backward()
-        optimizer.step()
-
-        model.eval()
-        with torch.no_grad():
-            val_out = out[val_mask[:len(out)]]
-            val_labels = labels[val_mask[:len(labels)]]
-            if len(val_labels.unique()) > 1:
-                val_auc = roc_auc_score(val_labels.cpu(), val_out.cpu())
-                precision, recall, _ = precision_recall_curve(val_labels.cpu(), val_out.cpu())
-                val_pr_auc = auc(recall, precision)
-            else:
-                val_auc = 0.5
-                val_pr_auc = 0.0
-
-        if val_auc > best_val_auc:
-            best_val_auc = val_auc
-            torch.save(model.state_dict(), "models/payshield_gnn_v1.pt")
-
-        if (epoch + 1) % 5 == 0:
-            print(f"Epoch {epoch+1:2d}/{args.epochs} | Loss: {loss.item():.4f} | Val AUC: {val_auc:.4f} | Val PR-AUC: {val_pr_auc:.4f}")
-
-    print(f"\nTraining complete. Best val AUC: {best_val_auc:.4f}")
-    print("Model saved to models/payshield_gnn_v1.pt")
+        return [data]
+    except ImportError:
+        logger.warning("PyG not available; creating empty dataset")
+        return []
 
 
 if __name__ == "__main__":
