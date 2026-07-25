@@ -121,6 +121,24 @@ class AsyncRedisClient:
         except RedisUnavailableError:
             return False
 
+    async def hincrby(self, name: str, key: str, amount: int = 1) -> int:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.hincrby, name, key, amount)
+        except RedisUnavailableError:
+            return 0
+
+    async def pfadd(self, key: str, *elements) -> bool:
+        try:
+            return bool(await self.pool.circuit_breaker.call(self._client.pfadd, key, *elements))
+        except RedisUnavailableError:
+            return False
+
+    async def pfcount(self, key: str) -> int:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.pfcount, key)
+        except RedisUnavailableError:
+            return 0
+
     async def pipeline(self):
         return self._client.pipeline()
 

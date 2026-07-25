@@ -351,3 +351,131 @@ class BenfordFilter:
             confidence=round(confidence, 4),
             latency_ms=round(elapsed, 3),
         )
+
+
+@dataclass
+class Layer1Result:
+    decision: Literal["ALLOW", "ESCALATE", "BLOCK"] = "ALLOW"
+    confidence: float = 0.0
+    triggered_rules: list[str] = field(default_factory=list)
+    rule_details: list[dict] = field(default_factory=list)
+    latency_ms: float = 0.0
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    velocity_result: FilterResult | None = None
+    geo_result: FilterResult | None = None
+    benford_result: FilterResult | None = None
+
+
+class DecisionGate:
+    @staticmethod
+    def compose(results: list[FilterResult]) -> FilterResult:
+        all_rules = []
+        all_details = []
+        max_severity = 0
+        severity_sum = 0
+
+        for r in results:
+            all_rules.extend(r.triggered_rules)
+            all_details.extend(r.rule_details)
+            for d in r.rule_details:
+                sev = d.get("severity", 0)
+                max_severity = max(max_severity, sev)
+                severity_sum += sev
+
+        has_block = any(d.get("action") == "BLOCK" for d in all_details)
+
+        if has_block:
+            action: Literal["ALLOW", "ESCALATE", "BLOCK"] = "BLOCK"
+            confidence = 1.0
+        elif max_severity >= 4 or severity_sum >= 7:
+            action = "ESCALATE"
+            confidence = min(1.0, severity_sum / 10.0)
+        else:
+            action = "ALLOW"
+            confidence = 0.0
+
+        total_latency = sum(r.latency_ms for r in results)
+        return FilterResult(
+            action=action,
+            triggered_rules=all_rules,
+            rule_details=all_details,
+            confidence=round(confidence, 4),
+            latency_ms=round(total_latency, 3),
+        )
+
+
+class StatisticalFilter:
+    def __init__(self, redis_client=None, config: dict | None = None):
+        self.redis = redis_client
+        self.config = config or {}
+        self.velocity = VelocityFilter(redis_client, config)
+        self.geo = GeoSpatialFilter(redis_client, config)
+        self.benford = BenfordFilter(redis_client, config)
+        self.decision_gate = DecisionGate()
+        self.shadow_mode = config.get("shadow_mode", False)
+        self.audit_log: list[Layer1Result] = []
+
+    async def evaluate(self, velocity_features: dict, deviation_features: dict | None = None,
+                       current_loc: GeoPoint | None = None, last_loc: GeoPoint | None = None,
+                       baseline: dict | None = None, account_age_days: float = 365.0,
+                       user_country: str | None = None, txn_country: str | None = None,
+                       merchant_id: str | None = None, amount: float = 0.0,
+                       is_shell_merchant: bool = False, whitelist: set[str] | None = None) -> Layer1Result:
+        import asyncio
+        start = time.perf_counter()
+        tasks = []
+
+        tasks.append(self.velocity.evaluate(velocity_features, deviation_features, whitelist))
+
+        if current_loc:
+            tasks.append(self.geo.evaluate(current_loc, last_loc, baseline, account_age_days, user_country, txn_country))
+
+        if merchant_id:
+            tasks.append(self.benford.evaluate(merchant_id, amount, is_shell_merchant))
+
+        results = await asyncio.gather(*tasks)
+
+        composed = self.decision_gate.compose(results)
+
+        velocity_r = results[0] if len(results) > 0 else None
+        geo_r = results[1] if len(results) > 1 else None
+        benford_r = results[2] if len(results) > 2 else None
+
+        elapsed = (time.perf_counter() - start) * 1000
+        layer1_result = Layer1Result(
+            decision=composed.action,
+            confidence=composed.confidence,
+            triggered_rules=composed.triggered_rules,
+            rule_details=composed.rule_details,
+            latency_ms=round(elapsed, 3),
+            velocity_result=velocity_r,
+            geo_result=geo_r,
+            benford_result=benford_r,
+        )
+
+        await self._append_audit_log(layer1_result)
+        return layer1_result
+
+    async def _append_audit_log(self, result: Layer1Result):
+        self.audit_log.append(result)
+        if hasattr(self.redis, "pipeline"):
+            try:
+                pipe = await self.redis.pipeline()
+                log_key = f"layer1_audit:{result.timestamp.strftime('%Y%m%d')}"
+                entry = {
+                    "decision": result.decision,
+                    "confidence": result.confidence,
+                    "triggered_rules": result.triggered_rules,
+                    "latency_ms": result.latency_ms,
+                    "timestamp": result.timestamp.isoformat(),
+                }
+                await pipe.rpush(log_key, str(entry))
+                await pipe.expire(log_key, 86400 * 30)
+                await pipe.execute()
+            except Exception:
+                pass
+
+    async def evaluate_shadow(self, velocity_features: dict, deviation_features: dict | None = None,
+                              **kwargs) -> Layer1Result:
+        result = await self.evaluate(velocity_features, deviation_features, **kwargs)
+        return result

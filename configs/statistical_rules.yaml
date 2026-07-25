@@ -1,0 +1,91 @@
+velocity:
+  rules:
+    - name: V-RULE-01
+      description: "Burst attack: 5min count > 10 with low baseline"
+      condition: "txn_count_5m > 10 AND baseline_txn_count_24h < 5"
+      action: BLOCK
+      severity: 5
+      enabled: true
+    - name: V-RULE-02
+      description: "Txn count Z-score exceeds threshold"
+      condition: "abs(amount_z_score) > velocity_zscore_threshold"
+      action: ESCALATE
+      severity: 3
+      enabled: true
+    - name: V-RULE-03
+      description: "Amount sum > 5x median with elevated count"
+      condition: "amount_total_1h > 5 * median_amount_30d AND txn_count_1h > 3"
+      action: ESCALATE
+      severity: 4
+      enabled: true
+    - name: V-RULE-04
+      description: "Device flood: >20 txns across multiple users"
+      condition: "device_txn_count_24h > 20 AND distinct_users_last_24h > 1"
+      action: BLOCK
+      severity: 5
+      enabled: true
+    - name: V-RULE-05
+      description: "IP burst: >15 txns from same IP in 5min"
+      condition: "ip_txn_count_5m > 15"
+      action: ESCALATE
+      severity: 3
+      enabled: true
+    - name: V-RULE-06
+      description: "Card testing: >10 distinct merchants in 1h"
+      condition: "distinct_merchants_1h > 10"
+      action: ESCALATE
+      severity: 4
+      enabled: true
+
+geo:
+  enabled: true
+  max_velocity_kmh: 900
+  high_risk_countries: []
+  rules:
+    - name: G-RULE-01
+      description: "Impossible travel > 900 km/h"
+      action: BLOCK
+      severity: 5
+      enabled: true
+    - name: G-RULE-02
+      description: "Location deviation > 3x baseline max distance"
+      action: ESCALATE
+      severity: 4
+      enabled: true
+    - name: G-RULE-03
+      description: "New international transaction for domestic-only user"
+      action: ESCALATE
+      severity: 3
+      enabled: true
+    - name: G-RULE-04
+      description: "New account (< 7 days) transaction > 500km from centroid"
+      action: BLOCK
+      severity: 4
+      enabled: true
+
+benford:
+  enabled: true
+  chi2_critical_005: 15.51
+  chi2_critical_001: 20.09
+  min_samples: 20
+  whitelist:
+    - "merchant_fixed_price"
+    - "merchant_subscription"
+  rules:
+    - name: B-RULE-01
+      description: "Benford chi^2 > 20.09 escalation for synthetic amounts"
+      action: ESCALATE
+      severity: 4
+      enabled: true
+    - name: B-RULE-02
+      description: "Benford chi^2 > 20.09 + shell merchant block"
+      action: BLOCK
+      severity: 5
+      enabled: true
+
+decision_gate:
+  block_priority: true
+  escalate_min_severity: 4
+  escalate_min_severity_sum: 7
+  confidence_block: 1.0
+  shadow_mode: false
