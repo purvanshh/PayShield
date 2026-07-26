@@ -1,0 +1,27 @@
+{
+  "scenario": "Burst attack detected via time-based velocity and merchant clustering",
+  "evidence": [
+    {"type": "transaction_velocity", "description": "47 transactions in 3 minutes targeted at Merchant M3301", "severity": "HIGH"},
+    {"type": "geo_anomaly", "description": "Transactions originate from 23 distinct cities within 180 seconds", "severity": "HIGH"},
+    {"type": "benford_deviation", "description": "Chi-square statistic 89.3 on first-digit distribution", "severity": "HIGH"},
+    {"type": "merchant_velocity", "description": "Merchant M3301 normally processes 12 txn/hour; currently 47 in 3 min", "severity": "MEDIUM"}
+  ],
+  "shap_features": [
+    {"name": "txn_count_3min_window", "value": 47.0, "shap_value": 0.56},
+    {"name": "geo_entropy_1min", "value": 3.14, "shap_value": 0.29},
+    {"name": "benford_chi2", "value": 89.3, "shap_value": 0.18}
+  ],
+  "graph_nodes": [
+    {"type": "merchant", "id": "M3301", "importance": 0.94},
+    {"type": "user", "id": "U78451", "importance": 0.12},
+    {"type": "user", "id": "U78452", "importance": 0.11}
+  ],
+  "expected_output": {
+    "narrative": "Merchant M3301 under active burst attack: 47 transactions from 23 cities in 3 minutes — a 40x spike over normal velocity. First-digit distribution shows extreme Benford deviation (chi2=89.3), indicative of synthetic transaction generation.",
+    "fraud_type": "BURST_ATTACK",
+    "confidence": "HIGH",
+    "recommended_action": "BLOCK",
+    "key_evidence": ["47 transactions in 3 minutes", "23 distinct cities in 180 seconds", "Benford chi-square 89.3"],
+    "reasoning": "Massive velocity spike combined with impossible geographic distribution and anomalous first-digit patterns indicates automated scripted attack. Merchant account should be temporarily suspended."
+  }
+}

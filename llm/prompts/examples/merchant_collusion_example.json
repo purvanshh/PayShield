@@ -1,0 +1,28 @@
+{
+  "scenario": "Merchant collusion detected via bipartite graph analysis and SHAP",
+  "evidence": [
+    {"type": "graph_cycle", "description": "3 transaction cycles detected involving Merchant M7721, Users U5512, U5513, U5514", "severity": "HIGH"},
+    {"type": "refund_ratio", "description": "Merchant M7721 has 68% refund rate over 7 days vs 8% category average", "severity": "HIGH"},
+    {"type": "shap_interaction", "description": "SHAP interaction (amount x refund_ratio) = 0.31 — highest pair", "severity": "MEDIUM"},
+    {"type": "device_fingerprint", "description": "All refund transactions originate from merchant-owned device", "severity": "HIGH"}
+  ],
+  "shap_features": [
+    {"name": "refund_ratio_7d", "value": 0.68, "shap_value": 0.45},
+    {"name": "cycle_count", "value": 3.0, "shap_value": 0.33},
+    {"name": "txn_amount", "value": 12500.0, "shap_value": -0.05}
+  ],
+  "graph_nodes": [
+    {"type": "merchant", "id": "M7721", "importance": 0.96},
+    {"type": "user", "id": "U5512", "importance": 0.82},
+    {"type": "user", "id": "U5513", "importance": 0.79},
+    {"type": "user", "id": "U5514", "importance": 0.77}
+  ],
+  "expected_output": {
+    "narrative": "Merchant M7721 engaged in synthetic transaction collusion: 68% refund rate (8x category average) with 3 transaction cycles involving 3 users. All refunds originate from the merchant's own device, indicating round-trip transaction fabrication.",
+    "fraud_type": "MERCHANT_COLLUSION",
+    "confidence": "HIGH",
+    "recommended_action": "BLOCK",
+    "key_evidence": ["68% refund rate vs 8% category average", "3 closed transaction cycles", "Refunds from merchant-owned device"],
+    "reasoning": "Extreme refund ratio combined with cyclical transaction pattern and identical device origin confirms merchant is fabricating transactions to inflate volume or siphon funds."
+  }
+}

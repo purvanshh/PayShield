@@ -1,0 +1,27 @@
+{
+  "scenario": "Mule ring detected via velocity analysis and graph structure",
+  "evidence": [
+    {"type": "transaction_velocity", "description": "15 transactions from user U10023 in 5 minutes", "severity": "HIGH"},
+    {"type": "device_fingerprint", "description": "Shared device fingerprint across 12 distinct users", "severity": "HIGH"},
+    {"type": "graph_centrality", "description": "User U10023 has 2nd-degree connection to 8 known flagged accounts", "severity": "HIGH"},
+    {"type": "value_pattern", "description": "All transactions just below ₹5,000 (₹4,950–₹4,990)", "severity": "MEDIUM"}
+  ],
+  "shap_features": [
+    {"name": "txn_count_5min_window", "value": 15.0, "shap_value": 0.42},
+    {"name": "unique_devices_24h", "value": 12.0, "shap_value": 0.35},
+    {"name": "avg_txn_amount", "value": 4972.0, "shap_value": -0.08}
+  ],
+  "graph_nodes": [
+    {"type": "user", "id": "U10023", "importance": 0.91},
+    {"type": "device", "id": "D8841", "importance": 0.87},
+    {"type": "merchant", "id": "M5502", "importance": 0.45}
+  ],
+  "expected_output": {
+    "narrative": "User U10023 exhibits classic mule behavior: 15 near-threshold transactions in 5 minutes from a device shared with 11 other accounts. Graph analysis reveals second-degree connections to 8 flagged accounts, confirming mule ring participation.",
+    "fraud_type": "MULE_RING",
+    "confidence": "HIGH",
+    "recommended_action": "BLOCK",
+    "key_evidence": ["15 transactions in 5 minutes", "Shared device across 12 users", "Connection to 8 flagged accounts"],
+    "reasoning": "Velocity spike, device sharing, and proximity to known bad actors collectively indicate a coordinated mule operation. High confidence due to converging independent signals."
+  }
+}
