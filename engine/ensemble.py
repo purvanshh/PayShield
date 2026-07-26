@@ -1,89 +1,164 @@
-from engine.statistical_filter import StatisticalFilter, StatisticalResult
-from engine.graph_model import PayShieldGNN
-from engine.graph_feature_engine import GraphFeatureEngine
-from engine.explainer import GNNExplainerWrapper, SHAPBridge
+import logging
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Literal
+
+logger = logging.getLogger(__name__)
+
+try:
+    from sklearn.isotonic import IsotonicRegression
+    _has_sklearn = True
+except ImportError:
+    IsotonicRegression = None
+    _has_sklearn = False
+
+CALIBRATION_DIR = Path("models/calibration")
 
 
-class EnsembleScorer:
-    def __init__(self, graph_db, config: dict | None = None):
-        self.config = config or {}
-        self.statistical_filter = StatisticalFilter(self.config.get("statistical", {}))
-        self.gnn_model = PayShieldGNN(
-            hidden_channels=self.config.get("model", {}).get("hidden_channels", 64),
-            num_layers=self.config.get("model", {}).get("num_layers", 2),
-            dropout=self.config.get("model", {}).get("dropout", 0.3),
-        )
-        self.graph_engine = GraphFeatureEngine(graph_db)
-        self.explainer = GNNExplainerWrapper(self.gnn_model)
-        self.shap_bridge = SHAPBridge(self.gnn_model)
-        self.block_threshold = self.config.get("thresholds", {}).get("block_probability", 0.85)
+@dataclass
+class Layer2Result:
+    fraud_probability: float = 0.0
+    source: str = "L2_GNN"
+    graph_features: dict | None = None
+    latency_ms: float = 0.0
 
-    def score(self, txn, feature_store):
-        txn_data = txn if isinstance(txn, dict) else (txn.model_dump() if hasattr(txn, "model_dump") else txn.__dict__)
 
-        layer1_result = self.statistical_filter.evaluate(txn_data, feature_store)
+@dataclass
+class EnsembleResult:
+    decision: Literal["ALLOW", "REVIEW", "BLOCK"] = "ALLOW"
+    confidence: float = 0.0
+    source: Literal["L1_STATISTICAL", "L2_GNN", "ENSEMBLE"] = "L2_GNN"
+    triggered_rules: list[str] = field(default_factory=list)
+    layer1_result: Any = None
+    layer2_result: Any = None
+    latency_ms: float = 0.0
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
-        if layer1_result.decision == "BLOCK":
-            return {
-                "fraud_probability": 1.0,
-                "decision": "BLOCK",
-                "layer_triggered": "L1_STATISTICAL",
-                "evidence": {"triggered_rules": layer1_result.triggered_rules},
-                "latency_ms": 0.0,
-                "model_version": "1.0.0",
-            }
 
-        if layer1_result.decision == "ALLOW":
-            return {
-                "fraud_probability": 0.0,
-                "decision": "ALLOW",
-                "layer_triggered": "L1_STATISTICAL",
-                "evidence": {"triggered_rules": []},
-                "latency_ms": 0.0,
-                "model_version": "1.0.0",
-            }
+class ConfidenceCalibrator:
+    def __init__(self):
+        self.model = None
+        self._fitted = False
 
-        subgraph = self.graph_engine.extract_ego_graph(
-            txn_data["user_id"], txn_data["merchant_id"], hops=2
-        )
+    def fit(self, confidences: list[float], labels: list[int]):
+        if not _has_sklearn:
+            logger.warning("sklearn not available; calibration skipped")
+            return
+        self.model = IsotonicRegression(out_of_bounds="clip")
+        self.model.fit(confidences, labels)
+        self._fitted = True
+        logger.info(f"Calibrator fitted on {len(confidences)} samples")
 
-        if subgraph.number_of_nodes() == 0:
-            return {
-                "fraud_probability": 0.0,
-                "decision": "ALLOW",
-                "layer_triggered": "L2_GNN",
-                "evidence": {"error": "empty_subgraph"},
-                "latency_ms": 0.0,
-                "model_version": "1.0.0",
-            }
+    def calibrate(self, confidence: float) -> float:
+        if not self._fitted or self.model is None:
+            return confidence
+        return float(self.model.predict([[confidence]])[0])
 
-        pyg_data = self.graph_engine.hydrate_features(subgraph, feature_store)
+    def save(self, path: Path | None = None):
+        if not _has_sklearn:
+            return
+        import joblib
+        path = path or CALIBRATION_DIR / "ensemble_calibrator.pkl"
+        os.makedirs(path.parent, exist_ok=True)
+        joblib.dump(self.model, path)
+        logger.info(f"Calibrator saved: {path}")
 
-        explanation = self.explainer.explain(
-            {ntype: pyg_data[ntype].x for ntype in pyg_data.node_types if hasattr(pyg_data[ntype], "x")},
-            {etype: pyg_data[etype].edge_index for etype in pyg_data.edge_types},
-        )
+    def load(self, path: Path | None = None):
+        if not _has_sklearn:
+            return
+        import joblib
+        path = path or CALIBRATION_DIR / "ensemble_calibrator.pkl"
+        if path.exists():
+            self.model = joblib.load(path)
+            self._fitted = True
+            logger.info(f"Calibrator loaded: {path}")
 
-        fraud_prob = explanation["fraud_probability"]
 
-        if fraud_prob >= self.block_threshold:
+class EnsembleFusionEngine:
+    def __init__(self, layer1_weight: float = 0.3, layer2_weight: float = 0.7,
+                 fraud_threshold: float = 0.85, calibrator: ConfidenceCalibrator | None = None):
+        self.layer1_weight = layer1_weight
+        self.layer2_weight = layer2_weight
+        self.fraud_threshold = fraud_threshold
+        self.calibrator = calibrator or ConfidenceCalibrator()
+        self.disagreements: list[dict] = []
+
+    def fuse(self, layer1_result, layer2_result: Layer2Result | None = None) -> EnsembleResult:
+        start = time.perf_counter()
+        l1_decision = getattr(layer1_result, "decision", "ALLOW")
+        l1_rules = getattr(layer1_result, "triggered_rules", [])
+        l1_confidence = getattr(layer1_result, "confidence", 0.0)
+
+        if l1_decision == "BLOCK":
+            elapsed = (time.perf_counter() - start) * 1000
+            return EnsembleResult(
+                decision="BLOCK",
+                confidence=1.0,
+                source="L1_STATISTICAL",
+                triggered_rules=l1_rules,
+                layer1_result=layer1_result,
+                latency_ms=round(elapsed, 3),
+            )
+
+        l2_prob = layer2_result.fraud_probability if layer2_result else 0.0
+
+        if l1_decision == "ESCALATE":
+            boosted_score = min(1.0, l2_prob + 0.15)
+            calibrated = self.calibrator.calibrate(boosted_score)
+            decision: Literal["ALLOW", "REVIEW", "BLOCK"] = "BLOCK" if boosted_score >= self.fraud_threshold else "REVIEW"
+            elapsed = (time.perf_counter() - start) * 1000
+            return EnsembleResult(
+                decision=decision,
+                confidence=round(calibrated, 4),
+                source="ENSEMBLE",
+                triggered_rules=l1_rules,
+                layer1_result=layer1_result,
+                layer2_result=layer2_result,
+                latency_ms=round(elapsed, 3),
+            )
+
+        calibrated = self.calibrator.calibrate(l2_prob)
+        if l2_prob >= self.fraud_threshold:
             decision = "BLOCK"
-        elif fraud_prob >= 0.5:
+        elif l2_prob >= 0.5:
             decision = "REVIEW"
         else:
             decision = "ALLOW"
 
-        return {
-            "fraud_probability": fraud_prob,
-            "decision": decision,
-            "layer_triggered": "L2_GNN",
-            "evidence": {
-                "layer1_rules": layer1_result.triggered_rules,
-                "layer1_chi2": layer1_result.benford_chi2,
-                "gnn_explanation": explanation,
-                "subgraph_size": subgraph.number_of_nodes(),
-                "subgraph_edges": subgraph.number_of_edges(),
-            },
-            "latency_ms": 0.0,
-            "model_version": "1.0.0",
+        if l1_decision == "ALLOW" and decision == "BLOCK":
+            self._log_disagreement(layer1_result, layer2_result, "ALLOW_vs_BLOCK")
+        elif l1_decision == "ALLOW" and decision == "REVIEW":
+            self._log_disagreement(layer1_result, layer2_result, "ALLOW_vs_REVIEW")
+
+        elapsed = (time.perf_counter() - start) * 1000
+        return EnsembleResult(
+            decision=decision,
+            confidence=round(calibrated, 4),
+            source="L2_GNN",
+            triggered_rules=l1_rules,
+            layer1_result=layer1_result,
+            layer2_result=layer2_result,
+            latency_ms=round(elapsed, 3),
+        )
+
+    def _log_disagreement(self, l1, l2, description: str):
+        entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "description": description,
+            "layer1_decision": getattr(l1, "decision", None),
+            "layer2_probability": l2.fraud_probability if l2 else None,
         }
+        self.disagreements.append(entry)
+        logger.info(f"Disagreement logged: {description}")
+
+    def calibrate(self, confidences: list[float], labels: list[int]):
+        self.calibrator.fit(confidences, labels)
+
+    def save_calibrator(self, path: Path | None = None):
+        self.calibrator.save(path)
+
+    def load_calibrator(self, path: Path | None = None):
+        self.calibrator.load(path)
