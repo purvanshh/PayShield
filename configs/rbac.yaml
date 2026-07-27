@@ -1,0 +1,16 @@
+roles:
+  analyst:
+    - score:read
+    - investigation:read
+    - feedback:write
+  admin:
+    - score:read
+    - investigation:read
+    - feedback:write
+    - rule:write
+    - model:promote
+    - agent:manage
+  system:
+    - score:write
+    - metrics:read
+    - health:read
