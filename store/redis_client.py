@@ -139,6 +139,30 @@ class AsyncRedisClient:
         except RedisUnavailableError:
             return 0
 
+    async def keys(self, pattern: str) -> list[str]:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.keys, pattern) or []
+        except RedisUnavailableError:
+            return []
+
+    async def lpush(self, key: str, *values: str) -> int:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.lpush, key, *values)
+        except RedisUnavailableError:
+            return 0
+
+    async def ltrim(self, key: str, start: int, end: int) -> bool:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.ltrim, key, start, end)
+        except RedisUnavailableError:
+            return False
+
+    async def lrange(self, key: str, start: int, end: int) -> list[str]:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.lrange, key, start, end) or []
+        except RedisUnavailableError:
+            return []
+
     async def pipeline(self):
         return self._client.pipeline()
 

@@ -21,7 +21,7 @@ async def submit_feedback(
     _=Depends(require_permission("feedback", "write")),
 ):
     txn_key = f"investigation:{feedback.txn_id}"
-    existing = redis.get(txn_key)
+    existing = await redis.get(txn_key)
     if not existing:
         raise PayShieldException(status_code=404, detail=f"Transaction {feedback.txn_id} not found")
 
@@ -38,10 +38,10 @@ async def submit_feedback(
     }
 
     fb_key = f"feedback:{feedback.txn_id}:{feedback.analyst_id}"
-    redis.set(fb_key, json.dumps(payload), ttl=2592000)
+    await redis.set(fb_key, json.dumps(payload), ttl=2592000)
 
-    redis.lpush("feedback:recent", json.dumps(payload))
-    redis.ltrim("feedback:recent", 0, 999)
+    await redis.lpush("feedback:recent", json.dumps(payload))
+    await redis.ltrim("feedback:recent", 0, 999)
 
     try:
         from agents.human_review_agent import HumanReviewAgent
@@ -77,7 +77,7 @@ async def feedback_stats(
     redis=Depends(get_redis),
     _=Depends(require_permission("feedback", "write")),
 ):
-    recent_raw = redis.lrange("feedback:recent", 0, 999) or []
+    recent_raw = await redis.lrange("feedback:recent", 0, 999) or []
     entries = []
     for r in recent_raw:
         try:

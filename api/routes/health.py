@@ -15,7 +15,7 @@ async def health_check(redis=Depends(get_redis)):
     checks: dict[str, str] = {}
 
     try:
-        redis_alive = redis.health_check() if hasattr(redis, "health_check") else bool(redis.ping() if hasattr(redis, "ping") else None)
+        redis_alive = await redis.ping()
         checks["redis"] = "up" if redis_alive else "down"
     except Exception:
         checks["redis"] = "down"
@@ -65,7 +65,7 @@ async def liveness():
 @router.get("/health/ready")
 async def readiness(redis=Depends(get_redis)):
     try:
-        redis_alive = redis.health_check() if hasattr(redis, "health_check") else True
+        redis_alive = await redis.ping()
         return {"status": "ready" if redis_alive else "not_ready"}
     except Exception:
         from starlette.responses import JSONResponse

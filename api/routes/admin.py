@@ -26,7 +26,7 @@ async def reload_rules(
             raise HTTPException(status_code=404, detail="Rules config not found")
         with open(rules_path) as f:
             rules = yaml.safe_load(f)
-        redis.set("rules:statistical", json.dumps(rules))
+        await redis.set("rules:statistical", json.dumps(rules))
         logger.info("Rules reloaded from configs/statistical_rules.yaml")
         return {"status": "reloaded", "file": str(rules_path), "rule_count": len(rules) if isinstance(rules, dict) else 0}
     except HTTPException:
@@ -109,8 +109,8 @@ async def update_threshold(
     _=Depends(require_permission("rule", "write")),
 ):
     key = f"config:threshold:{body.key}"
-    old = redis.get(key) or "not_set"
-    redis.set(key, json.dumps({"value": body.value, "updated_at": datetime.utcnow().isoformat()}))
+    old = await redis.get(key) or "not_set"
+    await redis.set(key, json.dumps({"value": body.value, "updated_at": datetime.utcnow().isoformat()}))
     logger.info(f"Threshold updated: {body.key} = {body.value}")
     return ConfigUpdateResponse(
         status="updated",

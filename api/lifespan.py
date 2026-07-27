@@ -13,9 +13,9 @@ async def lifespan_manager(app: FastAPI):
     resources = {}
 
     try:
-        from store.redis_client import RedisClient
+        from store import RedisClient
         redis = RedisClient()
-        if redis.health_check():
+        if await redis.ping():
             resources["redis"] = redis
             logger.info("redis_connected")
         else:
@@ -68,7 +68,7 @@ async def lifespan_manager(app: FastAPI):
 
     logger.info("payshield_shutdown_begin")
     if resources.get("redis"):
-        resources["redis"].close()
+        await resources["redis"].close()
     if resources.get("neo4j"):
         try:
             resources["neo4j"].close()

@@ -10,7 +10,7 @@ except ImportError:
     RBACEnforcer = None
     require_permission = None
 
-from store.redis_client import RedisClient
+from store import RedisClient
 
 
 async def verify_api_key(x_api_key: str = Header(...)):

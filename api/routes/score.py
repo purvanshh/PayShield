@@ -41,16 +41,15 @@ async def score_transaction(
     start = time.time()
 
     txn_hash = hashlib.sha256(txn.txn_id.encode()).hexdigest()
-    idempotent = redis.get(f"idempotent:{txn_hash}")
+    idempotent = await redis.get(f"idempotent:{txn_hash}")
     if idempotent:
         cached = json.loads(idempotent)
         return FraudScoreResponse(**cached)
 
-    from api.schemas import FraudScoreResponse as FSR
     txn_dict = txn.model_dump()
     txn_dict["timestamp"] = txn.timestamp.timestamp()
 
-    layer1_result = stat_filter.evaluate(txn_dict, redis) if stat_filter else type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
+    layer1_result = await stat_filter.evaluate(txn_dict, redis) if stat_filter else type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
 
     l1_decision = getattr(layer1_result, "decision", "ALLOW")
     if l1_decision == "BLOCK":
@@ -66,7 +65,7 @@ async def score_transaction(
         elapsed = (time.time() - start) * 1000
         result["latency_ms"] = round(elapsed, 2)
         _enqueue_investigation(txn.txn_id, result)
-        _cache_result(redis, txn_hash, result)
+        await _cache_result(redis, txn_hash, result)
         return FraudScoreResponse(**result)
 
     l2_result = type("L2", (), {
@@ -92,7 +91,7 @@ async def score_transaction(
     if response_data["decision"] in ("BLOCK", "REVIEW"):
         _enqueue_investigation(txn.txn_id, response_data)
 
-    _cache_result(redis, txn_hash, response_data)
+    await _cache_result(redis, txn_hash, response_data)
     return FraudScoreResponse(**response_data)
 
 
@@ -114,7 +113,7 @@ async def batch_score(
         async with sem:
             txn_dict = txn.model_dump()
             txn_dict["timestamp"] = txn.timestamp.timestamp()
-            layer1_result = stat_filter.evaluate(txn_dict, redis) if stat_filter else type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
+            layer1_result = await stat_filter.evaluate(txn_dict, redis) if stat_filter else type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
             l2r = type("L2", (), {"fraud_probability": 0.0, "source": "L2_GNN", "graph_features": {}, "latency_ms": 0.0})()
             er = ensemble.fuse(layer1_result, l2r) if ensemble else type("ER", (), {"decision": "ALLOW", "confidence": 0.0, "source": "ENSEMBLE"})()
             return FraudScoreResponse(
@@ -141,8 +140,8 @@ def _enqueue_investigation(txn_id: str, result: dict):
             logger.warning(f"Failed to enqueue investigation: {e}")
 
 
-def _cache_result(redis, txn_hash: str, result: dict, ttl: int = 60):
+async def _cache_result(redis, txn_hash: str, result: dict, ttl: int = 60):
     try:
-        redis.set(f"idempotent:{txn_hash}", json.dumps(result), ttl=ttl)
+        await redis.set(f"idempotent:{txn_hash}", json.dumps(result), ttl=ttl)
     except Exception:
         pass

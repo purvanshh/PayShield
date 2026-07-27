@@ -19,10 +19,10 @@ async def get_investigation(
     redis=Depends(get_redis),
 ):
     key = f"investigation:{txn_id}"
-    raw = redis.get(key)
+    raw = await redis.get(key)
     if raw is None:
         pending_key = f"investigation_pending:{txn_id}"
-        if redis.get(pending_key):
+        if await redis.get(pending_key):
             raise HTTPException(
                 status_code=202,
                 detail={"status": "pending", "retry_after": 5, "txn_id": txn_id},
@@ -56,12 +56,12 @@ async def list_investigations(
     pattern = "investigation:*"
     keys = []
     try:
-        keys = redis.keys(pattern) or []
+        keys = await redis.keys(pattern) or []
     except Exception:
         pass
     all_reports = []
     for k in keys:
-        raw = redis.get(k)
+        raw = await redis.get(k)
         if raw:
             try:
                 data = json.loads(raw) if isinstance(raw, str) else raw
