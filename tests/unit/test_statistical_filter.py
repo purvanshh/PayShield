@@ -2,104 +2,13 @@ from datetime import datetime
 
 import pytest
 
-from engine.statistical_filter import StatisticalFilter, StatisticalResult
-from data.features.benford import benford_expected_distribution, first_digit_frequencies, benford_chi2
-from data.features.geospatial import haversine, geo_velocity_kmh
+from engine.statistical_filter import (
+    StatisticalFilter, FilterResult, Layer1Result, VelocityFilter, GeoSpatialFilter, BenfordFilter,
+    GeoPoint, haversine, geo_velocity_kmh, first_digit, benford_chi2, BENFORD_EXPECTED,
+)
 
 
-class MockFeatureStore:
-    def __init__(self):
-        self.velocity = {"txn_count_5min": 1, "txn_count_1h": 2, "txn_count_24h": 5}
-        self.baseline = {"hourly_avg_txn_count": 1.0, "hourly_std_txn_count": 0.5, "median_amount": 500}
-        self.geo = None
-
-    def get_velocity_stats(self, user_id):
-        return self.velocity
-
-    def get_user_baseline(self, user_id):
-        return self.baseline
-
-    def get_geospatial_cache(self, user_id):
-        return self.geo
-
-    def get_merchant_amounts(self, merchant_id):
-        return None
-
-
-class TestStatisticalFilter:
-    def setup_method(self):
-        self.filter = StatisticalFilter()
-        self.store = MockFeatureStore()
-
-    def test_allows_normal_transaction(self):
-        txn = {
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 500,
-            "timestamp": datetime.utcnow(),
-            "lat": 19.0,
-            "lon": 72.0,
-        }
-        result = self.filter.evaluate(txn, self.store)
-        assert result.decision == "ALLOW"
-        assert len(result.triggered_rules) == 0
-
-    def test_blocks_geo_impossible(self):
-        self.store.geo = {"lat": 19.0, "lon": 72.0, "timestamp": 0}
-        txn = {
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 500,
-            "timestamp": datetime.utcnow(),
-            "lat": 28.7,
-            "lon": 77.1,
-        }
-        result = self.filter.evaluate(txn, self.store)
-        assert result.decision == "BLOCK"
-        assert any("geo_impossible" in r for r in result.triggered_rules)
-
-    def test_escalates_high_velocity(self):
-        self.store.velocity = {"txn_count_5min": 20, "txn_count_1h": 50, "txn_count_24h": 100}
-        txn = {
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 500,
-            "timestamp": datetime.utcnow(),
-        }
-        result = self.filter.evaluate(txn, self.store)
-        assert result.decision == "ESCALATE"
-        assert any("burst" in r for r in result.triggered_rules)
-
-    def test_velocity_zscore_threshold(self):
-        z = self.filter._compute_z_score(
-            {"txn_count_1h": 50},
-            {"hourly_avg_txn_count": 5.0, "hourly_std_txn_count": 2.0},
-        )
-        assert z > 3.0
-
-    def test_benford_expected_distribution(self):
-        dist = benford_expected_distribution()
-        assert len(dist) == 9
-        assert abs(dist.sum() - 1.0) < 0.01
-        assert dist[0] > dist[8]
-
-    def test_first_digit_frequencies(self):
-        amounts = [100, 200, 300, 1000, 2500]
-        freqs = first_digit_frequencies(amounts)
-        assert len(freqs) == 9
-        assert abs(freqs.sum() - 1.0) < 0.01
-        assert freqs[0] == 2 / 5
-
-    def test_benford_chi2_low_samples(self):
-        assert benford_chi2([]) == 0.0
-        assert benford_chi2([100, 200]) == 0.0
-
-    def test_benford_chi2_returns_float(self):
-        amounts = [999, 1999, 2999, 3999, 4999] * 10
-        chi2_val = benford_chi2(amounts)
-        assert isinstance(chi2_val, float)
-        assert chi2_val > 0
-
+class TestGeoFunctions:
     def test_haversine_distance(self):
         d = haversine(19.0760, 72.8777, 28.7041, 77.1025)
         assert 1100 < d < 1200
@@ -109,29 +18,107 @@ class TestStatisticalFilter:
         assert d == 0.0
 
     def test_geo_velocity_kmh(self):
-        t1 = datetime(2026, 7, 22, 10, 0, 0)
-        t2 = datetime(2026, 7, 22, 11, 0, 0)
-        v = geo_velocity_kmh(19.0760, 72.8777, t1, 28.7041, 77.1025, t2)
+        loc1 = GeoPoint(lat=19.0760, lon=72.8777, timestamp=1000)
+        loc2 = GeoPoint(lat=28.7041, lon=77.1025, timestamp=4600)
+        v = geo_velocity_kmh(loc1, loc2)
         assert 1100 < v < 1200
 
-    def test_no_rules_without_geo_cache(self):
-        self.store.geo = None
-        txn = {
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 99999,
-            "timestamp": datetime.utcnow(),
-            "lat": 28.7,
-            "lon": 77.1,
-        }
-        result = self.filter.evaluate(txn, self.store)
-        assert result.decision in ("ALLOW", "ESCALATE")
+    def test_first_digit(self):
+        assert first_digit(100) == 1
+        assert first_digit(2500) == 2
+        assert first_digit(999) == 9
 
 
-class TestStatisticalResult:
+class TestBenford:
+    def test_benford_expected_length(self):
+        assert len(BENFORD_EXPECTED) == 9
+        assert BENFORD_EXPECTED[0] > BENFORD_EXPECTED[8]
+
+    def test_benford_chi2_empty(self):
+        assert benford_chi2([]) == 0.0
+
+    def test_benford_chi2_low_samples(self):
+        counts = [1, 0, 0, 0, 0, 0, 0, 0, 0]
+        val = benford_chi2(counts)
+        assert isinstance(val, float)
+
+    def test_benford_chi2_returns_float(self):
+        counts = [5, 4, 3, 3, 2, 2, 1, 1, 1]
+        val = benford_chi2(counts)
+        assert isinstance(val, float)
+
+
+class TestVelocityFilter:
+    def setup_method(self):
+        self.filter = VelocityFilter(redis_client=None, config={})
+
+    def test_allows_low_velocity(self):
+        vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5, "amount_total_1h": 500.0}
+        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 999})
+        assert result.action in ("ALLOW",)
+
+    def test_blocks_burst(self):
+        vf = {"txn_count_5m": 20, "txn_count_1h": 50, "txn_count_24h": 100,
+              "amount_total_1h": 5000.0, "device_txn_count_24h": 1, "distinct_users_last_24h": 1,
+              "ip_txn_count_5m": 1, "distinct_merchants_1h": 1}
+        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 2})
+        assert result.action == "BLOCK"
+        assert "V-RULE-01" in result.triggered_rules
+
+    def test_escalates_zscore(self):
+        vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5,
+              "amount_total_1h": 500.0, "device_txn_count_24h": 1, "distinct_users_last_24h": 1,
+              "ip_txn_count_5m": 1, "distinct_merchants_1h": 1}
+        result = self.filter.evaluate(vf, {"amount_z_score": 5.0})
+        assert result.action in ("ESCALATE",)
+        assert "V-RULE-02" in result.triggered_rules
+
+
+class TestGeoSpatialFilter:
+    def setup_method(self):
+        self.filter = GeoSpatialFilter(redis_client=None, config={})
+
+    def test_allows_same_location(self):
+        loc = GeoPoint(lat=19.076, lon=72.877, timestamp=1000)
+        result = self.filter.evaluate(loc, None)
+        assert result.action == "ALLOW"
+
+    def test_blocks_impossible_travel(self):
+        last = GeoPoint(lat=19.076, lon=72.877, timestamp=1000)
+        current = GeoPoint(lat=28.704, lon=77.102, timestamp=1100)
+        result = self.filter.evaluate(current, last)
+        assert result.action == "BLOCK"
+        assert "G-RULE-01" in result.triggered_rules
+
+
+class TestStatisticalFilter:
+    def setup_method(self):
+        self.filter = StatisticalFilter(config={})
+
+    def test_allows_normal_transaction(self):
+        vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5, "amount_total_1h": 500.0,
+              "device_txn_count_24h": 1, "distinct_users_last_24h": 1, "ip_txn_count_5m": 1,
+              "distinct_merchants_1h": 1}
+        result = self.filter.evaluate(vf, merchant_id="M00001", amount=500.0)
+        assert result.decision in ("ALLOW",)
+
+    def test_blocks_high_velocity(self):
+        vf = {"txn_count_5m": 20, "txn_count_1h": 50, "txn_count_24h": 100, "amount_total_1h": 5000.0,
+              "device_txn_count_24h": 1, "distinct_users_last_24h": 1, "ip_txn_count_5m": 1,
+              "distinct_merchants_1h": 1}
+        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 2}, merchant_id="M00001", amount=500.0)
+        assert result.decision in ("BLOCK", "ESCALATE")
+
+
+class TestFilterResult:
     def test_dataclass_defaults(self):
-        r = StatisticalResult(decision="ALLOW", triggered_rules=[])
+        r = FilterResult()
+        assert r.action == "ALLOW"
+        assert r.triggered_rules == []
+        assert r.confidence == 0.0
+
+    def test_layer1_result_defaults(self):
+        r = Layer1Result()
         assert r.decision == "ALLOW"
         assert r.triggered_rules == []
-        assert r.velocity_stats is None
-        assert r.benford_chi2 is None
+        assert r.confidence == 0.0

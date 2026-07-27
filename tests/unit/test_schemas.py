@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from api.schemas import (
-    TransactionEvent, FraudScoreResponse, BatchScoreRequest,
-    InvestigationReport, FeedbackRequest, GeoPoint,
+    ScoreRequest, FraudScoreResponse, BatchScoreRequest,
+    InvestigationReportResponse, FeedbackRequest, GeoPoint,
 )
 
 
@@ -16,9 +16,9 @@ class TestGeoPoint:
         assert g.lon == 72.877
 
 
-class TestTransactionEvent:
+class TestScoreRequest:
     def test_valid_transaction(self):
-        txn = TransactionEvent(
+        txn = ScoreRequest(
             txn_id="TXN0001",
             user_id="U000001",
             merchant_id="M00001",
@@ -33,7 +33,7 @@ class TestTransactionEvent:
 
     def test_invalid_txn_type(self):
         with pytest.raises(ValidationError):
-            TransactionEvent(
+            ScoreRequest(
                 txn_id="TXN0001",
                 user_id="U000001",
                 merchant_id="M00001",
@@ -47,7 +47,7 @@ class TestTransactionEvent:
 
     def test_negative_amount(self):
         with pytest.raises(ValidationError):
-            TransactionEvent(
+            ScoreRequest(
                 txn_id="TXN0001",
                 user_id="U000001",
                 merchant_id="M00001",
@@ -92,7 +92,7 @@ class TestBatchScoreRequest:
         assert len(batch.transactions) == 0
 
     def test_batch_with_transactions(self):
-        txn = TransactionEvent(
+        txn = ScoreRequest(
             txn_id="TXN0001",
             user_id="U1",
             merchant_id="M1",
@@ -107,14 +107,16 @@ class TestBatchScoreRequest:
         assert len(batch.transactions) == 1
 
 
-class TestInvestigationReport:
+class TestInvestigationReportResponse:
     def test_valid_report(self):
-        report = InvestigationReport(
+        report = InvestigationReportResponse(
             txn_id="TXN0001",
             narrative="Suspicious activity detected",
             fraud_type="MULE_RING",
-            confidence=0.92,
+            confidence="HIGH",
             recommended_action="Block account",
+            key_evidence=["evidence1"],
+            reasoning="reasoning here",
             generated_at=datetime.utcnow(),
         )
         assert report.fraud_type == "MULE_RING"
@@ -125,7 +127,19 @@ class TestFeedbackRequest:
         fb = FeedbackRequest(
             txn_id="TXN0001",
             analyst_id="analyst_1",
-            correct_decision="BLOCK",
-            comment="Confirmed mule account",
+            original_decision="ALLOW",
+            analyst_decision="BLOCK",
+            reason="Confirmed mule account",
+            category="FALSE_NEGATIVE",
         )
         assert fb.analyst_id == "analyst_1"
+
+    def test_invalid_category(self):
+        with pytest.raises(ValidationError):
+            FeedbackRequest(
+                txn_id="TXN0001",
+                analyst_id="analyst_1",
+                original_decision="ALLOW",
+                analyst_decision="BLOCK",
+                category="INVALID",
+            )

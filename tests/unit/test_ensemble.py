@@ -1,79 +1,66 @@
-from datetime import datetime
-
 import pytest
 
-from engine.ensemble import EnsembleScorer
-from engine.statistical_filter import StatisticalFilter, StatisticalResult
-from store.graph_db import GraphDB
+from engine.ensemble import EnsembleFusionEngine, EnsembleResult, Layer2Result
+from engine.statistical_filter import Layer1Result
 
 
-class TestEnsembleScorer:
+class TestEnsembleFusionEngine:
     def test_ensemble_initialization(self):
-        graph_db = GraphDB()
-        ensemble = EnsembleScorer(graph_db)
-        assert ensemble.statistical_filter is not None
-        assert ensemble.gnn_model is not None
-        assert ensemble.graph_engine is not None
-        assert ensemble.explainer is not None
+        ensemble = EnsembleFusionEngine()
+        assert ensemble.layer1_weight == 0.3
+        assert ensemble.layer2_weight == 0.7
+        assert ensemble.fraud_threshold == 0.85
 
-    def test_score_allows_normal_txn(self):
-        graph_db = GraphDB()
-        ensemble = EnsembleScorer(graph_db)
+    def test_allows_low_probability(self):
+        ensemble = EnsembleFusionEngine()
+        l1 = Layer1Result(decision="ALLOW", confidence=0.0)
+        l2 = Layer2Result(fraud_probability=0.1)
+        result = ensemble.fuse(l1, l2)
+        assert result.decision == "ALLOW"
+        assert result.source in ("L2_GNN", "ENSEMBLE")
 
-        class MockStore:
-            def get_velocity_stats(self, uid):
-                return {"txn_count_5min": 1, "txn_count_1h": 2, "txn_count_24h": 5}
+    def test_blocks_high_probability(self):
+        ensemble = EnsembleFusionEngine()
+        l1 = Layer1Result(decision="ALLOW", confidence=0.0)
+        l2 = Layer2Result(fraud_probability=0.95)
+        result = ensemble.fuse(l1, l2)
+        assert result.decision == "BLOCK"
 
-            def get_user_baseline(self, uid):
-                return {"hourly_avg_txn_count": 1.0, "hourly_std_txn_count": 0.5, "median_amount": 500}
+    def test_l1_block_overrides(self):
+        ensemble = EnsembleFusionEngine()
+        l1 = Layer1Result(decision="BLOCK", confidence=1.0,
+                          triggered_rules=["V-RULE-01"])
+        l2 = Layer2Result(fraud_probability=0.0)
+        result = ensemble.fuse(l1, l2)
+        assert result.decision == "BLOCK"
+        assert result.source == "L1_STATISTICAL"
 
-            def get_geospatial_cache(self, uid):
-                return None
+    def test_l1_escalate_boosts(self):
+        ensemble = EnsembleFusionEngine(fraud_threshold=1.0)
+        l1 = Layer1Result(decision="ESCALATE", confidence=0.6,
+                          triggered_rules=["V-RULE-02"])
+        l2 = Layer2Result(fraud_probability=0.3)
+        result = ensemble.fuse(l1, l2)
+        assert result.decision in ("REVIEW", "ALLOW")
+        assert result.source == "ENSEMBLE"
+        assert result.layer1_result is l1
+        assert result.layer2_result is l2
 
-            def get_merchant_amounts(self, mid):
-                return None
+    def test_review_threshold(self):
+        ensemble = EnsembleFusionEngine()
+        l1 = Layer1Result(decision="ALLOW", confidence=0.0)
+        l2 = Layer2Result(fraud_probability=0.6)
+        result = ensemble.fuse(l1, l2)
+        assert result.decision == "REVIEW"
 
-        txn = {
-            "txn_id": "TXN00000001",
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 500,
-            "timestamp": datetime.utcnow(),
-            "lat": 19.0,
-            "lon": 72.0,
-        }
-        result = ensemble.score(txn, MockStore())
-        assert "decision" in result
-        assert result["decision"] in ("ALLOW", "BLOCK", "REVIEW")
-        assert "fraud_probability" in result
-        assert "layer_triggered" in result
+    def test_ensemble_result_defaults(self):
+        r = EnsembleResult()
+        assert r.decision == "ALLOW"
+        assert r.confidence == 0.0
 
-    def test_score_blocks_high_probability(self):
-        graph_db = GraphDB()
-        ensemble = EnsembleScorer(graph_db)
-        ensemble.block_threshold = -1.0
 
-        class MockStore:
-            def get_velocity_stats(self, uid):
-                return {"txn_count_5min": 50, "txn_count_1h": 100, "txn_count_24h": 200}
-
-            def get_user_baseline(self, uid):
-                return {"hourly_avg_txn_count": 1.0, "hourly_std_txn_count": 0.5, "median_amount": 100}
-
-            def get_geospatial_cache(self, uid):
-                return None
-
-            def get_merchant_amounts(self, mid):
-                return None
-
-        txn = {
-            "txn_id": "TXN00000001",
-            "user_id": "U000001",
-            "merchant_id": "M00001",
-            "amount": 99999,
-            "timestamp": datetime.utcnow(),
-            "lat": 19.0,
-            "lon": 72.0,
-        }
-        result = ensemble.score(txn, MockStore())
-        assert result["decision"] in ("ALLOW", "BLOCK", "REVIEW")
+class TestLayer2Result:
+    def test_defaults(self):
+        r = Layer2Result()
+        assert r.fraud_probability == 0.0
+        assert r.source == "L2_GNN"
