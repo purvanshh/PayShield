@@ -186,5 +186,5 @@ MIT
 
 ---
 
-**Purvansh Sahu** — IIT Madras ML Researcher (4th Year) · Scaler · BITS Pilani  
+**Purvansh Sahu** — IIT Madras ML Researcher · Scaler (4th Year) · BITS Pilani  
 [purvanshsahu.site](https://purvanshsahu.site)
