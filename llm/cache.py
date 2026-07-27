@@ -13,8 +13,9 @@ class LLMCache:
 
     def get(self, evidence: dict) -> str | None:
         key = self._make_key(evidence)
-        return self.redis.get(key)
+        return self.redis.get(key) if hasattr(self.redis, "get") else None
 
     def set(self, evidence: dict, narrative: str):
         key = self._make_key(evidence)
-        self.redis.set(key, narrative, ttl=self.ttl)
+        if hasattr(self.redis, "set"):
+            self.redis.set(key, narrative, ttl=self.ttl)

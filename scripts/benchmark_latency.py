@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 from data.synthetic_upi import SyntheticUPIGenerator
-from store.redis_client import RedisClient
+from store.sync_redis import SyncRedisClient as RedisClient
 from store.feature_store import FeatureStore
 from store.graph_db import GraphDB
 from engine.ensemble import EnsembleScorer

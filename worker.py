@@ -5,7 +5,7 @@ from celery import Celery
 
 from llm.investigator import LLMInvestigator
 from llm.cache import LLMCache
-from store.redis_client import RedisClient
+from store.sync_redis import SyncRedisClient as RedisClient
 from observability.metrics import llm_queue_depth
 
 celery_app = Celery(
