@@ -1,22 +1,72 @@
+import logging
+
 from fastapi import APIRouter, Depends
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
 from api.dependencies import get_redis
-from store.redis_client import RedisClient
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.get("/health")
-async def health(redis: RedisClient = Depends(get_redis)):
-    redis_ok = redis.health_check()
-    return {
-        "status": "healthy" if redis_ok else "degraded",
-        "redis": "up" if redis_ok else "down",
-    }
+async def health_check(redis=Depends(get_redis)):
+    checks: dict[str, str] = {}
+
+    try:
+        redis_alive = redis.health_check() if hasattr(redis, "health_check") else bool(redis.ping() if hasattr(redis, "ping") else None)
+        checks["redis"] = "up" if redis_alive else "down"
+    except Exception:
+        checks["redis"] = "down"
+
+    try:
+        from store.neo4j_client import Neo4jGraphDB
+        neo4j = Neo4jGraphDB()
+        checks["neo4j"] = "up"
+    except Exception:
+        checks["neo4j"] = "down"
+
+    try:
+        from llm.client import OllamaClient
+        from llm.config import OllamaConfig
+        import asyncio
+        ollama = OllamaClient(OllamaConfig())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        healthy = loop.run_until_complete(ollama.health())
+        loop.close()
+        checks["ollama"] = "up" if healthy else "down"
+    except Exception:
+        checks["ollama"] = "down"
+
+    try:
+        from importlib.metadata import version
+        checks["celery"] = "available"
+    except Exception:
+        checks["celery"] = "unknown"
+
+    critical = all(v == "up" for k, v in checks.items() if k in ("redis",))
+    overall = "healthy" if critical else "degraded" if any(v == "up" for v in checks.values()) else "unhealthy"
+    status_code = 200 if critical else 503
+
+    from starlette.responses import JSONResponse
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": overall, "checks": checks},
+    )
 
 
-@router.get("/metrics")
-async def metrics():
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+@router.get("/health/live")
+async def liveness():
+    return {"status": "alive"}
+
+
+@router.get("/health/ready")
+async def readiness(redis=Depends(get_redis)):
+    try:
+        redis_alive = redis.health_check() if hasattr(redis, "health_check") else True
+        return {"status": "ready" if redis_alive else "not_ready"}
+    except Exception:
+        from starlette.responses import JSONResponse
+        return JSONResponse(status_code=503, content={"status": "not_ready"})

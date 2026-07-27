@@ -61,6 +61,12 @@ def _include_routers(app: FastAPI):
         logger.warning(f"feedback_router_skipped: {e}")
 
     try:
+        from api.routes.metrics import router as metrics_router
+        app.include_router(metrics_router, tags=["metrics"])
+    except Exception as e:
+        logger.warning(f"metrics_router_skipped: {e}")
+
+    try:
         from api.routes.admin import router as admin_router
         app.include_router(admin_router, prefix="/admin", tags=["admin"])
     except Exception as e:
