@@ -1,48 +1,48 @@
+"""Locust load test for PayShield fraud scoring API."""
+
 import random
-from datetime import datetime
+import time
+from locust import HttpUser, between, task
 
-from locust import HttpUser, task, between
 
-
-class PayShieldLoadTest(HttpUser):
-    wait_time = between(0.01, 0.05)
-    host = "http://localhost:8000"
+class FraudScoringUser(HttpUser):
+    wait_time = between(0.1, 0.5)
 
     def on_start(self):
-        self.headers = {"X-API-Key": "payshield-dev-key-2026", "Content-Type": "application/json"}
+        self.client.headers.update({"X-API-Key": "payshield-dev-key-2026"})
+        self.txn_counter = 0
+
+    def _make_txn(self):
+        self.txn_counter += 1
+        return {
+            "txn_id": f"load_{int(time.time())}_{self.txn_counter}",
+            "user_id": f"U_LOAD_{random.randint(1, 1000)}",
+            "merchant_id": f"M_{random.randint(1, 100)}",
+            "amount": round(random.uniform(100, 100000), 2),
+            "timestamp": "2026-07-27T12:00:00",
+            "device_fingerprint": f"DEV_LOAD_{random.randint(1, 500)}",
+            "location": {"lat": round(random.uniform(8, 37), 4), "lon": round(random.uniform(68, 97), 4)},
+            "mcc_code": random.choice(["6012", "5411", "5812", "7011", "7997"]),
+            "txn_type": random.choice(["P2P", "P2M"]),
+        }
+
+    @task(70)
+    def score_single(self):
+        txn = self._make_txn()
+        with self.client.post("/v1/score", json=txn, catch_response=True) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Unexpected status: {resp.status_code}")
+
+    @task(20)
+    def score_batch(self):
+        txns = [self._make_txn() for _ in range(10)]
+        with self.client.post("/v1/batch", json={"transactions": txns}, catch_response=True) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Batch failed: {resp.status_code}")
 
     @task(10)
-    def score_transaction(self):
-        payload = {
-            "txn_id": f"TXN{random.randint(0, 99999999):08d}",
-            "user_id": f"U{random.randint(0, 9999):06d}",
-            "merchant_id": f"M{random.randint(0, 999):05d}",
-            "amount": round(random.uniform(10, 50000), 2),
-            "timestamp": datetime.utcnow().isoformat(),
-            "device_fingerprint": f"D_U{random.randint(0, 999):06d}_{random.randint(0, 2)}",
-            "location": {"lat": random.uniform(8.0, 37.0), "lon": random.uniform(68.0, 97.0)},
-            "mcc_code": random.choice(["food", "travel", "utilities", "fashion", "groceries"]),
-            "txn_type": random.choice(["P2P", "P2M", "COLLECT"]),
-        }
-        self.client.post("/v1/score", json=payload, headers=self.headers)
-
-    @task(1)
-    def health_check(self):
-        self.client.get("/health")
-
-    @task(2)
-    def batch_score(self):
-        txns = []
-        for i in range(10):
-            txns.append({
-                "txn_id": f"TXN{random.randint(0, 99999999):08d}",
-                "user_id": f"U{random.randint(0, 9999):06d}",
-                "merchant_id": f"M{random.randint(0, 999):05d}",
-                "amount": round(random.uniform(10, 50000), 2),
-                "timestamp": datetime.utcnow().isoformat(),
-                "device_fingerprint": "D_load_test",
-                "location": {"lat": random.uniform(8.0, 37.0), "lon": random.uniform(68.0, 97.0)},
-                "mcc_code": "food",
-                "txn_type": "P2M",
-            })
-        self.client.post("/v1/batch", json={"transactions": txns}, headers=self.headers)
+    def get_investigation(self):
+        txn_id = f"load_txn_{random.randint(1, 100)}"
+        with self.client.get(f"/v1/investigation/{txn_id}", catch_response=True) as resp:
+            if resp.status_code not in (200, 202, 404):
+                resp.failure(f"Unexpected status: {resp.status_code}")

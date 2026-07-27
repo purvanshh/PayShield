@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.lifespan import lifespan_manager
 from api.middleware import CorrelationIdMiddleware, RequestTimingMiddleware, SecurityHeadersMiddleware
+from api.security import rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,27 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestTimingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 
+    _register_exception_handlers(app)
     _include_routers(app)
 
     return app
+
+
+def _register_exception_handlers(app: FastAPI):
+    from api.exceptions import register_exception_handlers
+    try:
+        register_exception_handlers(app)
+    except Exception as e:
+        logger.warning(f"exception_handlers_skipped: {e}")
+
+    @app.middleware("http")
+    async def rate_limit_middleware(request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"ratelimit:{client_ip}"
+        if not rate_limiter.is_allowed(key, limit=200, window_seconds=60):
+            from starlette.responses import JSONResponse
+            return JSONResponse(status_code=429, content={"error": "too_many_requests", "detail": "Rate limit exceeded"})
+        return await call_next(request)
 
 
 def _include_routers(app: FastAPI):
