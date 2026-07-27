@@ -1,61 +1,70 @@
-import time
-from contextlib import asynccontextmanager
+import logging
 
-import structlog
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import generate_latest
 
-from api.routes import score, investigation, health, feedback, stream
-from observability.logging_config import configure_logging
-from store.redis_client import RedisClient
-from store.feature_store import FeatureStore
-from store.graph_db import GraphDB
-from engine.ensemble import EnsembleScorer
+from api.lifespan import lifespan_manager
+from api.middleware import CorrelationIdMiddleware, RequestTimingMiddleware, SecurityHeadersMiddleware
 
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    configure_logging()
-    redis = RedisClient()
-    app.state.redis = redis
-    app.state.feature_store = FeatureStore(redis)
-    app.state.graph_db = GraphDB()
-    app.state.ensemble = EnsembleScorer(app.state.graph_db)
-    logger.info("payshield_started", redis_ok=redis.health_check())
-    yield
-    redis.close()
-    logger.info("payshield_stopped")
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="PayShield Fraud Detection API",
+        description="Real-Time UPI Fraud Detection, Graph-Powered Investigation & Multi-Agent Orchestration",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan_manager,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.add_middleware(CorrelationIdMiddleware)
+    app.add_middleware(RequestTimingMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    _include_routers(app)
+
+    return app
 
 
-app = FastAPI(
-    title="PayShield",
-    description="Real-Time UPI Fraud Detection & Graph-Powered Investigation API",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+def _include_routers(app: FastAPI):
+    try:
+        from api.routes.health import router as health_router
+        app.include_router(health_router, tags=["health"])
+    except Exception as e:
+        logger.warning(f"health_router_skipped: {e}")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    try:
+        from api.routes.score import router as score_router
+        app.include_router(score_router, prefix="/v1", tags=["score"])
+    except Exception as e:
+        logger.warning(f"score_router_skipped: {e}")
+
+    try:
+        from api.routes.investigation import router as investigation_router
+        app.include_router(investigation_router, prefix="/v1", tags=["investigation"])
+    except Exception as e:
+        logger.warning(f"investigation_router_skipped: {e}")
+
+    try:
+        from api.routes.feedback import router as feedback_router
+        app.include_router(feedback_router, prefix="/v1", tags=["feedback"])
+    except Exception as e:
+        logger.warning(f"feedback_router_skipped: {e}")
+
+    try:
+        from api.routes.admin import router as admin_router
+        app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    except Exception as e:
+        logger.warning(f"admin_router_skipped: {e}")
 
 
-@app.middleware("http")
-async def latency_middleware(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    elapsed = (time.time() - start) * 1000
-    response.headers["X-Latency-Ms"] = f"{elapsed:.2f}"
-    return response
-
-
-app.include_router(health.router, tags=["health"])
-app.include_router(score.router, prefix="/v1", tags=["score"])
-app.include_router(investigation.router, prefix="/v1", tags=["investigation"])
-app.include_router(feedback.router, prefix="/v1", tags=["feedback"])
+app = create_app()
