@@ -95,3 +95,23 @@ class AlertPayload(BaseModel):
     narrative_preview: str = ""
     timestamp: str = ""
     priority: int = 3
+
+
+class InvestigationListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    results: list[dict]
+
+
+class PaginatedResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    results: list[dict]
+
+
+class ErrorResponse(BaseModel):
+    error: str
+    detail: str
+    request_id: str = ""

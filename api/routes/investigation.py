@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.dependencies import get_redis, verify_api_key
 from api.rbac import require_permission
-from api.schemas import InvestigationReportResponse
+from api.schemas import InvestigationListResponse, InvestigationReportResponse
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ async def get_investigation(
     )
 
 
-@router.get("/investigations")
+@router.get("/investigations", response_model=InvestigationListResponse)
 async def list_investigations(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -53,21 +53,20 @@ async def list_investigations(
     redis=Depends(get_redis),
     _=Depends(require_permission("investigation", "read")),
 ):
-    pattern = "investigation:*"
     keys = []
     try:
-        keys = await redis.keys(pattern) or []
+        keys = await redis.keys("investigation:*") or []
     except Exception:
         pass
     all_reports = []
     for k in keys:
-        raw = await redis.get(k)
-        if raw:
-            try:
+        try:
+            raw = await redis.get(k)
+            if raw:
                 data = json.loads(raw) if isinstance(raw, str) else raw
                 all_reports.append(data)
-            except Exception:
-                continue
+        except Exception:
+            continue
     if fraud_type:
         all_reports = [r for r in all_reports if r.get("fraud_type", "").upper() == fraud_type.upper()]
     if confidence:
@@ -76,4 +75,4 @@ async def list_investigations(
     total = len(all_reports)
     offset = (page - 1) * page_size
     page_items = all_reports[offset:offset + page_size]
-    return {"total": total, "page": page, "page_size": page_size, "results": page_items}
+    return InvestigationListResponse(total=total, page=page, page_size=page_size, results=page_items)

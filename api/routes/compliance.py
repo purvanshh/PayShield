@@ -31,30 +31,35 @@ class ComplianceReportResponse(BaseModel):
     generated_at: str
 
 
+def _safe_compliance_check(module_path: str, class_name: str) -> dict:
+    try:
+        import importlib
+        mod = importlib.import_module(module_path)
+        cls = getattr(mod, class_name)
+        result = cls().run()
+        return {"score": getattr(result, "score", 0), "passed": getattr(result, "passed", False),
+                "findings": getattr(result, "findings", []), "generated_at": getattr(result, "generated_at", "")}
+    except Exception as e:
+        logger.warning(f"Compliance check {module_path}.{class_name} unavailable: {e}")
+        return {"score": 0, "passed": False, "findings": [f"Checker not available: {e}"], "generated_at": ""}
+
+
 @router.get("/status")
 async def get_compliance_status():
-    from compliance.pci_dss import PCIDSSComplianceChecker
-    from compliance.rbi_localization import RBILocalizationChecker
-    from compliance.eu_ai_act import EUAiActComplianceChecker
+    pci = _safe_compliance_check("compliance.pci_dss", "PCIDSSComplianceChecker")
+    rbi = _safe_compliance_check("compliance.rbi_localization", "RBILocalizationChecker")
+    eu = _safe_compliance_check("compliance.eu_ai_act", "EUAiActComplianceChecker")
 
-    try:
-        pci = PCIDSSComplianceChecker().run()
-        rbi = RBILocalizationChecker().run()
-        eu = EUAiActComplianceChecker().run()
-
-        return ComplianceStatusResponse(
-            overall_score=int((pci.score + rbi.score + eu.score) / 3),
-            frameworks={
-                "PCI-DSS": {"score": pci.score, "passed": pci.passed, "findings": len(pci.findings)},
-                "RBI": {"score": rbi.score, "passed": rbi.passed, "findings": len(rbi.findings)},
-                "EU_AI_ACT": {"score": eu.score, "passed": eu.passed, "findings": len(eu.findings)},
-            },
-            open_findings=len(pci.findings) + len(rbi.findings) + len(eu.findings),
-            last_audit_date=pci.generated_at,
-        )
-    except Exception as e:
-        logger.error(f"Compliance status check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Compliance check failed: {e}")
+    return ComplianceStatusResponse(
+        overall_score=int((pci["score"] + rbi["score"] + eu["score"]) / 3),
+        frameworks={
+            "PCI-DSS": {"score": pci["score"], "passed": pci["passed"], "findings": len(pci["findings"])},
+            "RBI": {"score": rbi["score"], "passed": rbi["passed"], "findings": len(rbi["findings"])},
+            "EU_AI_ACT": {"score": eu["score"], "passed": eu["passed"], "findings": len(eu["findings"])},
+        },
+        open_findings=len(pci["findings"]) + len(rbi["findings"]) + len(eu["findings"]),
+        last_audit_date=pci["generated_at"] or rbi["generated_at"] or eu["generated_at"],
+    )
 
 
 @router.post("/report", response_model=ReportJobResponse)
