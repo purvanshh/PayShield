@@ -85,3 +85,13 @@ class ConfigUpdateResponse(BaseModel):
     key: str
     old_value: Any = None
     new_value: Any = None
+
+
+class AlertPayload(BaseModel):
+    txn_id: str
+    fraud_probability: float
+    decision: str
+    fraud_type: str = ""
+    narrative_preview: str = ""
+    timestamp: str = ""
+    priority: int = 3

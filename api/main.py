@@ -72,5 +72,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"admin_router_skipped: {e}")
 
+    try:
+        from api.routes.stream import router as stream_router
+        app.include_router(stream_router, tags=["stream"])
+    except Exception as e:
+        logger.warning(f"stream_router_skipped: {e}")
+
 
 app = create_app()
