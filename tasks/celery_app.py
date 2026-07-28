@@ -21,6 +21,13 @@ celery_app.config_from_object(
         "task_routes": {
             "tasks.investigation_task.generate_investigation": {"queue": "investigation"},
         },
+        "beat_schedule": {
+            "nightly-reflection-analysis": {
+                "task": "tasks.reflection_task.run_nightly_reflection",
+                "schedule": 86400.0,
+                "args": (24,),
+            },
+        },
     }
 )
 
