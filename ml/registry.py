@@ -95,6 +95,23 @@ class ModelRegistry:
 
         logger.info(f"Promoted {version} -> {stage} ({symlink_path})")
 
+    def promote_experiment_aware(self, version: str, stage: Literal["staging", "production"],
+                                  experiment_id: str = ""):
+        self.promote(version, stage)
+        if experiment_id:
+            event_log = self.registry_dir / version / "promotion_event.json"
+            import json
+            from datetime import datetime, timezone
+            event = {
+                "version": version,
+                "stage": stage,
+                "experiment_id": experiment_id,
+                "promoted_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(event_log, "w") as f:
+                json.dump(event, f, indent=2)
+            logger.info(f"Experiment-aware promotion logged: {experiment_id} -> {version} -> {stage}")
+
     def get_production_model(self) -> Path | None:
         prod_symlink = self.production_dir / "current.pt"
         if prod_symlink.exists():

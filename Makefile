@@ -92,6 +92,13 @@ ci:
 security-scan:
 	bandit -r api/ agents/ ml/ llm/ engine/ -f json -o reports/security-scan.json || true
 
+# Model A/B Testing & Continuous Improvement
+trigger-retrain:
+	python -c "from ml.continuous_improvement import ContinuousImprovementLoop; loop = ContinuousImprovementLoop(); report = loop.check_retrain_trigger(); print(report); exit(0 if report['should_retrain'] else 1)" || echo "Retraining not needed"
+
+experiment-list:
+	python -c "from ml.ab_testing import ABTestFramework; f = ABTestFramework(); [print(e.name, e.status, e.traffic_split) for e in f.list_experiments()]"
+
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete

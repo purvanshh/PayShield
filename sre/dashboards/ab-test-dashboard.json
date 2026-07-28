@@ -1,0 +1,86 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "PayShield — Model A/B Test Monitor",
+  "uid": "payshield-ab-test",
+  "panels": [
+    {
+      "title": "Active Experiments",
+      "type": "table",
+      "datasource": "PostgreSQL",
+      "targets": [
+        {
+          "rawQuery": true,
+          "query": "SELECT name, status, traffic_split, start_date FROM ab_experiments WHERE status NOT IN ('promoted', 'rolled_back') ORDER BY created_at DESC"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8}
+    },
+    {
+      "title": "Champion vs Challenger — FVaR Comparison",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "avg(ab_test_fvar{model='champion'})",
+          "legendFormat": "Champion FVaR"
+        },
+        {
+          "expr": "avg(ab_test_fvar{model='challenger'})",
+          "legendFormat": "Challenger FVaR"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+    },
+    {
+      "title": "Decision Divergence Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(ab_test_divergence_total[5m]) / rate(ab_test_decisions_total[5m])",
+          "legendFormat": "Divergence Rate"
+        }
+      ],
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+    },
+    {
+      "title": "Traffic Split Accuracy",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(ab_test_decisions_total{model='challenger'}[5m])) / sum(rate(ab_test_decisions_total[5m]))"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 16, "w": 8, "h": 6}
+    },
+    {
+      "title": "Latency Comparison (p99)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ab_test_latency_seconds_bucket{model='champion'}[5m])) by (le))",
+          "legendFormat": "Champion p99"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ab_test_latency_seconds_bucket{model='challenger'}[5m])) by (le))",
+          "legendFormat": "Challenger p99"
+        }
+      ],
+      "gridPos": {"x": 8, "y": 16, "w": 8, "h": 6}
+    },
+    {
+      "title": "Experiment Health",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(ab_test_errors_total[5m])) / sum(rate(ab_test_decisions_total[5m]))"
+        }
+      ],
+      "gridPos": {"x": 16, "y": 16, "w": 8, "h": 6}
+    }
+  ]
+}
