@@ -15,6 +15,7 @@ resources:
   - postgres-service.yaml
   - network-policies.yaml
   - pod-disruption-budgets.yaml
+  - backup-cronjobs.yaml
 
 commonLabels:
   app.kubernetes.io/name: payshield
