@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payshield-celery-worker
+  labels:
+    app.kubernetes.io/name: payshield
+    app.kubernetes.io/component: celery-worker
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payshield
+      app.kubernetes.io/component: celery-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payshield
+        app.kubernetes.io/component: celery-worker
+    spec:
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: worker
+          image: payshield/celery-worker:latest
+          imagePullPolicy: Always
+          command: ["celery", "-A", "tasks.celery_app", "worker", "-l", "info", "-Q", "default,investigations,training", "--concurrency=4", "--max-tasks-per-child=100"]
+          envFrom:
+            - configMapRef:
+                name: payshield-config
+            - secretRef:
+                name: payshield-secrets
+          livenessProbe:
+            exec:
+              command: ["celery", "-A", "tasks.celery_app", "inspect", "ping", "-d", "celery@$HOSTNAME"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "4000m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - celery-worker
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payshield-celery-beat
+  labels:
+    app.kubernetes.io/name: payshield
+    app.kubernetes.io/component: celery-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payshield
+      app.kubernetes.io/component: celery-beat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payshield
+        app.kubernetes.io/component: celery-beat
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: beat
+          image: payshield/celery-worker:latest
+          imagePullPolicy: Always
+          command: ["celery", "-A", "tasks.celery_app", "beat", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: payshield-config
+            - secretRef:
+                name: payshield-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

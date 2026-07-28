@@ -15,8 +15,4 @@ dashboard/dist/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-Implementation Plan Phases 1-10.md
-Implementation Plan Phases 11-20.md
-Implementation Plan Phases 21-30.md
-Implementation Plan Phases 31-40.md
-Implementation Phase 41 to 50.md
+plan/
