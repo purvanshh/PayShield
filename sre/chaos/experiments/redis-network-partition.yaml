@@ -1,0 +1,46 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: redis-network-partition
+  namespace: payshield
+spec:
+  engineState: active
+  appinfo:
+    appns: payshield
+    applabel: app.kubernetes.io/name=redis
+    appkind: deployment
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-partition
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "30"
+            - name: TARGET_PODS
+              value: "1"
+        probe:
+          - name: api-degraded-health
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://payshield-api:8000/health
+              expectedResponseCode: "200"
+            mode: Continuous
+            runProperties:
+              probeTimeout: 10s
+              interval: 5s
+              retry: 2
+  experimentRun:
+    - name: redis-partition-run
+      spec:
+        preRun:
+          - name: verify-redis-connected
+            type: cmdProbe
+            cmd: redis-cli -h redis ping
+            expectedOutput: PONG
+        postRun:
+          - name: verify-redis-reconnected
+            type: cmdProbe
+            cmd: redis-cli -h redis ping
+            expectedOutput: PONG
+            timeout: 60s

@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-29T20:59:44.885814",
+  "duration_seconds": 1.08997,
+  "total_checks": 11,
+  "passed": 5,
+  "failed": 6,
+  "pass_rate": "45.5%",
+  "status": "FAILED",
+  "details": [
+    {
+      "name": "Docker build",
+      "status": "FAILED",
+      "message": "False"
+    },
+    {
+      "name": "Python imports",
+      "status": "FAILED",
+      "message": "No module named 'fastapi'"
+    },
+    {
+      "name": "Linting (ruff)",
+      "status": "FAILED",
+      "message": "False"
+    },
+    {
+      "name": "Tests",
+      "status": "FAILED",
+      "message": "[Errno 2] No such file or directory: 'python'"
+    },
+    {
+      "name": "API startup",
+      "status": "FAILED",
+      "message": "No module named 'api'"
+    },
+    {
+      "name": "Config files exist",
+      "status": "FAILED",
+      "message": "False"
+    },
+    {
+      "name": "Documentation structure",
+      "status": "PASSED",
+      "message": "OK"
+    },
+    {
+      "name": "Release artifacts",
+      "status": "PASSED",
+      "message": "OK"
+    },
+    {
+      "name": "K8s manifests",
+      "status": "PASSED",
+      "message": "OK"
+    },
+    {
+      "name": "DR scripts",
+      "status": "PASSED",
+      "message": "OK"
+    },
+    {
+      "name": "Scripts executable",
+      "status": "PASSED",
+      "message": "OK"
+    }
+  ]
+}

@@ -75,6 +75,23 @@ install-dev:
 	pip install -r requirements.txt -r requirements-dev.txt
 	pre-commit install
 
+# SRE & Chaos
+chaos-test:
+	python scripts/chaos-run.py list
+
+chaos-run:
+	python scripts/chaos-run.py run $(experiment)
+
+# CI/CD
+ci:
+	pip install -r requirements-dev.txt
+	make lint
+	make test
+	make typecheck
+
+security-scan:
+	bandit -r api/ agents/ ml/ llm/ engine/ -f json -o reports/security-scan.json || true
+
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete

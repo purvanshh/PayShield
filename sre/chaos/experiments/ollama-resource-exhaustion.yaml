@@ -1,0 +1,49 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: ollama-resource-exhaustion
+  namespace: payshield
+spec:
+  engineState: active
+  appinfo:
+    appns: payshield
+    applabel: app.kubernetes.io/name=ollama
+    appkind: deployment
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-cpu-hog
+      spec:
+        components:
+          env:
+            - name: CPU_CORES
+              value: "1"
+            - name: TOTAL_CHAOS_DURATION
+              value: "60"
+        probe:
+          - name: scoring-hot-path-unaffected
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://payshield-api:8000/v1/score
+              method: POST
+              expectedResponseCode: "200"
+            mode: Continuous
+            runProperties:
+              probeTimeout: 5s
+              interval: 2s
+              retry: 2
+  experimentRun:
+    - name: ollama-cpu-hog-run
+      spec:
+        preRun:
+          - name: verify-ollama-health
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://ollama:11434/api/tags
+              expectedResponseCode: "200"
+        postRun:
+          - name: verify-ollama-recovery
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://ollama:11434/api/tags
+              expectedResponseCode: "200"
+            timeout: 120s

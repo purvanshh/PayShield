@@ -1,0 +1,48 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: postgres-high-latency
+  namespace: payshield
+spec:
+  engineState: active
+  appinfo:
+    appns: payshield
+    applabel: app.kubernetes.io/component=postgres
+    appkind: statefulset
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-latency
+      spec:
+        components:
+          env:
+            - name: NETWORK_LATENCY
+              value: "200"
+            - name: TOTAL_CHAOS_DURATION
+              value: "30"
+            - name: TARGET_PODS
+              value: "1"
+        probe:
+          - name: api-returns-503-on-non-critical
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://payshield-api:8000/ready
+              expectedResponseCode: "503"
+            mode: OnChaos
+            runProperties:
+              probeTimeout: 5s
+              interval: 2s
+              retry: 2
+  experimentRun:
+    - name: postgres-latency-run
+      spec:
+        preRun:
+          - name: verify-db-connectivity
+            type: cmdProbe
+            cmd: pg_isready -h postgres
+            expectedOutput: accepting connections
+        postRun:
+          - name: verify-db-recovery
+            type: cmdProbe
+            cmd: pg_isready -h postgres
+            expectedOutput: accepting connections
+            timeout: 60s
