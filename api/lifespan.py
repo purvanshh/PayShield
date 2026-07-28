@@ -62,6 +62,16 @@ async def lifespan_manager(app: FastAPI):
     resources["ensemble"] = EnsembleFusionEngine()
     resources["statistical_filter"] = StatisticalFilter()
 
+    try:
+        from api.websocket import AlertBroadcaster
+        broadcaster = AlertBroadcaster(resources.get("redis"))
+        resources["alert_broadcaster"] = broadcaster
+        task = asyncio.create_task(broadcaster.listen_and_broadcast())
+        resources["_broadcast_task"] = task
+        logger.info("alert_broadcaster_started")
+    except Exception as e:
+        logger.warning(f"alert_broadcaster_skipped: {e}")
+
     app.state.resources = resources
     logger.info("payshield_startup_complete")
     yield

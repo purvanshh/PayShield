@@ -5,7 +5,7 @@ import logging
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.dependencies import get_ensemble, get_redis, get_statistical_filter, verify_api_key
 from api.exceptions import BatchSizeExceededError
@@ -34,6 +34,7 @@ except ImportError:
 @router.post("/score", response_model=FraudScoreResponse)
 async def score_transaction(
     txn: ScoreRequest,
+    request: Request,
     stat_filter=Depends(get_statistical_filter),
     ensemble=Depends(get_ensemble),
     redis=Depends(get_redis),
@@ -90,6 +91,7 @@ async def score_transaction(
 
     if response_data["decision"] in ("BLOCK", "REVIEW"):
         _enqueue_investigation(txn.txn_id, response_data)
+        _broadcast_alert(request, txn.txn_id, response_data)
 
     await _cache_result(redis, txn_hash, response_data)
     return FraudScoreResponse(**response_data)
@@ -129,6 +131,22 @@ async def batch_score(
     results = await asyncio.gather(*[score_single(t) for t in batch.transactions])
     batch_ms = (time.time() - start) * 1000
     return BatchScoreResponse(results=list(results), batch_latency_ms=round(batch_ms, 2))
+
+
+def _broadcast_alert(request: Request, txn_id: str, result: dict):
+    try:
+        from api.websocket import manager
+        import asyncio
+        asyncio.ensure_future(manager.broadcast({
+            "type": "fraud_alert",
+            "txn_id": txn_id,
+            "decision": result["decision"],
+            "fraud_probability": result["fraud_probability"],
+            "layer_triggered": result.get("layer_triggered", ""),
+            "timestamp": datetime.utcnow().isoformat(),
+        }))
+    except Exception:
+        pass
 
 
 def _enqueue_investigation(txn_id: str, result: dict):
