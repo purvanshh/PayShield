@@ -27,6 +27,18 @@ celery_app.config_from_object(
                 "schedule": 86400.0,
                 "args": (24,),
             },
+            "daily-pci-dss-check": {
+                "task": "tasks.compliance_task.run_pci_dss_check",
+                "schedule": 86400.0,
+            },
+            "weekly-rbi-check": {
+                "task": "tasks.compliance_task.run_rbi_check",
+                "schedule": 604800.0,
+            },
+            "monthly-eu-ai-act-check": {
+                "task": "tasks.compliance_task.run_eu_ai_act_check",
+                "schedule": 2592000.0,
+            },
         },
     }
 )

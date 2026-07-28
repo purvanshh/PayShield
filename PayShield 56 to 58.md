@@ -610,4 +610,425 @@ Redis (for message routing), PostgreSQL (for reflection reports), Celery beat (f
 Implement automated compliance checks, audit report generation, and regulatory evidence collection for PCI-DSS (payment card industry data security), RBI (Reserve Bank of India) data localization and AI guidelines, and EU AI Act (high-risk AI system requirements).
 
 ### 3. Why This Phase Exists
-Financial fraud detection systems operate under strict regulatory frameworks. PCI-DSS requires encryption, access controls, and audit trails for payment
+Financial fraud detection systems operate under strict regulatory frameworks. PCI-DSS requires encryption, access controls, and audit trails for payment data. RBI mandates data localization for Indian payment data and requires explainability for AI-driven decisions. The EU AI Act classifies credit scoring and fraud detection as high-risk AI systems, requiring risk management, data governance, transparency, and human oversight. Manual compliance is error-prone and expensive. Automation ensures continuous compliance rather than annual checkbox exercises.
+
+### 4. Prerequisites
+Phases 3 (security config), 24 (immutable audit logs), 28 (model cards), 35 (structured LLM output), 40 (human review), 42 (RBAC), 45 (admin audit), 52 (DR), and 54 (documentation) complete.
+
+### 5. Detailed Implementation Steps
+
+1. Create `payshield/compliance/` package:
+   ```
+   payshield/compliance/
+   ├── __init__.py
+   ├── pci_dss.py
+   ├── rbi_localization.py
+   ├── eu_ai_act.py
+   ├── audit_generator.py
+   ├── evidence_collector.py
+   └── reports/
+       └── .gitkeep
+   ```
+
+2. Implement `PCIDSSComplianceChecker`:
+   - **Requirement 3:** Protect stored cardholder data (UPI handles are not card numbers, but treat all payment identifiers with same rigor)
+     - Verify all `user_id`, `device_fingerprint`, `txn_id` are hashed (SHA-256 + salt) in logs
+     - Verify no plaintext PAN or payment data in PostgreSQL, Redis, or logs
+     - Verify encryption at rest (AES-256) for all persistent storage
+   - **Requirement 8:** Identify and authenticate access to system components
+     - Verify RBAC enforced on all admin endpoints
+     - Verify MFA enabled for admin accounts (TOTP via `pyotp`)
+     - Verify password policy enforced (12 chars, complexity, rotation every 90 days)
+   - **Requirement 10:** Track and monitor all access to network resources and cardholder data
+     - Verify immutable audit logs for all decisions (Phase 24)
+     - Verify admin action logging (Phase 45)
+     - Verify log retention ≥ 1 year
+   - Automated check runs daily via Celery beat; generates `pci_dss_compliance_report.json`
+
+3. Implement `RBILocalizationChecker`:
+   - **Data Localization:** Verify all transaction data, user profiles, and audit logs stored in Indian region (or designated data center)
+   - **Data Residency:** Verify no cross-border replication of primary data (backups can be replicated but encrypted)
+   - **AI Explainability:** Verify every BLOCK decision has associated explanation (GNNExplainer + SHAP + LLM narrative)
+   - **Human Oversight:** Verify analyst feedback loop active and HumanReviewAgent operational
+   - **Model Risk Management:** Verify model cards published, performance monitored, drift detection active
+   - Automated check runs weekly; generates `rbi_compliance_report.json`
+
+4. Implement `EUAiActComplianceChecker`:
+   - **Risk Management:** Verify risk assessment document exists and is updated quarterly
+   - **Data Governance:** Verify training data quality validation (Phase 9), bias detection report, and demographic performance metrics
+   - **Transparency:** Verify model cards include intended use, limitations, and known biases (Phase 28)
+   - **Human Oversight:** Verify HumanReviewAgent can overturn any AI decision; verify override rate tracked
+   - **Accuracy:** Verify AUC-ROC > 0.92, false positive rate < 5%, with continuous monitoring
+   - **Robustness:** Verify adversarial testing (noise injection on features) completed quarterly
+   - Automated check runs monthly; generates `eu_ai_act_compliance_report.json`
+
+5. Implement `ComplianceAuditGenerator`:
+   - `generate_quarterly_report() -> ComplianceReport`
+   - Aggregates findings from PCI-DSS, RBI, and EU AI Act checkers
+   - Includes: executive summary, detailed findings, evidence references, remediation plans, risk ratings
+   - Exports to PDF (via `weasyprint` or `markdown-pdf`) and JSON
+   - Stores in `compliance/reports/YYYY-QX/`
+
+6. Implement `EvidenceCollector`:
+   - Collects evidence artifacts for auditors:
+     - Database schema dumps (sanitized)
+     - Configuration snapshots (secrets redacted)
+     - Access control matrices
+     - Model training logs and validation curves
+     - Incident response records
+     - DR drill reports
+   - Packages evidence into tamper-evident archive (SHA-256 manifest)
+   - Retention: 7 years for financial compliance, 3 years for AI Act
+
+7. Implement `POST /admin/compliance/report`:
+   - Admin-only endpoint to trigger on-demand compliance report generation
+   - Returns report ID; async generation via Celery
+   - `GET /admin/compliance/report/{id}` — retrieve generated report
+
+8. Implement `GET /admin/compliance/status`:
+   - Real-time compliance dashboard data
+   - Returns: overall compliance score (0–100), per-framework scores, open findings count, next audit date
+
+9. Add compliance alerting:
+   - Any compliance check failure → immediate Slack alert to #compliance and #security
+   - Quarterly report generation reminder → 2 weeks before quarter end
+   - Evidence archive verification → monthly checksum validation
+
+10. Create `docs/security/compliance-checklist.md` (if not already created in Phase 54):
+    - Cross-reference every control to implementation phase and test evidence
+    - Update quarterly with new findings and remediations
+
+### 6. Directory Structure Changes
+```
+payshield/
+├── payshield/
+│   └── compliance/
+│       ├── __init__.py
+│       ├── pci_dss.py
+│       ├── rbi_localization.py
+│       ├── eu_ai_act.py
+│       ├── audit_generator.py
+│       ├── evidence_collector.py
+│       └── reports/
+│           └── .gitkeep
+├── payshield/
+│   └── api/
+│       └── routes/
+│           └── compliance.py
+```
+
+### 7. Files to Create
+- `payshield/compliance/__init__.py`
+- `payshield/compliance/pci_dss.py`
+- `payshield/compliance/rbi_localization.py`
+- `payshield/compliance/eu_ai_act.py`
+- `payshield/compliance/audit_generator.py`
+- `payshield/compliance/evidence_collector.py`
+- `payshield/api/routes/compliance.py`
+
+### 8. Files to Modify
+- `payshield/api/main.py` (include compliance router)
+- `payshield/tasks/celery_app.py` (add compliance check beat schedule)
+- `Makefile` (add `make compliance-check`)
+
+### 9. Major Classes/Modules/Components
+- `PCIDSSComplianceChecker` — Daily PCI-DSS control validation.
+- `RBILocalizationChecker` — Weekly RBI guideline verification.
+- `EUAiActComplianceChecker` — Monthly EU AI Act assessment.
+- `ComplianceAuditGenerator` — Quarterly report generation.
+- `EvidenceCollector` — Auditor evidence packaging.
+
+### 10. Functions and APIs to Implement
+- `PCIDSSComplianceChecker.run() -> ComplianceResult`
+- `RBILocalizationChecker.run() -> ComplianceResult`
+- `EUAiActComplianceChecker.run() -> ComplianceResult`
+- `ComplianceAuditGenerator.generate_quarterly_report() -> ComplianceReport`
+- `EvidenceCollector.collect_evidence() -> EvidenceArchive`
+- `POST /admin/compliance/report` → `ReportJobResponse`
+- `GET /admin/compliance/report/{id}` → `ComplianceReport`
+- `GET /admin/compliance/status` → `ComplianceStatusResponse`
+
+### 11. Database/Schema Changes
+- PostgreSQL table: `compliance_reports`
+  - `report_id` UUID PRIMARY KEY
+  - `framework` VARCHAR(20) NOT NULL
+  - `report_type` VARCHAR(20) NOT NULL
+  - `findings_json` JSONB NOT NULL
+  - `score` INT CHECK (score BETWEEN 0 AND 100)
+  - `generated_at` TIMESTAMP DEFAULT NOW()
+  - `generated_by` VARCHAR(50)
+- PostgreSQL table: `compliance_findings`
+  - `finding_id` BIGSERIAL PRIMARY KEY
+  - `report_id` UUID REFERENCES compliance_reports
+  - `control_id` VARCHAR(50) NOT NULL
+  - `severity` VARCHAR(10) NOT NULL
+  - `description` TEXT NOT NULL
+  - `remediation` TEXT
+  - `status` VARCHAR(20) DEFAULT 'open'
+  - `due_date` TIMESTAMP
+  - `created_at` TIMESTAMP DEFAULT NOW()
+
+### 12. Agent Architecture Updates
+`ComplianceAgent` (new agent, extends `BaseAgent`) subscribes to compliance check results and escalates critical findings to `MonitoringAgent` and `HumanReviewAgent`.
+
+### 13. Prompt Engineering Considerations
+LLM-generated narratives (Phase 33) must include model version and confidence to satisfy EU AI Act transparency requirements. Prompt template updated to include `model_version` and `prompt_version` in output.
+
+### 14. RAG/Vector Database Changes
+None.
+
+### 15. Infrastructure Requirements
+Celery beat for scheduled checks, PDF generation library, secure evidence storage.
+
+### 16. Security Considerations
+- Compliance reports contain sensitive system configuration — access restricted to compliance officers and admins
+- Evidence archives signed with HMAC to detect tampering
+- Compliance checkers run with read-only database access
+- Quarterly reports reviewed by legal/compliance before external distribution
+
+### 17. Logging and Observability
+- Prometheus: `compliance_checks_total` (labeled by framework, status), `compliance_score`, `compliance_findings_open`
+- Grafana: "Compliance Dashboard" showing scores, open findings, and remediation timelines
+- All compliance activities logged to immutable audit table
+
+### 18. Testing Strategy
+- Unit test: `test_pci_dss_detects_plaintext_pan` — verify checker flags unhashed payment data
+- Unit test: `test_rbi_detects_cross_border_data` — verify localization check
+- Unit test: `test_eu_ai_act_checks_model_card` — verify model card presence
+- Unit test: `test_audit_generator_creates_pdf` — verify report generation
+- Integration test: `test_compliance_api_returns_status` — verify endpoint
+- Quarterly: Manual review of generated report by compliance officer
+
+### 19. Expected Output/Deliverables
+- Automated PCI-DSS, RBI, and EU AI Act compliance checking
+- Quarterly compliance report generation (PDF + JSON)
+- Evidence collector with tamper-evident archives
+- Real-time compliance status API
+- Compliance dashboard in Grafana
+
+### 20. Definition of Done (DoD)
+- [ ] PCI-DSS daily checks run automatically with zero high-severity findings
+- [ ] RBI weekly checks verify data localization and explainability
+- [ ] EU AI Act monthly checks cover all high-risk system requirements
+- [ ] Quarterly report generates PDF and JSON automatically
+- [ ] Evidence collector produces tamper-evident archives
+- [ ] Compliance status API returns real-time scores
+- [ ] All findings tracked with severity, remediation, and due dates
+- [ ] Compliance dashboard live in Grafana
+- [ ] All tests pass
+
+---
+
+## Phase 60: Final Architecture Review, Performance Optimization & Maintenance Roadmap
+
+### 1. Phase Number & Title
+**Phase 60** — Final Architecture Review, Performance Optimization & Maintenance Roadmap
+
+### 2. Objective
+Conduct a comprehensive end-to-end architecture review, execute final performance optimization passes, document the maintenance roadmap for the next 12 months, and formally close the 60-phase PayShield implementation program.
+
+### 3. Why This Phase Exists
+After 59 phases of intense engineering, it is critical to step back and evaluate the system holistically. Are the latency budgets met under real load? Are there architectural bottlenecks that only appear at scale? Is the technical debt manageable? What happens when the original engineers move on? This phase ensures PayShield is not just built, but built to last. It establishes the maintenance rhythm, identifies future enhancements, and creates a sustainable operational model.
+
+### 4. Prerequisites
+Phases 1–59 complete. System in production for minimum 30 days. 30 days of metrics, logs, and analyst feedback collected.
+
+### 5. Detailed Implementation Steps
+
+1. Create `ARCHITECTURE_REVIEW.md` at repository root:
+   - **Executive Summary:** System purpose, scale, and key achievements
+   - **Architecture Diagrams:** Updated C4 model (Context, Container, Component, Code) with Mermaid
+   - **Technology Stack Justification:** Why each technology was chosen, with trade-off analysis
+   - **Performance Baseline:** Measured p50/p95/p99 latencies, throughput, resource utilization
+   - **Security Posture:** Threat model summary, compliance status, penetration test results
+   - **Operational Maturity:** SLO compliance, incident count, MTTR, on-call health
+   - **Technical Debt Register:** Deferred decisions, known limitations, refactoring candidates
+   - **Scalability Analysis:** Current capacity vs. projected growth; bottleneck identification
+
+2. Conduct performance optimization review:
+   - Profile API hot path with `py-spy` or `scalene`: identify top 10 CPU consumers
+   - Profile GNN inference with PyTorch profiler: optimize `HeteroConv` message passing
+   - Optimize Redis pipeline usage: batch feature lookups where possible
+   - Optimize PostgreSQL queries: `EXPLAIN ANALYZE` on slow audit log inserts, add partial indexes
+   - Optimize Neo4j ego-graph queries: add composite indexes on `(user_id, timestamp)`
+   - Optimize React bundle: code splitting, lazy loading for Cytoscape.js, tree shaking
+   - Document optimizations in `PERFORMANCE_OPTIMIZATION_LOG.md`
+
+3. Implement identified optimizations:
+   - Add Redis pipeline batching for multi-feature lookups (reduces round trips from N to 1)
+   - Add PostgreSQL partial index: `CREATE INDEX idx_audit_log_recent ON layer1_audit_log (created_at) WHERE created_at > NOW() - INTERVAL '7 days'`
+   - Add Neo4j composite index for ego-graph time-range filtering
+   - Add API response compression middleware (brotli preferred over gzip)
+   - Add React `React.lazy()` for dashboard pages beyond initial load
+   - Verify each optimization with before/after benchmark in `scripts/benchmark_optimization.py`
+
+4. Create `MAINTENANCE_ROADMAP.md`:
+   - **Monthly:** Review SLO dashboards, update dependencies, rotate secrets, review access logs
+   - **Quarterly:** Retrain GNN model, run DR drill, update compliance reports, conduct architecture review, pen-test scheduling
+   - **Bi-annually:** Evaluate new fraud patterns, update synthetic data generator, benchmark against new baselines
+   - **Annually:** Full security audit, technology stack evaluation (e.g., evaluate newer GNN architectures), team skill refresh
+   - **Ongoing:** Analyst feedback triage, agent weight tuning, prompt template refinement
+
+5. Create `TECHNICAL_DEBT_REGISTER.md`:
+   - Table format: ID, Description, Impact, Estimated Effort, Priority, Owner, Target Resolution
+   - Examples:
+     - TD-001: "Redis fallback cache uses in-memory LRU instead of distributed cache" — Medium, 2 days, P2
+     - TD-002: "GNN model does not support incremental learning — requires full retrain" — High, 2 weeks, P1
+     - TD-003: "React dashboard uses localStorage for auth tokens instead of httpOnly cookies" — Medium, 3 days, P2
+     - TD-004: "Ollama runs on CPU — evaluate GPU inference for latency reduction" — Low, 1 week, P3
+
+6. Conduct stakeholder demo and review:
+   - Prepare 15-minute demo script: live transaction scoring, real-time alert, investigation narrative, analyst feedback
+   - Present architecture review to engineering leadership
+   - Present compliance status to legal/security
+   - Present FVaR metrics and cost analysis to product/business
+   - Collect feedback and document in `STAKEHOLDER_FEEDBACK.md`
+
+7. Create `SUNSETTING_PLAN.md`:
+   - Criteria for system retirement or major rewrite
+   - Data archival procedures (7-year retention for financial data)
+   - Model artifact archival and deprecation schedule
+   - Customer/analyst communication plan for major changes
+   - Rollback to previous system procedure (if PayShield replaces legacy system)
+
+8. Finalize repository hygiene:
+   - Archive old branches (delete merged feature branches)
+   - Update `README.md` with final architecture diagram and quick-start
+   - Ensure `CONTRIBUTING.md` reflects current processes
+   - Add `SECURITY.md` with vulnerability reporting process
+   - Add `CODE_OF_CONDUCT.md`
+   - Final `git tag v1.0.0` (if not done in Phase 55)
+
+9. Implement `scripts/system_health_report.py`:
+   - Automated weekly health report generator
+   - Pulls metrics from Prometheus, feedback from PostgreSQL, compliance status
+   - Generates Markdown report: system health score, top 3 risks, recommended actions
+   - Posts to Slack #system-health
+
+10. Conduct "bus factor" mitigation:
+    - Pair-review all critical components with secondary owner
+    - Document tribal knowledge in `docs/operations/tribal-knowledge.md`
+    - Cross-train at least 2 engineers on: model training, K8s deployment, incident response
+    - Ensure no single engineer is the only person who can deploy or debug any component
+
+11. Final sign-off:
+    - Engineering lead sign-off on architecture review
+    - SRE lead sign-off on operational readiness
+    - Security lead sign-off on compliance posture
+    - Product lead sign-off on feature completeness
+    - CTO/VP sign-off on business value delivery
+    - Document in `SIGN_OFF.md` with dates and signatures
+
+### 6. Directory Structure Changes
+```
+payshield/
+├── ARCHITECTURE_REVIEW.md
+├── MAINTENANCE_ROADMAP.md
+├── TECHNICAL_DEBT_REGISTER.md
+├── SUNSETTING_PLAN.md
+├── STAKEHOLDER_FEEDBACK.md
+├── SIGN_OFF.md
+├── PERFORMANCE_OPTIMIZATION_LOG.md
+├── SECURITY.md
+├── CODE_OF_CONDUCT.md
+├── scripts/
+│   ├── benchmark_optimization.py
+│   └── system_health_report.py
+└── docs/
+    └── operations/
+        └── tribal-knowledge.md
+```
+
+### 7. Files to Create
+- `ARCHITECTURE_REVIEW.md`
+- `MAINTENANCE_ROADMAP.md`
+- `TECHNICAL_DEBT_REGISTER.md`
+- `SUNSETTING_PLAN.md`
+- `STAKEHOLDER_FEEDBACK.md`
+- `SIGN_OFF.md`
+- `PERFORMANCE_OPTIMIZATION_LOG.md`
+- `SECURITY.md`
+- `CODE_OF_CONDUCT.md`
+- `scripts/benchmark_optimization.py`
+- `scripts/system_health_report.py`
+- `docs/operations/tribal-knowledge.md`
+
+### 8. Files to Modify
+- `README.md` (final update with architecture diagram)
+- `CONTRIBUTING.md` (final update)
+- `Makefile` (add `make health-report`, `make arch-review`)
+
+### 9. Major Classes/Modules/Components
+- `SystemHealthReporter` — Automated weekly health report generator.
+- `PerformanceOptimizer` — Benchmark and optimization tracker.
+- `ArchitectureReviewer` — C4 model and trade-off documentation.
+
+### 10. Functions and APIs to Implement
+- `SystemHealthReporter.generate_report() -> HealthReport`
+- `PerformanceOptimizer.benchmark_before_after(optimization) -> BenchmarkResult`
+- `scripts/benchmark_optimization.py` — CLI for optimization validation
+- `scripts/system_health_report.py` — CLI for weekly health report
+
+### 11. Database/Schema Changes
+None.
+
+### 12. Agent Architecture Updates
+All 12 agents reviewed for performance impact. `MonitoringAgent` extended to track agent communication overhead and recommend optimization.
+
+### 13. Prompt Engineering Considerations
+Final prompt audit: all prompts reviewed for performance (token count), accuracy (output quality), and compliance (no PII leakage). Prompt optimization: reduce token count by 20% where possible to lower LLM inference latency.
+
+### 14. RAG/Vector Database Changes
+Vector DB index optimization: evaluate HNSW vs IVF indexing for `fraud_patterns` collection based on query latency and recall metrics.
+
+### 15. Infrastructure Requirements
+Profiling tools (`py-spy`, `scalene`, PyTorch profiler), load testing environment for optimization validation.
+
+### 16. Security Considerations
+- Architecture review must not expose internal IP addresses, credentials, or vulnerability details in public-facing documents
+- Technical debt register must not become an attacker roadmap — access controlled
+- Sunsetting plan must include secure data destruction procedures
+- Final sign-off confirms no known critical vulnerabilities remain unremediated
+
+### 17. Logging and Observability
+- Final performance benchmarks logged permanently
+- Weekly health reports archived in `health-reports/YYYY-MM-DD.md`
+- Architecture review metrics: code coverage, documentation coverage, test flakiness, deployment frequency
+
+### 18. Testing Strategy
+- `test_optimization_improves_latency` — verify p99 reduced after optimization
+- `test_health_report_generates` — verify report script exits 0 with valid output
+- `test_system_sustains_peak_load` — final load test at 120% of target TPS
+- Manual: architecture review walkthrough with independent engineer
+- Manual: stakeholder demo validation
+
+### 19. Expected Output/Deliverables
+- Comprehensive architecture review document
+- Performance optimization log with measured improvements
+- 12-month maintenance roadmap
+- Technical debt register with prioritized remediation plan
+- System sunsetting plan
+- Stakeholder feedback summary
+- Formal sign-off document
+- Weekly automated health reports
+- Repository hygiene: SECURITY.md, CODE_OF_CONDUCT.md, archived branches
+
+### 20. Definition of Done (DoD)
+- [ ] `ARCHITECTURE_REVIEW.md` completed and approved by engineering lead
+- [ ] Performance optimizations implemented with before/after benchmarks
+- [ ] `MAINTENANCE_ROADMAP.md` covers monthly/quarterly/bi-annual/annual activities
+- [ ] `TECHNICAL_DEBT_REGISTER.md` documents all known debt with owners
+- [ ] `SUNSETTING_PLAN.md` includes data archival and secure destruction
+- [ ] Stakeholder demo conducted and feedback documented
+- [ ] Formal sign-off obtained from all leads (engineering, SRE, security, product, CTO)
+- [ ] Weekly health report script operational
+- [ ] Bus factor mitigated — no critical component has single owner
+- [ ] Repository hygiene complete (SECURITY.md, CODE_OF_CONDUCT.md, branch cleanup)
+- [ ] Final `v1.0.0` tag pushed
+- [ ] All tests pass
+
+---
+
+*End of Phases 56–60. This completes the PayShield 60-Phase Enterprise Implementation Plan.*
+
+*Total program scope: 60 phases covering project
