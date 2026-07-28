@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payshield-celery-spot
+  labels:
+    app.kubernetes.io/name: payshield
+    app.kubernetes.io/component: celery-worker
+    payshield.io/spot: "true"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payshield
+      app.kubernetes.io/component: celery-worker
+      payshield.io/spot: "true"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payshield
+        app.kubernetes.io/component: celery-worker
+        payshield.io/spot: "true"
+    spec:
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: celery-worker
+      containers:
+        - name: worker
+          image: payshield/celery-worker:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - tasks.celery_app
+            - worker
+            - -l
+            - info
+            - -Q
+            - default,investigations,training
+            - --concurrency=4
+            - --max-tasks-per-child=100
+            - --without-heartbeat
+            - --without-gossip
+            - --without-mingle
+          envFrom:
+            - configMapRef:
+                name: payshield-config
+            - secretRef:
+                name: payshield-secrets
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - celery
+                  - -A
+                  - tasks.celery_app
+                  - control
+                  - cancel_consumer
+                  - -d
+                  - celery@$HOSTNAME
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - tasks.celery_app
+                - inspect
+                - ping
+                - -d
+                - celery@$HOSTNAME
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              memory: "768Mi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "4000m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node.kubernetes.io/instance-type
+                    operator: In
+                    values:
+                      - c5.xlarge
+                      - c5.2xlarge
+                      - m5.xlarge
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - celery-worker
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payshield-celery-spot-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: celery-worker
+      payshield.io/spot: "true"

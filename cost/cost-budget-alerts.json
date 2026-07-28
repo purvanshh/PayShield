@@ -1,0 +1,59 @@
+{
+  "Budgets": [
+    {
+      "BudgetName": "PayShield-Dev",
+      "BudgetLimit": { "Amount": 100, "Unit": "USD" },
+      "CostFilters": { "TagKeyValue": ["Environment$dev"] },
+      "CostTypes": { "IncludeTax": false, "IncludeSubscription": false, "UseBlended": false },
+      "TimeUnit": "MONTHLY",
+      "Notifications": [
+        {
+          "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 80 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        },
+        {
+          "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 90 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        }
+      ]
+    },
+    {
+      "BudgetName": "PayShield-Staging",
+      "BudgetLimit": { "Amount": 300, "Unit": "USD" },
+      "CostFilters": { "TagKeyValue": ["Environment$staging"] },
+      "CostTypes": { "IncludeTax": false, "IncludeSubscription": false, "UseBlended": false },
+      "TimeUnit": "MONTHLY",
+      "Notifications": [
+        {
+          "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 80 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        },
+        {
+          "Notification": { "NotificationType": "FORECASTED", "ComparisonOperator": "GREATER_THAN", "Threshold": 100 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        }
+      ]
+    },
+    {
+      "BudgetName": "PayShield-Production",
+      "BudgetLimit": { "Amount": 1400, "Unit": "USD" },
+      "CostFilters": { "TagKeyValue": ["Environment$production"] },
+      "CostTypes": { "IncludeTax": false, "IncludeSubscription": false, "UseBlended": false },
+      "TimeUnit": "MONTHLY",
+      "Notifications": [
+        {
+          "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 80 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        },
+        {
+          "Notification": { "NotificationType": "ACTUAL", "ComparisonOperator": "GREATER_THAN", "Threshold": 90 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        },
+        {
+          "Notification": { "NotificationType": "FORECASTED", "ComparisonOperator": "GREATER_THAN", "Threshold": 100 },
+          "Subscribers": [{ "SubscriptionType": "EMAIL", "Address": "devops@payshield.io" }]
+        }
+      ]
+    }
+  ]
+}
