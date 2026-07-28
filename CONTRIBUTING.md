@@ -22,6 +22,17 @@ Before committing, ensure:
 ## PR Checklist
 - [ ] Code follows project style (run `make format`)
 - [ ] Type checks pass (run `make typecheck`)
+- [ ] Tests pass (run `make test`)
+- [ ] Linting passes (run `make lint`)
 - [ ] Unit tests added for new functionality
 - [ ] Integration tests updated if API changes
 - [ ] Documentation updated if public API changes
+- [ ] Security implications reviewed
+- [ ] Compliance impact considered (PCI-DSS / RBI / EU AI Act)
+- [ ] Updated `TECHNICAL_DEBT_REGISTER.md` if introducing debt
+
+## Code Review Process
+- All PRs require at least 1 approval
+- Security-sensitive changes require security team review
+- ML model changes require ML engineer review
+- Infrastructure changes require DevOps/SRE review

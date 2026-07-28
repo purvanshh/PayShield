@@ -1,4 +1,4 @@
-# PayShield — Real-Time UPI Fraud Detection & Graph-Powered Investigation
+# PayShield — Real-Time UPI Fraud Detection & Multi-Agent Orchestration
 
 A production-grade fraud detection system purpose-built for **India's UPI digital payment ecosystem**. PayShield targets the attack vectors dominating Indian fintech — mule account rings, velocity burst attacks, merchant collusion, SIM-swap, and device-fingerprint reuse — by combining three detection modalities with a multi-agent orchestration layer.
 
@@ -150,6 +150,22 @@ python scripts/train_gnn.py
 python scripts/benchmark_ensemble.py
 python scripts/benchmark_velocity_filter.py
 ```
+
+## Project Status
+
+PayShield v1.0.0 — **60-phase implementation complete** (2026-07-28)
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 1–10 | Foundation, graph schema, synthetic data, rule engine | ✅ |
+| 11–20 | GNN, ML pipeline, LLM integration, drift detection | ✅ |
+| 21–30 | Agent orchestration, training, inference, RBAC, prompt mgmt | ✅ |
+| 31–40 | Agent Ops: ensemble fusion, LLM investigator, multi-agent, feedback, monitoring | ✅ |
+| 41–50 | API factory, auth, scoring, investigation, WebSocket, DB, dashboard, tests | ✅ |
+| 51–55 | K8s, DR, cost optimization, docs, release checklist | ✅ |
+| 56–60 | SRE/chaos, A/B testing, advanced agents, compliance, final review | ✅ |
+
+See [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md), [MAINTENANCE_ROADMAP.md](MAINTENANCE_ROADMAP.md), and [docs/](docs/) for comprehensive documentation.
 
 ## License
 

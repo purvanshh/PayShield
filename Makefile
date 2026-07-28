@@ -108,6 +108,23 @@ compliance-report:
 compliance-evidence:
 	python -c "from compliance.evidence_collector import EvidenceCollector; c=EvidenceCollector(); p=c.collect_evidence(); print(f'Evidence: {p}')"
 
+# Phase 60 — Health & Architecture
+health-report:
+	python scripts/system_health_report.py
+
+benchmark:
+	python scripts/benchmark_optimization.py
+
+arch-review:
+	@echo "=== Architecture Review (Phase 60) ==="
+	@echo "See ARCHITECTURE_REVIEW.md for full document"
+	@echo "Review checklist:"
+	@echo "  - [ ] READ ARCHITECTURE_REVIEW.md"
+	@echo "  - [ ] REVIEW PERFORMANCE_OPTIMIZATION_LOG.md"
+	@echo "  - [ ] UPDATE TECHNICAL_DEBT_REGISTER.md"
+	@echo "  - [ ] CHECK MAINTENANCE_ROADMAP.md"
+	@echo "  - [ ] SIGN OFF IN SIGN_OFF.md"
+
 experiment-list:
 	python -c "from ml.ab_testing import ABTestFramework; f = ABTestFramework(); [print(e.name, e.status, e.traffic_split) for e in f.list_experiments()]"
 
