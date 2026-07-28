@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any
@@ -44,10 +45,11 @@ class ReflectionReport:
 
 
 class ReflectionAgent(BaseAgent):
-    def __init__(self, config: AgentConfig | None = None):
+    def __init__(self, config: AgentConfig | None = None, redis_client=None):
         if config is None:
             config = AgentConfig(agent_id="reflection_agent", agent_type="REFLECTION", timeout_seconds=120)
         super().__init__(config)
+        self.redis = redis_client
 
     async def process(self, message: AgentMessage) -> AgentMessage:
         content = message.content
@@ -148,7 +150,23 @@ class ReflectionAgent(BaseAgent):
         return config_changes
 
     def _get_feedback_data(self, start: datetime, end: datetime) -> list[dict]:
-        return []
+        if not self.redis:
+            return []
+        try:
+            entries = []
+            keys = self.redis.keys("feedback:*")
+            for k in keys:
+                raw = self.redis.get(k)
+                if raw:
+                    item = json.loads(raw) if isinstance(raw, str) else raw
+                    ts = item.get("created_at", "")
+                    if ts:
+                        created = datetime.fromisoformat(ts)
+                        if start <= created <= end:
+                            entries.append(item)
+            return entries
+        except Exception:
+            return []
 
     def _cluster_false_positives(self, feedback: list[dict]) -> dict[str, int]:
         clusters: dict[str, int] = {}
