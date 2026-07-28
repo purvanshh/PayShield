@@ -30,12 +30,8 @@ async def health_check(redis=Depends(get_redis)):
     try:
         from llm.client import OllamaClient
         from llm.config import OllamaConfig
-        import asyncio
         ollama = OllamaClient(OllamaConfig())
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        healthy = loop.run_until_complete(ollama.health())
-        loop.close()
+        healthy = await ollama.health()
         checks["ollama"] = "up" if healthy else "down"
     except Exception:
         checks["ollama"] = "down"

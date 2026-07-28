@@ -26,7 +26,6 @@ def generate_investigation(self, txn_id: str, ensemble_result_json: str):
         from llm.prompt_builder import PromptBuilder
         from llm.evidence import EvidenceCollector
         from llm.parser import NarrativeParser, FallbackGenerator
-        import asyncio
 
         ensemble_data = json.loads(ensemble_result_json)
         collector = EvidenceCollector()
@@ -35,39 +34,36 @@ def generate_investigation(self, txn_id: str, ensemble_result_json: str):
         config = OllamaConfig()
         client = OllamaClient(config)
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        context = collector.collect(txn_id, ensemble_result=_dict_to_ensemble(ensemble_data))
+        prompt = build_context_prompt(builder, context)
+        healthy = client.health_sync()
+        if healthy:
+            raw_output = client.generate_sync(prompt, max_tokens=512, temperature=0.1)
+            report = parser.parse(
+                raw_output, txn_id=txn_id,
+                expected_action=ensemble_data.get("decision", "ALLOW"),
+            )
+        else:
+            logger.warning("Ollama not healthy; using fallback")
+            fallback = FallbackGenerator()
+            report = fallback.generate(context)
+        report_dict = report.to_dict()
 
         try:
-            context = loop.run_until_complete(
-                _collect_evidence_async(collector, txn_id, ensemble_data)
-            )
-            prompt = build_context_prompt(builder, context)
-            healthy = loop.run_until_complete(client.health())
-            if healthy:
-                raw_output = loop.run_until_complete(
-                    client.generate(prompt, max_tokens=512, temperature=0.1)
-                )
-                report = parser.parse(
-                    raw_output, txn_id=txn_id,
-                    expected_action=ensemble_data.get("decision", "ALLOW"),
-                )
-            else:
-                logger.warning("Ollama not healthy; using fallback")
-                fallback = FallbackGenerator()
-                report = fallback.generate(context)
-            report_dict = report.to_dict()
-        finally:
-            loop.close()
+            from infrastructure.redis_bridge import create_sync_redis
+            redis = create_sync_redis()
+            result = {
+                "status": "success",
+                "txn_id": txn_id,
+                "report": report_dict,
+                "generated_at": datetime.utcnow().isoformat(),
+            }
+            redis.set(f"investigation:{txn_id}", json.dumps(result), ttl=86400)
+        except Exception:
+            pass
 
-        result = {
-            "status": "success",
-            "txn_id": txn_id,
-            "report": report_dict,
-            "generated_at": datetime.utcnow().isoformat(),
-        }
         logger.info(f"Investigation complete for {txn_id}: {report_dict['fraud_type']}/{report_dict['confidence']}")
-        return result
+        return {"status": "success", "txn_id": txn_id, "report": report_dict}
 
     except Exception as exc:
         logger.error(f"Investigation task failed for {txn_id}: {exc}", exc_info=True)
@@ -75,11 +71,6 @@ def generate_investigation(self, txn_id: str, ensemble_result_json: str):
             self.retry(exc=exc)
         except Exception:
             return {"status": "failed", "txn_id": txn_id, "error": str(exc)}
-
-
-async def _collect_evidence_async(collector, txn_id, ensemble_data):
-    ensemble_obj = _dict_to_ensemble(ensemble_data)
-    return collector.collect(txn_id, ensemble_result=ensemble_obj)
 
 
 def build_context_prompt(builder, context):

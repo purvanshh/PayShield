@@ -1,11 +1,12 @@
 import logging
+from typing import Any, Optional
 
 import networkx as nx
 
 logger = logging.getLogger(__name__)
 
 
-class GraphDB:
+class NetworkXGraphDB:
     def __init__(self):
         self.graph = nx.MultiDiGraph()
 
@@ -48,6 +49,59 @@ class GraphDB:
             return [n for n in neighbors if self.graph.nodes[n].get("node_type") == node_type]
         return neighbors
 
+    def find_risk_paths(self, source_id: str, target_id: str, max_hops: int = 4) -> list[dict]:
+        if not self.graph.has_node(source_id) or not self.graph.has_node(target_id):
+            return []
+        try:
+            paths = []
+            for path in nx.all_simple_paths(self.graph, source_id, target_id, cutoff=max_hops):
+                risk = self._calculate_path_risk(path)
+                paths.append({"nodes": path, "length": len(path) - 1, "risk_score": risk})
+            paths.sort(key=lambda p: p["risk_score"], reverse=True)
+            return paths[:10]
+        except nx.NetworkXNoPath:
+            return []
+
+    def get_network_score(self, entity_id: str) -> dict[str, Any]:
+        ego = self.get_ego_graph(entity_id, hops=2)
+        if ego.number_of_nodes() == 0:
+            return {"entity_id": entity_id, "network_score": 0.0, "connected_entities": 0, "risk_clusters": 0}
+
+        risk_score = 0.0
+        for node in ego.nodes():
+            attrs = self.get_node_attributes(node)
+            if attrs.get("is_fraud", False):
+                risk_score += 1.0
+            if attrs.get("risk_score", 0.0) > 0:
+                risk_score += attrs.get("risk_score", 0.0) * 0.5
+
+        connected = ego.number_of_nodes() - 1
+        risk_score = min(1.0, risk_score / max(connected, 1))
+
+        return {
+            "entity_id": entity_id,
+            "network_score": round(risk_score, 4),
+            "connected_entities": connected,
+            "risk_clusters": len([n for n in ego.nodes() if ego.nodes[n].get("is_fraud", False)]),
+        }
+
+    def create_entity(self, entity_id: str, entity_type: str, features: dict | None = None):
+        self.add_node(entity_id, entity_type, features)
+        logger.info(f"Entity created: {entity_id} ({entity_type})")
+
+    def link_entities(self, source_id: str, target_id: str, relation_type: str, features: dict | None = None):
+        self.add_edge(source_id, target_id, relation_type, **(features or {}))
+        logger.info(f"Entities linked: {source_id} -[{relation_type}]-> {target_id}")
+
+    def _calculate_path_risk(self, path: list[str]) -> float:
+        risk = 0.0
+        for node_id in path:
+            attrs = self.get_node_attributes(node_id)
+            risk += attrs.get("risk_score", 0.0)
+            if attrs.get("is_fraud", False):
+                risk += 0.5
+        return min(1.0, risk / max(len(path), 1))
+
     def node_count(self) -> int:
         return self.graph.number_of_nodes()
 
@@ -56,3 +110,9 @@ class GraphDB:
 
     def clear(self):
         self.graph.clear()
+
+    def close(self):
+        pass
+
+
+GraphDB = NetworkXGraphDB

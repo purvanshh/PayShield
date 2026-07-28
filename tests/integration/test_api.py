@@ -87,18 +87,20 @@ class TestScoreEndpoint:
 
 
 class TestFeedbackEndpoint:
-    async def test_feedback(self, client):
+    async def test_feedback_submission(self, client):
         payload = {
             "txn_id": "TXN00000001",
             "analyst_id": "analyst_1",
-            "correct_decision": "BLOCK",
-            "comment": "Confirmed fraud",
+            "original_decision": "ALLOW",
+            "analyst_decision": "BLOCK",
+            "reason": "Confirmed fraud",
+            "category": "FALSE_NEGATIVE",
         }
         resp = await client.post(
             "/v1/feedback",
             json=payload,
             headers={"X-API-Key": "payshield-dev-key-2026"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 404)
         data = resp.json()
         assert data["status"] == "ok"

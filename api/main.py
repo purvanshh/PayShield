@@ -109,5 +109,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"compliance_router_skipped: {e}")
 
+    try:
+        from api.routes.graph import router as graph_router
+        app.include_router(graph_router, prefix="/v1/graph", tags=["graph"])
+    except Exception as e:
+        logger.warning(f"graph_router_skipped: {e}")
+
 
 app = create_app()

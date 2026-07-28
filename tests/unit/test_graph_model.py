@@ -3,7 +3,7 @@ import torch
 
 from engine.graph_model import PayShieldGNN
 from engine.graph_feature_engine import GraphFeatureEngine
-from engine.ensemble import EnsembleScorer
+from engine.ensemble import EnsembleFusionEngine
 from engine.explainer import GNNExplainerWrapper, SHAPBridge
 
 
