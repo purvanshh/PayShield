@@ -145,3 +145,140 @@ async def collect_evidence():
         return {"status": "completed", "archive": archive_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class SanctionsCheckRequest(BaseModel):
+    user_id: str
+    user_name: str = ""
+
+
+class SanctionsCheckResponse(BaseModel):
+    status: str
+    matched: bool
+    sanctions_list: str
+    risk_level: str
+    checked_at: str
+
+
+class KYCStatusResponse(BaseModel):
+    status: str
+    kyc_tier: str
+    tier_description: str
+    documents_verified: list[str]
+    checked_at: str
+
+
+class AMLCheckRequest(BaseModel):
+    user_id: str
+    user_country: str = "IN"
+    txn_country: str = "IN"
+    amount: float = 0.0
+
+
+class AMLCheckResponse(BaseModel):
+    velocity_status: dict[str, Any]
+    structuring_status: dict[str, Any]
+    cross_border_status: dict[str, Any]
+    overall_risk_score: float
+    checked_at: str
+
+
+@router.get("/check/{user_id}")
+async def compliance_check_user(user_id: str):
+    try:
+        from compliance.sanctions import SanctionsChecker, KYCVerifier
+
+        checker = SanctionsChecker()
+        sanctions = checker.check_entity(user_id)
+
+        kyc = KYCVerifier()
+        kyc_status = kyc.verify_user(user_id)
+
+        return {
+            "user_id": user_id,
+            "sanctions": sanctions,
+            "kyc": kyc_status,
+            "checked_at": sanctions["checked_at"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Compliance check failed for {user_id}: {e}")
+        return {
+            "user_id": user_id,
+            "status": "unavailable",
+            "error": str(e),
+            "checked_at": "",
+        }
+
+
+@router.post("/sanctions/check", response_model=SanctionsCheckResponse)
+async def check_sanctions(req: SanctionsCheckRequest):
+    try:
+        from compliance.sanctions import SanctionsChecker
+
+        checker = SanctionsChecker()
+        result = checker.check_entity(req.user_id)
+
+        if not result["matched"] and req.user_name:
+            name_result = checker.check_entity_name(req.user_name)
+            if name_result["matched"]:
+                result = name_result
+
+        return SanctionsCheckResponse(**result)
+    except Exception as e:
+        return SanctionsCheckResponse(
+            status="unavailable",
+            matched=False,
+            sanctions_list="NONE",
+            risk_level="none",
+            checked_at="",
+        )
+
+
+@router.get("/kyc/{user_id}", response_model=KYCStatusResponse)
+async def get_kyc_status(user_id: str):
+    try:
+        from compliance.sanctions import KYCVerifier
+
+        kyc = KYCVerifier()
+        result = kyc.verify_user(user_id)
+        return KYCStatusResponse(**result)
+    except Exception as e:
+        return KYCStatusResponse(
+            status="unavailable",
+            kyc_tier="KYC0",
+            tier_description="KYC service unavailable",
+            documents_verified=[],
+            checked_at="",
+        )
+
+
+@router.post("/aml/check", response_model=AMLCheckResponse)
+async def check_aml(req: AMLCheckRequest):
+    try:
+        from compliance.sanctions import AMLComplianceEngine
+
+        engine = AMLComplianceEngine()
+        velocity = engine.check_velocity({"txn_count_24h": 0, "amount_sum_24h": 0, "txn_count_1h": 0})
+        structuring = engine.check_structuring([])
+        cross_border = engine.check_cross_border(req.user_country, req.txn_country, req.amount)
+
+        overall = velocity.get("risk_score", 0.0) * 0.4 + structuring.get("risk_score", 0.0) * 0.3 + cross_border.get("risk_score", 0.0) * 0.3
+
+        return AMLCheckResponse(
+            velocity_status=velocity,
+            structuring_status=structuring,
+            cross_border_status=cross_border,
+            overall_risk_score=round(min(1.0, overall), 4),
+            checked_at=velocity["checked_at"],
+        )
+    except Exception as e:
+        logger.error(f"AML check failed: {e}")
+        return AMLCheckResponse(
+            velocity_status={"status": "unavailable", "flags": [], "risk_score": 0.0, "checked_at": ""},
+            structuring_status={"status": "unavailable", "detected": False, "suspicious_count": 0, "threshold": 0, "rule": "", "checked_at": ""},
+            cross_border_status={"status": "unavailable", "cross_border": False, "high_risk_country": False, "flags": [], "risk_score": 0.0, "checked_at": ""},
+            overall_risk_score=0.0,
+            checked_at="",
+        )

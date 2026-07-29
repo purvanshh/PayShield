@@ -150,23 +150,62 @@ class ReflectionAgent(BaseAgent):
         return config_changes
 
     def _get_feedback_data(self, start: datetime, end: datetime) -> list[dict]:
-        if not self.redis:
-            return []
+        entries: list[dict] = []
+
+        if self.redis:
+            try:
+                keys = self.redis.keys("feedback:*")
+                for k in keys:
+                    raw = self.redis.get(k)
+                    if raw:
+                        item = json.loads(raw) if isinstance(raw, str) else raw
+                        ts = item.get("created_at", "")
+                        if ts:
+                            created = datetime.fromisoformat(ts)
+                            if start <= created <= end:
+                                entries.append(item)
+            except Exception:
+                pass
+
         try:
-            entries = []
-            keys = self.redis.keys("feedback:*")
-            for k in keys:
-                raw = self.redis.get(k)
-                if raw:
-                    item = json.loads(raw) if isinstance(raw, str) else raw
-                    ts = item.get("created_at", "")
-                    if ts:
-                        created = datetime.fromisoformat(ts)
-                        if start <= created <= end:
-                            entries.append(item)
-            return entries
+            from store.postgres import get_engine
+            from sqlalchemy import text
+            engine = get_engine()
+            async def _db_fetch():
+                async with engine.connect() as conn:
+                    result = await conn.execute(
+                        text(
+                            "SELECT feedback_id, txn_id_hash, original_decision, analyst_decision, "
+                            "analyst_id, category, reason, created_at "
+                            "FROM analyst_feedback "
+                            "WHERE created_at > :start "
+                            "ORDER BY created_at DESC"
+                        ),
+                        {"start": start},
+                    )
+                    return [dict(row._mapping) for row in result]
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            db_entries = loop.run_until_complete(_db_fetch())
+            for e in db_entries:
+                entries.append({
+                    "txn_id": e.get("txn_id_hash", ""),
+                    "original_decision": e.get("original_decision", ""),
+                    "analyst_decision": e.get("analyst_decision", ""),
+                    "analyst_id": e.get("analyst_id", ""),
+                    "category": e.get("category", ""),
+                    "reason": e.get("reason", ""),
+                    "created_at": str(e.get("created_at", "")),
+                    "label": e.get("category", ""),
+                })
         except Exception:
-            return []
+            pass
+
+        return entries
 
     def _cluster_false_positives(self, feedback: list[dict]) -> dict[str, int]:
         clusters: dict[str, int] = {}

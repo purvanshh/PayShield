@@ -13,10 +13,12 @@ except ImportError:
     pyjwt = None
     _has_jwt = False
 
-JWT_SECRET = "payshield-jwt-secret-dev-2026"
+import os
+
+JWT_SECRET = os.getenv("JWT_SECRET", "payshield-jwt-secret-dev-2026")
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_DAYS", "7"))
 
 
 class ServicePrincipal:
@@ -44,7 +46,7 @@ class AuthManager:
 
     def _load_dev_keys(self):
         prefix = "psk"
-        key_raw = "payshield-dev-key-2026"
+        key_raw = os.getenv("PAYSHIELD_DEV_API_KEY", "payshield-dev-key-2026")
         key_hash = hashlib.sha256(key_raw.encode()).hexdigest()
         self._api_keys[key_hash] = {
             "key_id": str(uuid.uuid4()),

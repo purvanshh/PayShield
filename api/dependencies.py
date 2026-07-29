@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Header, HTTPException, Request
 
 try:
@@ -20,7 +22,7 @@ async def verify_api_key(x_api_key: str = Header(...)):
         if principal is None:
             raise HTTPException(status_code=403, detail="Invalid API Key")
         return principal
-    fallback_key = "payshield-dev-key-2026"
+    fallback_key = os.getenv("PAYSHIELD_DEV_API_KEY", "payshield-dev-key-2026")
     if x_api_key != fallback_key:
         raise HTTPException(status_code=403, detail="Invalid API Key")
 

@@ -7,7 +7,7 @@ import pytest
 import requests
 
 BASE_URL = "http://localhost:8000"
-API_KEY = "payshield-dev-key-2026"
+API_KEY = "payshield-dev-key-2026"  # override via PAYSHIELD_DEV_API_KEY env var
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 
