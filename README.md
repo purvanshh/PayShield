@@ -182,4 +182,9 @@ docker compose -f docker/docker-compose.yml up
 
 ## License
 
-Internal — Hiring Portfolio
+MIT
+
+---
+
+**Purvansh Sahu** — IIT Madras ML Researcher (4th Year) · Scaler · BITS Pilani  
+[purvanshsahu.site](https://purvanshsahu.site)
