@@ -95,6 +95,12 @@ class SyncRedisClient:
         except Exception:
             return []
 
+    def zrangebyscore_withscores(self, key: str, min_score: float, max_score: float) -> list[tuple[str, float]]:
+        try:
+            return self._client.zrangebyscore(key, min_score, max_score, withscores=True) or []
+        except Exception:
+            return []
+
     def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
         try:
             return self._client.zremrangebyscore(key, min_score, max_score)

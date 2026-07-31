@@ -118,3 +118,19 @@ async def update_threshold(
         old_value=old,
         new_value=body.value,
     )
+
+
+@router.get("/drift/psi")
+async def drift_psi(
+    redis=Depends(get_redis),
+    _=Depends(require_permission("metrics", "read")),
+):
+    """PSI drift report: yesterday vs today feature distributions."""
+    try:
+        from observability.drift_report import compute_psi_report
+        report = await compute_psi_report(redis)
+        logger.info(f"Drift report generated: {report['status']} ({len(report['drifted_features'])} drifted)")
+        return report
+    except Exception as e:
+        logger.error(f"Drift report failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Drift report failed: {e}")

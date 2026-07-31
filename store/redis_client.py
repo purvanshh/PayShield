@@ -85,6 +85,13 @@ class AsyncRedisClient:
         except RedisUnavailableError:
             return []
 
+    async def zrangebyscore_withscores(self, key: str, min_score: float, max_score: float) -> list[tuple[str, float]]:
+        try:
+            return await self.pool.circuit_breaker.call(
+                self._client.zrangebyscore, key, min_score, max_score, withscores=True)
+        except RedisUnavailableError:
+            return []
+
     async def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
         try:
             return await self.pool.circuit_breaker.call(self._client.zremrangebyscore, key, min_score, max_score)
