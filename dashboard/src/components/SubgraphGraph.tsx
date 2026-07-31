@@ -59,6 +59,9 @@ export function SubgraphGraph({ nodes, edges, layout = "cose", height = 400 }: P
           })),
         ];
 
+        const edgeLineColor = ((ele: any) => EDGE_STYLES[ele.data("type")]?.color || "#64748b") as any;
+        const edgeLineStyle = ((ele: any) => EDGE_STYLES[ele.data("type")]?.style || "solid") as any;
+
         cy = cytoscape({
           container: containerRef.current,
           elements,
@@ -79,8 +82,8 @@ export function SubgraphGraph({ nodes, edges, layout = "cose", height = 400 }: P
             {
               selector: "edge",
               style: {
-                "line-color": (ele: any) => EDGE_STYLES[ele.data("type")]?.color || "#64748b",
-                "line-style": (ele: any) => EDGE_STYLES[ele.data("type")]?.style || "solid",
+                "line-color": edgeLineColor,
+                "line-style": edgeLineStyle,
                 "target-arrow-color": "#64748b",
                 "target-arrow-shape": "triangle",
                 width: 2,

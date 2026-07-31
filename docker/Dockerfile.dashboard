@@ -1,8 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY dashboard/package.json ./
+COPY package.json ./
 RUN npm install
-COPY dashboard/ ./
+COPY ./ ./
 RUN npm run build
 
 FROM nginx:alpine

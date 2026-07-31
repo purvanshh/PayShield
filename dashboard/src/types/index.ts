@@ -29,6 +29,7 @@ export interface InvestigationReport {
   key_evidence: string[];
   reasoning: string;
   generated_at: string;
+  model_version?: string;
 }
 
 export interface FeedbackRequest {
