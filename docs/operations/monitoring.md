@@ -91,6 +91,57 @@ groups:
 kubectl create configmap payshield-api-dashboard --from-file=dashboards/api.json -n monitoring
 ```
 
+## Drift Monitoring
+
+### Feature Sampling
+
+Every scored transaction logs per-feature values into time-scored Redis zsets:
+
+```
+drift:feat:txn_count_5m            # member "{ts}:{value}", score = timestamp
+drift:feat:txn_count_1h
+drift:feat:amount_total_1h
+drift:feat:device_txn_count_24h
+drift:feat:distinct_users_last_24h
+drift:feat:distinct_merchants_1h
+```
+
+### PSI Report
+
+Compares yesterday's distribution (T-24h..T-48h) against today's (T-24h..T) per
+feature, using a robust Population Stability Index:
+
+- **Shared quantile bin edges** on the combined distribution — no binning mismatch
+- **Bin count scaled to sample size** (`max(3, n//5)`, capped at 10)
+- **Laplace smoothing** — zero-mass bins cannot produce infinite/false-spike PSI
+
+Thresholds: `< 0.1` STABLE · `0.1–0.25` MODERATE · `> 0.25` DRIFT.
+
+```bash
+# CLI (runs inside the api image; prints report + writes JSON artifact)
+python scripts/run_drift_report.py
+
+# API (same computation)
+curl http://localhost:8000/admin/drift/psi -H "X-API-Key: payshield-dev-key-2026"
+```
+
+Sample output:
+
+```
+  txn_count_5m               PSI=0.0123  STABLE
+  amount_total_1h            PSI=3.8608  DRIFT   <- distributions non-overlapping
+  device_txn_count_24h       PSI=0.0089  STABLE
+```
+
+### Known Drift Findings (2026-07-31)
+
+`amount_total_1h` flagged DRIFT: today's hourly aggregate (₹2.66-3.32M) vs
+yesterday's baseline (₹3.99-4.99M), consistent with the seeded velocity-burst
+scenario. The original PSI value (43.4) was an estimator artifact (empty bins,
+no smoothing on n=14 discrete samples) — fixed in `observability/drift.py`;
+corrected value 3.86, verdict unchanged. Drift reports are archived under
+`observability/reports/`.
+
 ## Logging
 
 ### Log Format

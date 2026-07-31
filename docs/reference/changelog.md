@@ -1,5 +1,38 @@
 # Changelog
 
+## Post-v1.0.0 (2026-07-31) — End-to-end validation & hardening
+
+### Compliance hardening
+- **PCI-DSS 60 → 90, RBI 16 → 100 (both passing)** — see `COMPLIANCE_DELTA.md`
+- Tamper-evident audit log: append-only JSONL with SHA-256 hash chaining and PII masking (`store/audit_log.py`)
+- `ENCRYPTION_KEY`, `ENFORCE_RBAC`, `DATA_REGION=IN`, `ENABLE_LLM_INVESTIGATOR` wired through compose + `.env.example`
+- Explanation artifacts persisted for every BLOCK/REVIEW (`models/production/explanations/`)
+- Analyst feedback loop persisted to disk (`store/feedback/`)
+- Versioned model cards (`models/registry/v1.0.0`, `v0.1.0`)
+- Named volumes keep audit/feedback/explanations/compliance reports across container rebuilds
+
+### Drift monitoring
+- Feature sampling on the scoring path (`drift:feat:*` time-scored zsets)
+- Robust PSI estimator: shared quantile bins, bin count scaled to sample size, Laplace smoothing — eliminated false spike (PSI 43.4 → 3.86 for the same data)
+- `GET /admin/drift/psi` endpoint + `scripts/run_drift_report.py` + `scripts/seed_drift_baseline.py`
+
+### Performance
+- Sync-path latency measured: p50 8.5 ms, p90 15.0 ms, p99 63.3 ms; L1 rule evaluation p99 0.27 ms
+- `latency_breakdown` (L1 rules / ensemble) added to every score response
+- `scripts/benchmark_latency.py` for reproducible numbers
+- LLM investigation moved to `qwen2.5:3b` (reliable JSON output on CPU, ~35 s async — off the hot path)
+
+### Bug fixes
+- Startup crash (statistical filter `None` config), canned score results → real Redis-backed features
+- Worker boot failure (`No module named 'infrastructure'`) via module-level import fallback
+- LLM JSON-only prompt + tolerant parser; evidence `UnboundLocalError`
+- RBAC: `system` role `feedback:write` + `investigation:read`; `x-api-key` accepted for role-scoped endpoints
+- Dashboard Docker build (deps, TS types, COPY paths)
+- Drift sampling missing `await` + zset member/score convention mismatch
+
+### Infrastructure
+- Docker compose: named volumes for data dirs, `ENCRYPTION_KEY`/compliance env for api + worker
+
 ## v1.0.0 (2026-07-28)
 
 ### Features

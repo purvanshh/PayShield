@@ -10,6 +10,18 @@
 | Throughput | 1000 TPS | 5 min | sustained without degradation |
 | Correctness | FP rate < 5% | 7 days | at 90% recall on analyst feedback |
 
+## Measured Baseline (2026-07-31, docker compose, 50-request run)
+
+| Metric | Value |
+|--------|-------|
+| `/v1/score` p50 | 8.52 ms |
+| `/v1/score` p90 | 15.02 ms |
+| `/v1/score` p99 | 63.31 ms (tail = Redis feature reads + audit append; L1 rules p99 0.27 ms) |
+| LLM investigation (async) | ~35 s on CPU (qwen2.5:3b) — off the scoring path |
+| Compliance | PCI-DSS 90/100, RBI 100/100 |
+
+Reproduce: `python scripts/benchmark_latency.py`.
+
 ## SLI Queries (Prometheus)
 
 ```promql

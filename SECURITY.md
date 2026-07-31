@@ -22,13 +22,20 @@ We aim to:
 
 ## Security Practices
 
-- **Authentication**: JWT tokens with 24-hour expiry
-- **Authorization**: RBAC for all admin endpoints
-- **Encryption**: TLS 1.3 in transit, AES-256 at rest
-- **Secrets**: SealedSecrets — encrypted in Git, only decryptable by cluster
+- **Authentication**: API keys (`x-api-key`) + JWT tokens with configurable expiry
+- **Authorization**: RBAC enforced on all admin endpoints (`ENFORCE_RBAC=true` in compose; roles in `configs/rbac.yaml`)
+- **Encryption**: TLS 1.3 in transit, AES-256 at rest (`ENCRYPTION_KEY` env, PCI-DSS 3.4)
+- **Audit**: Tamper-evident audit log — append-only JSONL with SHA-256 hash chaining and PII masking (PAN, UPI IDs, device fingerprints) written on every scoring decision (`store/audit_log.py`, PCI-DSS 10.1)
+- **Secrets**: SealedSecrets in Kubernetes — encrypted in Git, only decryptable by cluster; dev-only defaults in `.env.example` must be rotated in production
 - **Network**: K8s network policies — zero-trust between pods
-- **Audit**: Immutable audit logs for all transactions and admin actions
 - **Dependencies**: Automated vulnerability scanning via Dependabot
+
+## Known Gaps
+
+| Area | Status |
+|------|--------|
+| MFA for admin accounts (PCI-DSS 8.3) | Deferred — TOTP login is the next hardening item |
+| Dashboard auth tokens in localStorage (TD-003) | Pending — httpOnly cookies planned |
 
 ## Disclosure Policy
 

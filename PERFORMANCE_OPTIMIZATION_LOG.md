@@ -109,6 +109,54 @@ CREATE INDEX user_txn_time FOR ()-[r:TRANSACTION]-() ON (r.user_id, r.timestamp)
 
 ---
 
+## Optimization 6: Sync-Path Latency Profiling (real measurements)
+
+**Date:** 2026-07-31
+**Area:** `/v1/score` hot path
+
+### Before
+- Claimed p50 < 50 ms; no per-stage breakdown (can't tell rule cost from feature-read cost)
+
+### After
+- `latency_breakdown` (`l1_rules_ms`, `ensemble_ms`) added to every score response
+- `scripts/benchmark_latency.py` — reproducible 50-request run, unique user/merchant/device per request, incrementing timestamps
+
+### Measured (50/50 ALLOW)
+| Metric | p50 | p90 | p99 | max |
+|--------|-----|-----|-----|-----|
+| End-to-end `/v1/score` | 8.52 ms | 15.02 ms | 63.31 ms | 63.31 ms |
+| L1 rule evaluation only | 0.10 ms | 0.15 ms | 0.27 ms | — |
+| Ensemble fusion | 0.01 ms | 0.03 ms | 0.25 ms | — |
+
+### Insight
+The p99 tail (63 ms vs p90 15 ms) is **not rule compute** — L1 rules are p99
+0.27 ms. The tail comes from synchronous Redis feature reads (velocity lists,
+geo history, drift sampling) plus audit-log file append. The async LLM
+investigation path (~35 s, qwen2.5:3b on CPU) never blocks scoring.
+
+---
+
+## Optimization 7: PSI Estimator Correctness (false-spike elimination)
+
+**Date:** 2026-07-31
+**Area:** Drift monitoring (`observability/drift.py`)
+
+### Before
+- 10 fixed-width bins over the combined range, `density=True` + manual re-normalization, no smoothing
+- On n=14 discrete samples with non-overlapping ranges, zero-mass bins produced `log((p+1e-10)/1e-10) ≈ 23` per bin → **PSI 43.4** on a real ~33% shift
+
+### After
+- Shared quantile bin edges on the combined distribution
+- Bin count scaled to sample size: `min(10, max(3, n // 5))`
+- Laplace smoothing (α = 0.5)
+- Validated: identical → 0.000; 0.05σ → 0.016; 1σ → 0.981; the real disjoint case → **3.86** (verdict DRIFT unchanged)
+
+### Improvement
+- Same data, PSI 43.4 → 3.86 (11x), bounded and reproducible
+- Report exposes per-feature `n_bins`, sample counts, and methodology
+
+---
+
 ## Optimization Summary
 
 | Optimization | Area | Before | After | Improvement |
@@ -118,3 +166,5 @@ CREATE INDEX user_txn_time FOR ()-[r:TRANSACTION]-() ON (r.user_id, r.timestamp)
 | Neo4j Composite | Graph Queries | 120ms | 8ms | 15x |
 | Brotli Compression | Network | 12 KB | 2.1 KB | 82.5% |
 | React Lazy Loading | Dashboard | 4.2s | 1.1s | 3.8x |
+| Sync-path profiling | Scoring | p50 < 50ms (claimed) | p50 8.5ms, p90 15ms | measured, stage breakdown |
+| PSI estimator | Drift | PSI 43.4 (artifact) | PSI 3.86 (robust) | 11x magnitude, no false spikes |

@@ -1,5 +1,40 @@
 # Operations Manual
 
+## Docker Compose Deployment (development / demo)
+
+The stack runs with a single command:
+
+```bash
+cp .env.example .env
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+Services: `api` (:8000), `worker` (Celery, queues `investigation,default`),
+`redis` (:6379), `ollama` (:11434, qwen2.5:3b), `dashboard` (:3000).
+
+### Compose Environment (compliance-critical)
+
+| Variable | Value in compose | Purpose |
+|----------|------------------|---------|
+| `ENCRYPTION_KEY` | `${ENCRYPTION_KEY:-pay-shield-dev-aes256-key-0001}` | PCI-DSS 3.4 — AES-256 key (dev default; KMS-managed in prod) |
+| `ENFORCE_RBAC` | `true` | PCI-DSS 8.1 — admin endpoints role-gated |
+| `DATA_REGION` | `IN` | RBI DL-1 — data residency |
+| `ENABLE_LLM_INVESTIGATOR` | `true` | RBI AI-1 — LLM narratives |
+| `REDIS_HOST` / `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | `redis` / `http://ollama:11434` / `qwen2.5:3b` | service discovery |
+
+### Persistent Volumes
+
+Artifacts survive container recreations via named volumes:
+
+| Volume | Mount | Holds |
+|--------|-------|-------|
+| `store_data` | `/app/store/audit_logs`, `/app/store/feedback` | tamper-evident audit log, analyst feedback |
+| `explanations_data` | `/app/models/production/explanations` | BLOCK/REVIEW explanation artifacts |
+| `compliance_reports_data` | `/app/compliance/reports` | checker reports |
+| `redis_data` / `ollama_data` | `/data`, `/root/.ollama` | Redis RDB, LLM models |
+
+## Kubernetes Deployment (production)
+
 ## Deployment Architecture
 
 ```

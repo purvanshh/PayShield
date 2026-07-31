@@ -46,7 +46,12 @@ All five findings fixed:
 - `api/routes/score.py` — audit append, explanation persistence, latency breakdown, and drift sampling on the live path.
 - `configs/rbac.yaml` — `system` role gains `feedback:write`; `api/rbac.py` accepts `x-api-key` for role-scoped endpoints.
 - `docker/docker-compose.yml` — data volumes (`store/audit_logs`, `store/feedback`, `models/production/explanations`, `compliance/reports`) persist artifacts across container rebuilds.
+- `observability/drift.py` — robust PSI estimator (shared quantile bins, bin-count scaling, Laplace smoothing) powers drift-aware compliance; see `docs/operations/monitoring.md`.
 - Reports archived under `compliance/reports/` (`pci_dss_20260731.json`, `rbi_20260731.json`).
+
+## Latest verified scores (2026-07-31, post-rebuild)
+
+PCI-DSS **90/100** (passed) · RBI **100/100** (passed) · Drift: `amount_total_1h` PSI=3.86 (DRIFT_DETECTED) — re-run via `docker compose -f docker/docker-compose.yml exec api python3 scripts/run_drift_report.py`.
 
 ## How to reproduce
 

@@ -34,15 +34,18 @@ cp .env.example .env
 # Edit .env with your settings
 ```
 
-Required environment variables:
+Required environment variables (see `.env.example` for the full list):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://payshield:payshield@localhost:5432/payshield` |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
-| `SECRET_KEY` | JWT signing key | (required) |
-| `LLM_API_KEY` | OpenAI-compatible API key | (optional) |
-| `SENTRY_DSN` | Sentry error tracking | (optional) |
+| `PAYSHIELD_DEV_API_KEY` | API key for all endpoints (`x-api-key` header) | `payshield-dev-key-2026` |
+| `REDIS_HOST` / `REDIS_PORT` | Redis connection | `localhost:6379` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://payshield:payshield@localhost:5432/payshield` |
+| `NEO4J_URI` | Neo4j connection | `bolt://localhost:7687` |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local LLM inference | `http://localhost:11434` / `qwen2.5:3b` |
+| `ENCRYPTION_KEY` | AES-256 key for data at rest (PCI-DSS 3.4) | dev-only default |
+| `DATA_REGION` | Data residency (RBI DL-1) | `IN` |
+| `ENFORCE_RBAC` | Role-gated admin endpoints | `false` locally (compose sets `true`) |
 
 ### 4. Database Setup
 
@@ -62,8 +65,14 @@ python scripts/seed_data.py
 #### Using Docker Compose (recommended for development)
 
 ```bash
-make dev
+# Pull the LLM image the compose file expects
+ollama pull qwen2.5:3b
+
+# Start all 5 services (api, worker, redis, ollama, dashboard)
+docker compose -f docker/docker-compose.yml up -d --build
 ```
+
+Health: `curl http://localhost:8000/health` → `{"status": "healthy", "checks": {redis, neo4j, ollama, celery}}`.
 
 #### Manual Start
 
@@ -72,12 +81,9 @@ make dev
 uvicorn api.main:app --reload --port 8000
 
 # Terminal 2: Celery Worker
-celery -A tasks.celery_app worker -l info -Q default,investigations,training
+celery -A tasks.celery_app worker -Q investigation,default -l info
 
-# Terminal 3: WebSocket Server
-python api/ws_server.py
-
-# Terminal 4: Dashboard (optional)
+# Terminal 3: Dashboard (optional)
 cd dashboard && npm run dev
 ```
 
@@ -87,8 +93,20 @@ cd dashboard && npm run dev
 # Health check
 curl http://localhost:8000/health
 
-# Quick test
-python scripts/quick_test.py
+# Score a transaction (normal → ALLOW)
+curl -X POST http://localhost:8000/v1/score \
+  -H "x-api-key: payshield-dev-key-2026" \
+  -H "Content-Type: application/json" \
+  -d '{"txn_id":"TEST001","user_id":"U001","merchant_id":"M001","amount":500,
+       "timestamp":"2026-07-31T12:00:00","device_fingerprint":"fp_test_1",
+       "location":{"lat":19.076,"lon":72.8777,"timestamp":"2026-07-31T12:00:00"},
+       "mcc_code":"5411","txn_type":"P2M"}'
+
+# Compliance status
+curl http://localhost:8000/admin/compliance/status -H "x-api-key: payshield-dev-key-2026"
+
+# Drift report
+curl http://localhost:8000/admin/drift/psi -H "x-api-key: payshield-dev-key-2026"
 ```
 
 ## Next Steps

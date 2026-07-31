@@ -87,21 +87,58 @@ kubectl exec deploy/payshield-celery-worker -- celery -A tasks.celery_app status
 curl localhost:8000/v1/models/metrics
 
 # 2. Compare with baseline
-kubectl exec deploy/payshield-api -- python -c "
-from ml.ensemble import Ensemble
-ensemble = Ensemble()
-report = ensemble.generate_drift_report()
-print(report)
-"
+curl localhost:8000/admin/drift/psi -H "X-API-Key: payshield-dev-key-2026"
+python scripts/run_drift_report.py
+
+# 3. Check raw feature samples in Redis
+redis-cli zcard drift:feat:amount_total_1h
+redis-cli zrange drift:feat:amount_total_1h -5 -1 WITHSCORES
 ```
 
 **Solutions:**
 - Trigger retraining: `POST /v1/models/retrain`
 - Check data quality in recent transactions
 - Rollback to previous model version
-- Investigate feature distribution drift
+- Investigate feature distribution drift (PSI report above)
 
-### 5. WebSocket Connection Issues
+### 5. Drift Report Shows Absurd PSI Values (e.g. > 10)
+
+**Root cause (fixed 2026-07-31):** the original PSI estimator used 10
+fixed-width bins with zero-mass bins and no smoothing. With small, discrete
+samples (n ≈ 14), a bin holding mass from only one side produced
+`log((p+1e-10)/1e-10) ≈ 23` per bin → PSI 43.4 on genuinely drifty data.
+`observability/drift.py` now uses shared quantile bins, bin-count scaling,
+and Laplace smoothing — the same data scores 3.86.
+
+**If you still see an outlier PSI today:**
+- Confirm both windows have ≥ 3 samples (`expected_samples` / `actual_samples` in the report)
+- Confirm the zset convention is `member = "{ts}:{value}"`, `score = timestamp` (writer: `api/routes/score.py:_record_drift_samples`)
+- A genuinely non-overlapping distribution (e.g. hourly amount aggregate halved) will legitimately produce PSI > 1 — investigate the business event before tuning thresholds
+
+### 6. Compliance Scores Regressed After A Rebuild
+
+**Symptom:** PCI 10.1 (audit dir) or RBI AI-1/AI-2 (explanations/feedback) findings reappear.
+
+**Cause:** audit logs, feedback, and explanation artifacts are generated at
+runtime. A fresh environment starts empty.
+
+**Fix:** drive real traffic (a velocity burst produces BLOCK/REVIEW → explanations
++ audit entries) and submit ≥ 10 analyst feedbacks (`POST /v1/feedback`), then
+re-run the checkers:
+
+```bash
+docker compose -f docker/docker-compose.yml exec api python3 -c "
+from compliance.pci_dss import PCIDSSComplianceChecker
+from compliance.rbi_localization import RBILocalizationChecker
+print(PCIDSSComplianceChecker().generate_report()['score'])
+print(RBILocalizationChecker().generate_report()['score'])
+"
+```
+
+Note: compose mounts named volumes over the data dirs, so artifacts survive
+`docker compose up -d --build` recreations (see `docker/docker-compose.yml`).
+
+### 7. WebSocket Connection Issues
 
 **Symptoms:**
 - Clients cannot connect
@@ -128,8 +165,7 @@ print(f'Active connections: {len(ConnectionManager().connections)}')
 - Verify WebSocket service configuration
 - Increase connection limits in ingress
 
-### 6. Backup Failure
-
+### 8. Backup Failure
 **Symptoms:**
 - Backup CronJob shows errors
 - Missing backups in S3

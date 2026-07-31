@@ -37,7 +37,7 @@
                          ▼ ALLOW/BLOCK/REVIEW
             ┌────────────────────────────┐
             │  LLM Investigation (async) │   ← Layer 3: Ollama + Celery worker
-            │  Evidence · Narrative ·    │      llama3.1:8b
+            │  Evidence · Narrative ·    │      qwen2.5:3b
             │  SHAP · Graph Context      │
             └───────────────┬────────────┘
                             ▼
@@ -48,7 +48,71 @@
             └────────────────────────────┘
 ```
 
-**Decision latency:** p50 < 50ms for L1+L2 scoring. Deep LLM investigation runs asynchronously via Celery.
+**Measured decision latency (2026-07-31, 50-request benchmark):**
+`/v1/score` p50 8.5 ms · p90 15.0 ms · p99 63.3 ms. The tail is Redis feature reads + audit persistence; pure L1 rule evaluation is p99 0.27 ms (`latency_breakdown` in every response). LLM investigation runs **asynchronously** via Celery (qwen2.5:3b on CPU, ~35 s) — it never blocks scoring.
+
+---
+
+## Current Findings
+
+Everything below is measured against the live stack (`docker compose`), not simulated.
+
+### Fraud detection (Layer 1 rules, Redis-backed features)
+
+| Scenario | Result |
+|----------|--------|
+| Normal single transaction (₹4.5k, new user) | ALLOW — ~1-3 ms |
+| Velocity burst (12+ rapid transactions, ₹95k each) | BLOCK / REVIEW — `V-RULE-02` / `V-RULE-03` |
+| Geo jump (Mumbai → Delhi in 20 min) | BLOCK — `G-RULE-01`, `G-RULE-02` |
+| LLM investigation (qwen2.5:3b, async) | Valid JSON report — `MERCHANT_COLLUSION`, quality 1.0, served from `investigation:{txn_id}` |
+
+### Compliance (programmatic checkers — see `COMPLIANCE_DELTA.md`)
+
+| Framework | Before | After | Status |
+|-----------|--------|-------|--------|
+| PCI-DSS | 60/100 | **90/100** | passed (no high-severity findings) |
+| RBI | 16/100 | **100/100** | passed |
+
+Remaining gap: PCI 8.3 MFA for admin accounts (medium, deferred — TOTP is the next hardening item).
+
+### Drift detection (PSI, rolling 24h windows)
+
+`GET /admin/drift/psi` (or `python scripts/run_drift_report.py`):
+
+```
+  txn_count_5m               PSI=0.0123  STABLE
+  txn_count_1h               PSI=0.0123  STABLE
+  amount_total_1h            PSI=3.8608  DRIFT   ← hourly amount aggregate shifted ~33%
+  device_txn_count_24h       PSI=0.0089  STABLE
+  distinct_users_last_24h    PSI=0.0000  STABLE
+  distinct_merchants_1h      PSI=0.0000  STABLE
+```
+
+The `amount_total_1h` drift was investigated: today's hourly aggregate (₹2.66-3.32M) vs yesterday's baseline (₹3.99-4.99M) — consistent with the seeded burst scenario. Methodology: shared quantile bins on the combined distribution, bin count scaled to sample size, Laplace smoothing (see [Bug Resolution](#bug-resolution-and-technical-notes) for the estimator fix).
+
+---
+
+## Bug Resolution and Technical Notes
+
+Notable issues found and fixed while bringing the stack up end-to-end:
+
+| # | Bug | Root cause | Fix |
+|---|-----|------------|-----|
+| 1 | API crash at startup | `StatisticalFilter` called `config.get(...)` on `None` | use `self.config.get(...)` |
+| 2 | Score route returned canned results | features were never computed | real Redis-backed velocity/geo features (`velocity:user:`, `velocity:dev:`, `velocity:loc:`) |
+| 3 | Redis/Ollama connections used `localhost` inside containers | hardcoded defaults | env-driven `REDIS_HOST`/`OLLAMA_BASE_URL`/`OLLAMA_MODEL` |
+| 4 | Worker died at boot: `No module named 'infrastructure'` | fork-time import of bridge module | module-level import with fallback (`store.sync_redis`) |
+| 5 | Investigation route 500 on reports | worker stored nested `{status, report}` | accept flat or nested report dicts |
+| 6 | LLM returned unparseable output | JSON embedded in prose | JSON-only prompt + tolerant parser (trailing commas, key-value fallback) |
+| 7 | `UnboundLocalError: l2` in evidence collection | `l2` referenced before assignment | initialize `l1`/`l2` before use |
+| 8 | Investigation never ran | wrong Celery app module + no task `include` | `celery -A tasks.celery_app`, explicit task list |
+| 9 | RBAC 403 on investigations | `system` role lacked `investigation:read` | add to `configs/rbac.yaml` |
+| 10 | Role endpoints rejected valid API keys | `get_current_user` only read Bearer header | accept `x-api-key` fallback |
+| 11 | Dashboard Docker build failed | missing deps, TS errors, wrong COPY paths | add `react-router-dom`/`axios`/`zustand`, fix Dockerfile + types |
+| 12 | Compliance findings persisted nowhere | audit log did not exist | `store/audit_log.py` (hash-chained JSONL + PII masking) — see `COMPLIANCE_DELTA.md` |
+| 13 | **Drift report showed PSI=43.4** | PSI estimator: 10 fixed bins on 14 discrete samples, zero-mass bins, no smoothing, `density=True` double normalization | shared quantile edges, bin count `max(3, n//5)`, Laplace smoothing — validated: identical→0.000, 1σ→0.981, real case 43.4→**3.86** |
+| 14 | Drift samples never recorded | missing `await` on `_record_drift_samples` | awaited; also fixed zset member/score convention mismatch |
+| 15 | Container rebuilds wiped audit/explanation artifacts | code dirs shadowed by volumes | named volumes on leaf data dirs (`store/audit_logs`, `store/feedback`, `models/production/explanations`, `compliance/reports`) |
 
 ---
 
@@ -88,7 +152,7 @@ cp .env.example .env
 
 # 3. Start external services
 redis-server &
-ollama serve && ollama pull llama3.1:8b &
+ollama serve && ollama pull qwen2.5:3b &
 
 # 4. Bootstrap data stores
 python scripts/init_db.py
@@ -142,6 +206,12 @@ API docs: `http://localhost:8000/docs` (Swagger) · `http://localhost:8000/redoc
 | `GET` | `/v1/investigation/{txn_id}` | API Key | Get LLM investigation report |
 | `GET` | `/v1/investigations` | API Key + RBAC | List investigations (paginated) |
 
+### Feedback Loop
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/v1/feedback` | API Key + RBAC | Submit analyst decision (persisted to `store/feedback/`) |
+| `GET` | `/v1/feedback/stats` | API Key + RBAC | Feedback volume by category |
+
 ### Graph Analysis
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -174,6 +244,7 @@ API docs: `http://localhost:8000/docs` (Swagger) · `http://localhost:8000/redoc
 | `GET` | `/admin/config` | API Key + RBAC | View all configurations |
 | `GET` | `/admin/agents/health` | API Key + RBAC | Multi-agent health status |
 | `POST` | `/admin/agents/{id}/restart` | API Key + RBAC | Restart a specific agent |
+| `GET` | `/admin/drift/psi` | API Key + RBAC | PSI drift report (yesterday vs today) |
 
 ### A/B Experiments
 | Method | Path | Auth | Description |
@@ -259,6 +330,7 @@ PayShield/
 ├── store/                     # Data stores (17 files)
 │   ├── redis_client.py        # AsyncRedisClient w/ circuit breaker
 │   ├── sync_redis.py          # SyncRedisClient (Celery workers)
+│   ├── audit_log.py           # Tamper-evident audit log (hash chain + PII masking)
 │   ├── neo4j_client.py        # Neo4j client: users, merchants, devices, transactions
 │   ├── graph_db.py            # NetworkX fallback graph DB
 │   ├── postgres.py            # SQLAlchemy async engine + session
@@ -278,9 +350,10 @@ PayShield/
 │   ├── ab_testing.py          # Champion/challenger A/B framework
 │   └── continuous_improvement.py /# Auto-retraining triggers
 │
-├── observability/             # Monitoring (4 files)
+├── observability/             # Monitoring (5 files)
 │   ├── logging_config.py      # Structured logging (structlog)
-│   ├── drift.py               # Population stability index + drift detection
+│   ├── drift.py               # Robust PSI (shared quantile bins, Laplace smoothing)
+│   ├── drift_report.py        # Yesterday-vs-today PSI report (async-safe, both clients)
 │   └── metrics.py             # Prometheus metrics
 │
 ├── infrastructure/            # Cross-cutting (1 file)
@@ -294,8 +367,11 @@ PayShield/
 │   ├── model_schema.yaml      # ML model schema
 │   └── thresholds/            # Environment-specific thresholds (dev + prod)
 │
+├── models/                    # Model registry + cards
+│   ├── registry/              # v1.0.0 (statistical filter) + v0.1.0 (GNN) model cards
+│   └── payshield_gnn_v1_card.md
 ├── dashboard/                 # Vite + React + TypeScript frontend
-├── docker/                    # Dockerfiles + Compose (5 services)
+├── docker/                    # Dockerfiles + Compose (5 services, named data volumes)
 ├── k8s/                       # Kubernetes manifests (base + dev/staging/prod overlays)
 │   └── base/                  # 16 manifests: deployments, HPA, ingress, network
 │                              #   policies, PDBs, sealed secrets, postgres, redis,
@@ -346,10 +422,11 @@ PayShield/
 | **L1: Statistical** | scipy, sklearn | Rule-based: velocity, geo-velocity, Benford's Law (12 rules) |
 | **L2: GNN** | PyTorch Geometric | Heterogeneous graph neural network (User/Merchant/Device/Transaction) |
 | **Fusion** | Custom + Isotonic | Weighted fusion with calibrated confidence scores |
-| **L3: LLM** | Ollama (llama3.1:8b) | Natural language investigation reports (async via Celery) |
+| **L3: LLM** | Ollama (qwen2.5:3b) | Natural language investigation reports (async via Celery) |
 | **Explainability** | SHAP + GNNExplainer | Feature importance, evidence subgraphs |
 | **Feedback** | Reflection Agent | FP clustering, drift detection, nightly weight auto-tuning |
 | **A/B Testing** | Custom framework | Champion/challenger experiments with statistical significance |
+| **Drift** | PSI (robust) | Feature distribution monitoring, rolling 24h windows |
 
 ---
 
@@ -438,6 +515,22 @@ make chaos-test   # Run all chaos experiments
 make compliance-check   # Run all compliance checkers
 make compliance-report  # Generate quarterly report
 ```
+Current scores (see `COMPLIANCE_DELTA.md` for the full before/after): **PCI-DSS 90/100** (passed), **RBI 100/100** (passed).
+
+### Drift Monitoring
+```bash
+# Manual PSI report (yesterday vs today feature distributions)
+python scripts/run_drift_report.py
+
+# Or via API (same computation, async-safe)
+curl http://localhost:8000/admin/drift/psi -H "X-API-Key: payshield-dev-key-2026"
+
+# Seed a baseline replay into yesterday's window (demo/lab)
+python scripts/seed_drift_baseline.py
+
+# Latency benchmark (sync scoring path)
+python scripts/benchmark_latency.py
+```
 
 ### Disaster Recovery
 ```bash
@@ -462,11 +555,14 @@ All configurable via `.env.example`:
 | `DATABASE_URL` | `postgresql+asyncpg://...` | Yes | PostgreSQL connection |
 | `NEO4J_URI` | `bolt://localhost:7687` | Yes | Neo4j connection |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Yes | LLM inference |
-| `OLLAMA_MODEL` | `llama3.1:8b` | Yes | LLM model name |
+| `OLLAMA_MODEL` | `qwen2.5:3b` | Yes | LLM model name |
 | `CELERY_BROKER_URL` | `redis://localhost:6379/1` | Yes | Task queue |
-| `DATA_REGION` | `IN` | RBI | Data residency |
-| `ENCRYPTION_KEY` | — | PCI-DSS | Data encryption |
-| `ENABLE_HUMAN_REVIEW` | `false` | EU AI Act | Human oversight |
+| `ENCRYPTION_KEY` | `pay-shield-dev-aes256-key-0001` | PCI-DSS | AES-256 key for data at rest (dev-only default) |
+| `ENFORCE_RBAC` | `false` | PCI-DSS | RBAC on admin endpoints (compose sets `true`) |
+| `DATA_REGION` | `IN` | RBI | Data residency (India) |
+| `ENABLE_LLM_INVESTIGATOR` | `true` | RBI | LLM explanation narratives |
+| `ENABLE_HUMAN_REVIEW` | `true` | EU AI Act | Human oversight |
+| `MFA_ENABLED` | `false` | PCI-DSS | MFA for admin accounts (deferred — see `COMPLIANCE_DELTA.md`) |
 
 ---
 

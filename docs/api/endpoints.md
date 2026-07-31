@@ -1,208 +1,213 @@
 # API Reference
 
 ## Base URL
+
 - Development: `http://localhost:8000`
 - Production: `https://api.payshield.io`
 
 ## Authentication
 
-All endpoints (except health) require JWT Bearer token:
+All endpoints (except `/health*` and `/metrics`) require an API key:
 
 ```
-Authorization: Bearer <token>
+x-api-key: payshield-dev-key-2026
 ```
 
-### Get Token
-```
-POST /auth/token
-{
-  "client_id": "string",
-  "client_secret": "string"
-}
-```
+Role-scoped endpoints (`Admin`, `Feedback`, RBAC-gated) additionally accept
+JWT bearer tokens and check permissions from `configs/rbac.yaml`. Roles:
+`system`, `analyst`, `admin` (`analyst`/`admin` include `feedback:write`).
 
-## Endpoints
+Interactive docs: `http://localhost:8000/docs` (Swagger) · `/redoc` (ReDoc).
 
-### Health & Readiness
+## Fraud Scoring
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Liveness probe |
-| GET | `/ready` | Readiness probe |
+### Score a single transaction
 
-### Transaction Scoring
-
-#### Score Single Transaction
 ```
 POST /v1/score
+```
 
 Request:
+
+```json
 {
-  "transaction_id": "txn_001",
-  "amount": 299.99,
-  "currency": "USD",
-  "timestamp": "2026-07-28T12:00:00Z",
-  "merchant": {
-    "id": "merchant_123",
-    "category": "electronics",
-    "country": "US"
-  },
-  "user": {
-    "id": "user_456",
-    "email": "user@example.com"
-  },
-  "device": {
-    "fingerprint": "abc123",
-    "ip": "203.0.113.1",
-    "user_agent": "Mozilla/5.0..."
-  }
+  "txn_id": "CMP_B2_8",
+  "user_id": "u_burst_02",
+  "merchant_id": "m_burst_02",
+  "amount": 95000.0,
+  "timestamp": "2026-07-31T10:30:38",
+  "device_fingerprint": "fp_burst_99",
+  "location": {"lat": 19.076, "lon": 72.8777, "timestamp": "2026-07-31T10:30:38"},
+  "mcc_code": "6011",
+  "txn_type": "P2M"
 }
+```
+
+`txn_type` is one of `P2P` | `P2M` | `COLLECT`. Features (velocity, geo,
+Benford) are computed live from Redis history; a velocity burst or geo jump
+produces `BLOCK`/`REVIEW` via Layer 1 rules.
 
 Response:
+
+```json
 {
-  "transaction_id": "txn_001",
-  "score": 0.87,
-  "decision": "investigate",
-  "confidence": 0.87,
-  "processing_time_ms": 45,
-  "model_breakdown": {
-    "xgboost": 0.85,
-    "lightgbm": 0.88,
-    "catboost": 0.82,
-    "random_forest": 0.79,
-    "mlp": 0.91
+  "txn_id": "CMP_B2_8",
+  "decision": "REVIEW",
+  "fraud_probability": 0.0,
+  "layer_triggered": "ENSEMBLE",
+  "evidence": {
+    "triggered_rules": ["V-RULE-03"],
+    "ensemble_confidence": 0.0,
+    "latency_breakdown": {"l1_rules_ms": 0.11, "ensemble_ms": 0.02}
   },
-  "explanation": "High amount for user profile, new device detected"
+  "latency_ms": 12.4,
+  "model_version": "1.0.0"
 }
 ```
 
-#### Batch Score
-```
-POST /v1/score/batch
+`decision` is one of `ALLOW` | `BLOCK` | `REVIEW`. `BLOCK`/`REVIEW`
+transactions enqueue an async LLM investigation, append a tamper-evident
+audit entry, and persist an explanation artifact.
 
-Request: [<transaction>, <transaction>, ...]
-Response: [<score_result>, <score_result>, ...]
-```
+### Batch score
 
-#### Score via WebSocket
 ```
-Connect to ws://localhost:8765/v1/ws/score
-Message: <transaction JSON>
-Response: <score result JSON>
+POST /v1/batch
 ```
 
-### Investigations
+Body: `{"transactions": [<ScoreRequest>, ...]}` (max 100). Response:
+`{"results": [<FraudScoreResponse>], "batch_latency_ms": ...}`.
 
-#### List Investigations
-```
-GET /v1/investigations?page=1&page_size=20&status=pending
-```
+## Investigations
 
-#### Get Investigation
-```
-GET /v1/investigations/{id}
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/investigation/{txn_id}` | LLM investigation report (generated async; accepts flat or nested report) |
+| `GET` | `/v1/investigations` | List investigations (paginated) |
 
-#### Review Investigation
-```
-POST /v1/investigations/{id}/review
-{
-  "decision": "approve" | "decline" | "manual_review",
-  "notes": "string"
-}
-```
+Investigation status is `queued` → `success`; reports are served from
+`investigation:{txn_id}` in Redis. On CPU (qwen2.5:3b via Ollama) generation
+takes ~35 s — it never blocks `/v1/score`.
 
-### Feedback
+## Feedback Loop
 
-#### Submit Feedback
-```
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/v1/feedback` | API Key + RBAC | Submit analyst decision; persisted to `store/feedback/` and Redis, notifies HumanReviewAgent |
+| `GET` | `/v1/feedback/stats` | API Key + RBAC | Feedback volume by category |
+
+```json
 POST /v1/feedback
 {
-  "transaction_id": "txn_001",
-  "actual_outcome": "fraud" | "legitimate",
-  "correct_decision": "approve" | "decline",
-  "notes": "string"
+  "txn_id": "CMP_F2_1",
+  "analyst_id": "analyst_priya",
+  "original_decision": "REVIEW",
+  "analyst_decision": "ALLOW",
+  "reason": "burst matches verified merchant payout schedule",
+  "category": "FALSE_POSITIVE"
 }
 ```
 
-### Rules
+## Graph Analysis
 
-#### List Rules
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/graph/investigate` | Investigate entity in fraud graph |
+| `GET` | `/v1/graph/network/{entity_id}` | Entity ego-graph |
+| `POST` | `/v1/graph/entity` | Create graph entity |
+| `POST` | `/v1/graph/link` | Link two entities |
+| `GET` | `/v1/graph/risk-paths` | Risk paths between entities |
+| `GET` | `/v1/graph/stats` | Graph DB statistics |
+
+## Compliance & Sanctions
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/admin/compliance/status` | PCI-DSS, RBI, EU AI Act scores |
+| `GET` | `/admin/compliance/check/{user_id}` | Sanctions + KYC combined check |
+| `POST` | `/admin/compliance/sanctions/check` | OFAC/UN sanctions screening |
+| `GET` | `/admin/compliance/kyc/{user_id}` | KYC tier verification |
+| `POST` | `/admin/compliance/aml/check` | AML velocity + structuring check |
+| `POST` | `/admin/compliance/report` | Generate quarterly compliance report |
+| `POST` | `/admin/compliance/report/{framework}` | Framework-specific report |
+| `GET` | `/admin/compliance/evidence` | List compliance evidence archives |
+| `POST` | `/admin/compliance/evidence/collect` | Trigger evidence collection |
+
+Current scores (2026-07-31): **PCI-DSS 90/100** (passed), **RBI 100/100**
+(passed) — see `COMPLIANCE_DELTA.md`.
+
+## Admin & Operations
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/admin/rules/reload` | API Key + RBAC | Reload statistical rules from YAML |
+| `POST` | `/admin/models/promote` | API Key + RBAC | Promote model version |
+| `POST` | `/admin/config/threshold` | API Key + RBAC | Update scoring threshold |
+| `GET` | `/admin/config` | API Key + RBAC | View all configurations |
+| `GET` | `/admin/agents/health` | API Key + RBAC | Multi-agent health status |
+| `POST` | `/admin/agents/{id}/restart` | API Key + RBAC | Restart a specific agent |
+| `GET` | `/admin/drift/psi` | API Key + RBAC | PSI drift report (yesterday vs today) |
+
+### Drift report example
+
 ```
-GET /v1/rules
+GET /admin/drift/psi
 ```
 
-#### Create Rule
-```
-POST /v1/rules
+```json
 {
-  "name": "High Amount Rule",
-  "condition": "amount > 10000",
-  "action": "block",
-  "priority": 10,
-  "enabled": true
+  "generated_at": "2026-07-31T16:05:15Z",
+  "method": "PSI — shared quantile bins (scaled to sample size) + Laplace smoothing",
+  "threshold": {"stable": 0.1, "drift": 0.25},
+  "features": {
+    "amount_total_1h": {"psi": 3.8608, "status": "DRIFT", "n_bins": 3,
+                        "expected_samples": 13, "actual_samples": 14}
+  },
+  "drifted_features": ["amount_total_1h"],
+  "status": "DRIFT_DETECTED"
 }
 ```
 
-#### Update Rule
-```
-PUT /v1/rules/{id}
-```
-
-#### Delete Rule
-```
-DELETE /v1/rules/{id}
-```
-
-### Models
-
-#### List Models
-```
-GET /v1/models
-```
-
-#### Get Model Metrics
-```
-GET /v1/models/{name}/metrics
-```
-
-#### Trigger Retraining
-```
-POST /v1/models/retrain
-```
-
-### Metrics
+## A/B Experiments
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/metrics` | Prometheus metrics |
-| GET | `/v1/metrics/summary` | Summary statistics |
+| `POST` | `/admin/experiments` | Register new A/B experiment |
+| `GET` | `/admin/experiments` | List all experiments |
+| `GET` | `/admin/experiments/{id}/results` | Results + p-value |
+| `POST` | `/admin/experiments/{id}/promote` | Promote challenger model |
+| `POST` | `/admin/experiments/{id}/rollback` | Rollback to champion |
 
-### Admin
+## Real-Time Streams
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/admin/config` | Current configuration |
-| PUT | `/v1/admin/config` | Update configuration |
-| GET | `/v1/admin/health/components` | Component health |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `WS` | `/v1/stream` | Token/Key | WebSocket live fraud alerts |
+| `GET` | `/v1/stream/sse` | Token | Server-Sent Events stream |
+
+## Health & Metrics
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/health` | None | Full health: Redis, Neo4j, Ollama, Celery |
+| `GET` | `/health/live` | None | Liveness probe |
+| `GET` | `/health/ready` | None | Readiness probe |
+| `GET` | `/metrics` | None | Prometheus metrics |
 
 ## Error Responses
 
 ```json
 {
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Rate limit exceeded. Try again in 30 seconds.",
-    "details": {}
-  }
+  "error": "VALIDATION_ERROR",
+  "detail": [{"type": "missing", "loc": ["header", "x-api-key"], "msg": "Field required"}],
+  "request_id": "c95b4e9a-e230-45bb-b66b-8d01348bcd1c"
 }
 ```
 
-### Error Codes
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
-| `INVALID_REQUEST` | 400 | Validation error |
-| `UNAUTHORIZED` | 401 | Invalid/expired token |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
-| `SERVICE_UNAVAILABLE` | 503 | Service temporarily down |
-| `ENSEMBLE_FAILURE` | 500 | Model inference failed |
+| `VALIDATION_ERROR` | 422 | Request validation failed |
+| `Missing authentication credentials` | 401 | No API key / bearer token |
+| `Permission denied` | 403 | Key valid, role lacks permission |
+| `BatchSizeExceededError` | 400 | > 100 transactions in batch |
+| `Transaction ... not found` | 404 | Investigation/feedback target missing |

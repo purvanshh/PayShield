@@ -14,6 +14,25 @@
 | TD-008 | No distributed tracing (OpenTelemetry not fully deployed) | Debugging cross-service issues is manual | 1 week | P2 | TBD | Q1 2027 |
 | TD-009 | Test coverage below 80% for agents and compliance modules | Regression risk | 2 weeks | P2 | TBD | Q4 2026 |
 | TD-010 | API rate limiter not distributed (in-memory per pod) | Ineffective with >1 replica | 2 days | P2 | TBD | Q4 2026 |
+| TD-011 | MFA not implemented for admin accounts (PCI-DSS 8.3) | PCI compliance gap (medium finding) | 3 days | P2 | TBD | Q4 2026 |
+| TD-012 | L2 GNN is a stub — registry has no production model | Graph layer adds no signal yet | 2 weeks | P1 | TBD | Q4 2026 |
+
+## Resolved Debt & Fixes (2026-07-31)
+
+| Item | Resolution |
+|------|------------|
+| Env-driven service connections (Redis/Ollama) | hardcoded `localhost` replaced with env config |
+| Statistical filter startup crash | `config.get` on `None` → `self.config.get` |
+| Canned score results | score route now computes real Redis-backed velocity/geo features |
+| Worker boot failure | module-level `create_sync_redis` import fallback (`No module named 'infrastructure'`) |
+| LLM unparseable output | JSON-only prompt + tolerant parser (trailing commas, key-value fallback) |
+| Evidence `UnboundLocalError: l2` | `l1`/`l2` initialized before use |
+| Wrong Celery app module / missing task includes | `celery -A tasks.celery_app worker -Q investigation,default` + explicit `include` |
+| RBAC gaps (`investigation:read`, `feedback:write`) | `configs/rbac.yaml` system role updated; `x-api-key` accepted for role-scoped endpoints |
+| Dashboard Docker build | missing frontend deps, TS errors, COPY paths fixed |
+| PSI false spikes (43.4 → 3.86) | robust estimator: shared quantile bins + bin-count scaling + Laplace smoothing |
+| Drift sampling never recorded | missing `await` + zset member/score convention mismatch |
+| Artifacts wiped on container rebuild | named compose volumes on leaf data dirs |
 
 ## Priority Definitions
 
