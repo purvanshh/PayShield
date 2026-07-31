@@ -62,6 +62,12 @@ def _include_routers(app: FastAPI):
         logger.warning(f"health_router_skipped: {e}")
 
     try:
+        from api.routes.auth import router as auth_router
+        app.include_router(auth_router, prefix="/v1", tags=["auth"])
+    except Exception as e:
+        logger.warning(f"auth_router_skipped: {e}")
+
+    try:
         from api.routes.score import router as score_router
         app.include_router(score_router, prefix="/v1", tags=["score"])
     except Exception as e:

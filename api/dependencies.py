@@ -1,6 +1,7 @@
 import os
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 try:
     from api.auth import AuthManager
@@ -14,13 +15,22 @@ except ImportError:
 
 from store import RedisClient
 
+bearer_scheme = HTTPBearer(auto_error=False)
 
-async def verify_api_key(x_api_key: str = Header(...)):
+
+async def verify_api_key(
+    x_api_key: str | None = Header(default=None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
     if _auth_available and AuthManager is not None:
         auth = AuthManager()
-        principal = auth.verify_api_key(x_api_key)
+        principal = None
+        if x_api_key:
+            principal = auth.verify_api_key(x_api_key)
+        if principal is None and credentials is not None:
+            principal = auth.verify_access_token(credentials.credentials)
         if principal is None:
-            raise HTTPException(status_code=403, detail="Invalid API Key")
+            raise HTTPException(status_code=403, detail="Invalid API Key or token")
         return principal
     fallback_key = os.getenv("PAYSHIELD_DEV_API_KEY", "payshield-dev-key-2026")
     if x_api_key != fallback_key:
