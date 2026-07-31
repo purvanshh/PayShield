@@ -8,13 +8,20 @@
   "description": "L2 graph-scored fraud probability over user/merchant/device/transaction graph",
   "training_data": {
     "source": "synthetic UPI transaction generator",
-    "size": 20000,
+    "size": 30000,
+    "ego_graphs": 5558,
     "fraud_ratio": 0.05
   },
   "performance": {
-    "validation_auc_roc": 0.92,
-    "validation_pr_auc": 0.85,
-    "inference": "< 50 ms CPU (2-hop ego graph)"
+    "test_auc_roc": 0.692,
+    "test_pr_auc": 0.198,
+    "fpr_at_0.90_recall": 0.71,
+    "baseline_mlp_auc_roc": 0.481,
+    "inference_p50_ms_cpu": 1.0,
+    "inference_p99_ms_cpu": 2.5,
+    "parameters": 53826,
+    "provenance": "models/gnn_benchmark_results.json (scripts/benchmark_gnn.py, 2026-07-31)",
+    "note": "earlier unmeasured claim of AUC > 0.92 corrected"
   },
   "governance": {
     "model_card": "models/payshield_gnn_v1_card.md",

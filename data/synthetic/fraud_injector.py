@@ -19,9 +19,9 @@ class FraudInjector:
         quarter = n_fraud // 4
 
         df = self.inject_mule_rings(df, num_rings=3, ring_size=10, count=quarter)
-        df = self.inject_burst_attacks(df, num_attacks=quarter // 20, count=quarter)
+        df = self.inject_burst_attacks(df, num_attacks=max(1, quarter // 20), count=quarter)
         df = self.inject_merchant_collusion(df, num_shell=3, count=quarter)
-        df = self.inject_account_takeover(df, num_atos=quarter // 5, count=quarter)
+        df = self.inject_account_takeover(df, num_atos=max(1, quarter // 5), count=quarter)
 
         remaining = n_fraud - df["is_fraud"].sum()
         if remaining > 0:

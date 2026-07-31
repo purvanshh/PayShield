@@ -92,12 +92,23 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 - Request/response validation via Pydantic
 - Prometheus metrics endpoint
 
+### Layer 2 — Heterogeneous GNN
+
+- **Architecture**: 2-layer HeteroConv + SAGEConv (mean aggregation), hidden 64, global mean pooling readout + MLP, 53,826 params
+- **Graph schema**: node types `user` (5) / `merchant` (19) / `device` (4) / `transaction` (4); edge types `performed`, `to`, `used`, `shared_by`, `transferred_to` (P2P)
+- **Measured (synthetic, 2026-07-31)**: test AUC-ROC 0.692, PR-AUC 0.198, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p99 2.5 ms on CPU
+- **vs. edge-free MLP baseline**: AUC 0.48, PR-AUC 0.056 — the per-relationship propagation of HeteroConv is worth ~3.5× PR-AUC over ignoring graph structure
+- **Provenance**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`; model card `models/payshield_gnn_v1_card.md`
+- ⚠️ Not yet fused into the live `/v1/score` decision path (see README Limitations)
+
+### Ensemble Fusion Engine
+- Fuses L1 rule scores + GNN probability via weighted fusion
+- Isotonic calibration for probability calibration
+- Decision routing: ALLOW / BLOCK / REVIEW
+
 ### ML Engine
-- 5 ensemble models + Gradient Boosting meta-learner
-- Weighted voting fusion strategy
-- Confidence-based decision routing
-- Online learning from feedback
-- Model versioning and A/B testing
+- Statistical pre-filter (L1) + GNN (L2) + ensemble fusion
+- Model versioning and A/B testing via `models/registry`
 
 ### LLM Investigator
 - Structured prompts for fraud analysis (JSON-only output contract)
@@ -107,17 +118,24 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 - Tolerant parser: trailing commas, nested braces, key-value fallback
 
 ### Agent System
-14 specialized agents (base, reflection, human review, mitigation, collective,
-critic, validation, planner, profile, transaction, memory, monitoring, ...):
-1. **Transaction Agent** - Core transaction analysis
-2. **Risk Agent** - Risk scoring and aggregation
-3. **Pattern Agent** - Pattern matching and anomaly detection
-4. **Behavior Agent** - Behavioral analysis
-5. **History Agent** - Historical context lookup
-6. **Network Agent** - Network analysis (merchant, IP, device)
-7. **Compliance Agent** - Regulatory checks
-8. **Decision Agent** - Final decision synthesis
-(+ reflection: FP clustering & drift; human review: feedback ingestion; mitigation; collective; critic; validation)
+14 agent modules — 12 concrete agents + `MessageRouter` + `OrchestratorState`:
+
+| Agent | Role |
+|-------|------|
+| `transaction_agent` | Analyzes a single transaction: features, rules, anomaly flags |
+| `profile_agent` | Maintains user risk profiles from transaction history |
+| `planner_agent` | Breaks complex investigations into ordered sub-tasks |
+| `memory_agent` | Stores/retrieves investigation context across sessions |
+| `human_review_agent` | Ingests analyst feedback into the decision loop |
+| `reflection_agent` | Nightly FP clustering + drift detection + auto-tune recommendations |
+| `critic_agent` | Challenges decisions, tracks challenge accuracy vs. feedback |
+| `mitigation_agent` | Executes automated block/chill/rollback actions with confirmation |
+| `collective_agent` | Coordinated multi-agent assessment (swarm voting, not a router) |
+| `monitoring_agent` | Heartbeats, performance reports, agent health checks |
+| `validation_agent` | Schema + rule validation on agent messages |
+| `BaseAgent` | Abstract contract: config, message loop, error handling |
+
+Stubs: `planner_agent` (only `COMPLEX_INVESTIGATION_REQUEST`), `collective_agent` (assessment + feedback, no live swarm consensus), `critic_agent` (accuracy tracking not wired to live scoring).
 
 ### Celery Tasks
 - Transaction processing (high priority)

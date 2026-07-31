@@ -17,10 +17,11 @@
 | `/v1/score` p50 | 8.52 ms |
 | `/v1/score` p90 | 15.02 ms |
 | `/v1/score` p99 | 63.31 ms (tail = Redis feature reads + audit append; L1 rules p99 0.27 ms) |
+| L2 GNN inference (CPU, per ego-graph) | p50 1.0 ms / p90 1.5 ms / p99 2.5 ms (`scripts/benchmark_gnn.py`) |
 | LLM investigation (async) | ~35 s on CPU (qwen2.5:3b) — off the scoring path |
 | Compliance | PCI-DSS 90/100, RBI 100/100 |
 
-Reproduce: `python scripts/benchmark_latency.py`.
+Reproduce: `python scripts/benchmark_latency.py` · `python scripts/benchmark_gnn.py`.
 
 ## SLI Queries (Prometheus)
 

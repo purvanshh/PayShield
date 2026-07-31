@@ -1,91 +1,50 @@
-# Multi-Agent System Architecture
+# Agent System
 
-## Overview
+## Reality check (2026-07-31)
 
-The agent orchestrator manages 8 specialized agents that collaborate on complex fraud decisions. Each agent is an independent service that analyzes specific aspects of a transaction.
+The agents in `agents/` are the source of truth. Earlier design docs described
+8 agents (risk, pattern, behavior, history, network, compliance, decision) that
+do **not exist in the codebase** — those roles are covered by the L1 rule
+engine and ensemble fusion instead. This document reflects what actually runs.
 
-## Agent Communication
+## Modules
+
+14 modules — 12 concrete `BaseAgent` subclasses + `MessageRouter` + `OrchestratorState`.
+
+| Module | Class | Role | Status |
+|--------|-------|------|--------|
+| `base.py` | `BaseAgent` | Abstract contract: config, message loop, error handling | core |
+| `transaction_agent.py` | `TransactionAnalysisAgent` | Analyzes a single transaction: features, rules, anomaly flags | live |
+| `profile_agent.py` | `ProfileAgent` | Maintains user risk profiles from transaction history | live |
+| `planner_agent.py` | `PlannerAgent` | Breaks complex investigations into ordered sub-tasks | stub — only `COMPLEX_INVESTIGATION_REQUEST` |
+| `memory_agent.py` | `MemoryAgent` | Stores/retrieves investigation context across sessions | live |
+| `human_review_agent.py` | `HumanReviewAgent` | Ingests analyst feedback into the decision loop | live |
+| `reflection_agent.py` | `ReflectionAgent` | Nightly FP clustering + drift detection + auto-tune recommendations | live |
+| `critic_agent.py` | `CriticAgent` | Challenges decisions, tracks challenge accuracy vs. feedback | partial — accuracy tracking not wired to live scoring |
+| `mitigation_agent.py` | `MitigationAgent` | Executes automated block/chill/rollback actions with confirmation | live |
+| `collective_agent.py` | `CollectiveIntelligenceAgent` | Coordinated multi-agent assessment (swarm voting, not a router) | partial — assessment + feedback only, no live swarm consensus |
+| `monitoring_agent.py` | `MonitoringAgent` | Heartbeats, performance reports, agent health checks | live |
+| `validation_agent.py` | `ValidationAgent` | Schema + rule validation on agent messages | live |
+| `message.py` | `MessageRouter` | Message routing, priority, correlation | infra |
+| `state.py` | `OrchestratorState` | Orchestration state machine | infra |
+
+## Communication
+
+Agents exchange `AgentMessage`s through `MessageRouter`:
 
 ```
-Orchestrator receives borderline transaction
-         │
-         ├──→ Transaction Agent (parallel)
-         ├──→ Risk Agent (parallel)
-         ├──→ Pattern Agent (parallel)
-         ├──→ Behavior Agent (parallel)
-         ├──→ History Agent (parallel)
-         ├──→ Network Agent (parallel)
-         ├──→ Compliance Agent (parallel)
-         │
-         └──→ Decision Agent (after all results)
+investigation task → transaction_agent → (profile|memory|planner)
+                   → collective_agent (assessment) → critic_agent
+                   → mitigation_agent (actions, confirmed)
+                   → human_review_agent (feedback) → reflection_agent (nightly)
 ```
 
-## Agent Specifications
+Each concrete agent implements `async def process(message) -> AgentMessage`
+and returns an error response for unexpected message types.
 
-### 1. Transaction Agent
-- **Purpose**: Core transaction analysis
-- **Inputs**: Raw transaction data, features
-- **Outputs**: Anomaly score, suspicious indicators
-- **Methods**: Statistical outlier detection, rule matching
+## What is not here
 
-### 2. Risk Agent
-- **Purpose**: Risk scoring and aggregation
-- **Inputs**: All agent outputs
-- **Outputs**: Unified risk score (0-100)
-- **Methods**: Weighted aggregation, Bayesian updating
-
-### 3. Pattern Agent
-- **Purpose**: Pattern matching and anomaly detection
-- **Inputs**: Transaction patterns, user history
-- **Outputs**: Pattern match confidence
-- **Methods**: Time-series analysis, sequence matching
-
-### 4. Behavior Agent
-- **Purpose**: Behavioral analysis
-- **Inputs**: User behavior profile
-- **Outputs**: Behavioral deviation score
-- **Methods**: Baseline comparison, velocity checks
-
-### 5. History Agent
-- **Purpose**: Historical context lookup
-- **Inputs**: User ID, merchant ID
-- **Outputs**: Historical summary statistics
-- **Methods**: Aggregation queries, trend analysis
-
-### 6. Network Agent
-- **Purpose**: Network analysis
-- **Inputs**: IP, device, merchant info
-- **Outputs**: Network risk score
-- **Methods**: Graph analysis, reputation scoring
-
-### 7. Compliance Agent
-- **Purpose**: Regulatory checks
-- **Inputs**: Transaction details, jurisdiction
-- **Outputs**: Compliance flags
-- **Methods**: Rule engine, regulatory database
-
-### 8. Decision Agent
-- **Purpose**: Final decision synthesis
-- **Inputs**: All agent outputs + LLM report
-- **Outputs**: Final decision + explanation
-- **Methods**: Weighted aggregation, threshold logic
-
-## Orchestration Flow
-
-1. **Receive** transaction from ensemble (confidence 0.5-0.9)
-2. **Fan-out** to all 7 analysis agents in parallel
-3. **Collect** results with configurable timeout (5s)
-4. **Feed** results to LLM investigator for reasoning
-5. **Synthesize** final decision via Decision Agent
-6. **Return** result with explanation path
-
-## Configuration
-
-```yaml
-orchestrator:
-  timeout_seconds: 5
-  max_retries: 2
-  parallel_execution: true
-  required_agents: [transaction, risk, decision]
-  optional_agents: [pattern, behavior, history, network, compliance]
-```
+- `risk_agent`, `pattern_agent`, `behavior_agent`, `history_agent`,
+  `network_agent`, `compliance_agent`, `decision_agent` — described in early
+  design docs but never implemented; their responsibilities live in
+  `engine/statistical_filter.py`, `engine/ensemble.py`, and `ml/model.py`.

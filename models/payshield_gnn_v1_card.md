@@ -18,30 +18,35 @@
 - **Hidden dim:** 64
 - **Aggregation:** Mean
 - **Readout:** Global mean pooling (user + transaction embeddings), 2-layer MLP
-- **Parameters:** ~15K
-- **Inference:** < 50 ms on CPU (2-hop ego graph, < 200 nodes)
+- **Parameters:** 53,826 (measured)
+- **Inference:** p50 1.0 ms / p90 1.5 ms / p99 2.5 ms on CPU (per ego-graph, median 48 nodes) — measured by `scripts/benchmark_gnn.py`
 
 ## Training Data
 - **Source:** Synthetic UPI transaction generator
-- **Size:** 20,000 transactions (80/20 train/val split)
-- **Users:** 2,000 with Indian demographic distributions
-- **Merchants:** 1,000 across 15 MCC categories
-- **Fraud ratio:** 5% (250 fraud patterns: mule rings, burst, collusion, ATO)
+- **Size:** 30,000 transactions (10,000 users, 1,000 merchants, 5% fraud, seed 42)
+- **Ego-graphs:** 5,558 (target user + neighbors; 80/10/10 user-disjoint split)
+- **Fraud ratio:** 5% (fraud patterns: mule rings, burst, collusion, ATO)
 - **Time span:** 30-day window with diurnal patterns
 
-## Performance
-- **Validation AUC-ROC:** > 0.92
-- **Validation PR-AUC:** > 0.85
-- **False positive rate at 0.90 recall:** < 5%
-- **p50 latency:** < 10 ms (Layer 1), < 30 ms (Layer 1 + Layer 2)
-- **p99 latency:** < 100 ms end-to-end
+## Performance (measured 2026-07-31)
+
+| Metric | Value |
+|--------|-------|
+| Test AUC-ROC | **0.692** |
+| Test PR-AUC | **0.198** |
+| FPR @ 90% recall | 0.71 |
+| Edge-free MLP baseline AUC-ROC | 0.481 (PR-AUC 0.056) |
+| Inference p50 / p90 / p99 (CPU) | 1.0 / 1.5 / 2.5 ms |
+
+Provenance: `python scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`.
+⚠️ This card previously claimed "AUC-ROC > 0.92" — that number was never measured and is replaced by the values above.
 
 ## Features
-**User:** credit_score, account_age_days, kyc_tier, avg_monthly_txn_count, device_count
-**Merchant:** category_code, avg_txn_amount, refund_rate, account_age_days, benford_chi2
-**Device:** os_family, app_version, is_emulator
-**Transaction:** amount, timestamp
-**Edge types:** performed, to, used, transfer, shared_by
+**User (5):** credit_score, account_age_days, kyc_tier, avg_monthly_txn_count, device_count
+**Merchant (19):** category_code (15 MCC one-hot), avg_txn_amount, refund_rate, account_age_days, city_tier
+**Device (4):** os_family, app_version (major, minor), is_emulator
+**Transaction (4):** amount, hour-of-day, is_weekend, salary-day proxy
+**Edge types:** performed, to, used, transferred_to, shared_by
 
 ## Limitations
 - Trained on synthetic data; real-world UPI patterns may differ

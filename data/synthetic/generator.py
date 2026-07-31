@@ -35,6 +35,10 @@ INDIAN_CITIES = [
     ("Raipur", 21.2514, 81.6296, "tier3"),
     ("Dehradun", 30.3165, 78.0322, "tier3"),
     ("Chandigarh", 30.7333, 76.7794, "tier1"),
+    ("Agra", 27.1767, 78.0081, "tier4"),
+    ("Varanasi", 25.3176, 82.9739, "tier4"),
+    ("Kochi", 9.9312, 76.2673, "tier4"),
+    ("Gwalior", 26.2183, 78.1828, "tier4"),
 ]
 
 TXN_TYPES = ["P2P", "P2M", "COLLECT"]
@@ -143,7 +147,7 @@ class SyntheticUPIGenerator:
                 did = f"D{uid}_{d}"
                 self.devices[did] = {
                     "device_id": did,
-                    "os_family": self.rng.choice(["android", "ios"], weights=[80, 20]),
+                    "os_family": self.rng.choices(["android", "ios"], weights=[80, 20])[0],
                     "app_version": f"{self.rng.randint(3, 8)}.{self.rng.randint(0, 9)}.{self.rng.randint(0, 9)}",
                     "is_emulator": self.rng.random() < 0.02,
                     "first_seen_timestamp": datetime(2026, 1, 1) + timedelta(days=self.rng.randint(0, 180)),
