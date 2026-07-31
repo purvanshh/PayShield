@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -10,11 +11,15 @@ class OllamaConfig:
     base_url: str = "http://localhost:11434"
     model: str = "llama3.1:8b"
     fallback_model: str = "llama3.1:8b-instruct-q4_0"
-    timeout: int = 30
+    timeout: int = 300
     max_retries: int = 2
     base_delay: float = 1.0
-    max_tokens: int = 512
+    max_tokens: int = 256
     temperature: float = 0.1
+
+    def __post_init__(self):
+        self.base_url = os.getenv("OLLAMA_BASE_URL", self.base_url)
+        self.model = os.getenv("OLLAMA_MODEL", self.model)
 
     @classmethod
     def from_yaml(cls, path: str | Path = "configs/config.yaml") -> "OllamaConfig":

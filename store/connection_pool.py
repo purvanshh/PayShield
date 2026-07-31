@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from functools import wraps
 
@@ -76,9 +77,9 @@ class CircuitBreaker:
 class RedisConnectionPool:
     def __init__(
         self,
-        host: str = "localhost",
-        port: int = 6379,
-        db: int = 0,
+        host: str | None = None,
+        port: int | None = None,
+        db: int | None = None,
         password: str | None = None,
         max_connections: int = 50,
         socket_timeout: float = 2.0,
@@ -86,6 +87,10 @@ class RedisConnectionPool:
         health_check_interval: float = 30.0,
         retry_on_timeout: bool = True,
     ):
+        host = host or os.getenv("REDIS_HOST", "localhost")
+        port = port or int(os.getenv("REDIS_PORT", "6379"))
+        db = db if db is not None else int(os.getenv("REDIS_DB", "0"))
+        password = password or os.getenv("REDIS_PASSWORD") or None
         self.pool = aioredis.ConnectionPool(
             host=host,
             port=port,

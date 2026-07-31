@@ -412,7 +412,7 @@ class StatisticalFilter:
         self.geo = GeoSpatialFilter(redis_client, config)
         self.benford = BenfordFilter(redis_client, config)
         self.decision_gate = DecisionGate()
-        self.shadow_mode = config.get("shadow_mode", False)
+        self.shadow_mode = self.config.get("shadow_mode", False)
         self.audit_log: list[Layer1Result] = []
 
     async def evaluate(self, velocity_features: dict, deviation_features: dict | None = None,

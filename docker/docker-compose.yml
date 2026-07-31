@@ -10,6 +10,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
     depends_on:
       redis:
         condition: service_healthy
@@ -23,10 +24,11 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
-    command: celery -A worker.celery_app worker --loglevel=info
+    command: celery -A tasks.celery_app worker -Q investigation,default --loglevel=info
     environment:
       - REDIS_HOST=redis
       - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
     depends_on:
       redis:
         condition: service_healthy

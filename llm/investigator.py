@@ -1,4 +1,5 @@
 import json
+import os
 import re
 
 import ollama
@@ -6,10 +7,10 @@ from jinja2 import Template
 
 
 class LLMInvestigator:
-    def __init__(self, model: str = "llama3.1:8b", temperature: float = 0.1, base_url: str = "http://localhost:11434"):
-        self.model = model
+    def __init__(self, model: str | None = None, temperature: float = 0.1, base_url: str | None = None):
+        self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1:8b")
         self.temperature = temperature
-        self.client = ollama.Client(host=base_url)
+        self.client = ollama.Client(host=base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
         self._load_prompt_template()
 
     def _load_prompt_template(self):

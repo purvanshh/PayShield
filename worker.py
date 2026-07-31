@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 
 from celery import Celery
@@ -8,13 +9,16 @@ from llm.cache import LLMCache
 from store.sync_redis import SyncRedisClient as RedisClient
 from observability.metrics import llm_queue_depth
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+
 celery_app = Celery(
     "payshield",
-    broker="redis://localhost:6379/1",
-    backend="redis://localhost:6379/1",
+    broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
 )
 
-redis_client = RedisClient(db=1)
+redis_client = RedisClient(host=REDIS_HOST, port=int(REDIS_PORT), db=1)
 llm = LLMInvestigator()
 cache = LLMCache(redis_client)
 

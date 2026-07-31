@@ -27,7 +27,7 @@ async def lifespan_manager(app: FastAPI):
     try:
         from ml.registry import ModelRegistry
         registry = ModelRegistry()
-        model_path = registry.get_production_path()
+        model_path = registry.get_production_model()
         if model_path and model_path.exists():
             resources["model_path"] = model_path
             logger.info(f"gnn_model_loaded from {model_path}")
