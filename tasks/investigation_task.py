@@ -32,7 +32,7 @@ except ImportError:
         )
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, queue="investigation")
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, queue="investigation", soft_time_limit=300)
 def generate_investigation(self, txn_id: str, ensemble_result_json: str):
     try:
         from llm.client import OllamaClient
