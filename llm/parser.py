@@ -62,19 +62,79 @@ class NarrativeParser:
         match = re.search(json_pattern, raw_output, re.DOTALL)
         if match:
             candidate = match.group(0)
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                pass
+            parsed = self._try_load_json(candidate)
+            if parsed is not None:
+                return parsed
         brace_pattern = r'(\{(?:[^{}]|(?:\{[^{}]*\}))*\})'
         matches = re.findall(brace_pattern, raw_output, re.DOTALL)
         for candidate in reversed(matches):
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                continue
+            parsed = self._try_load_json(candidate)
+            if parsed is not None:
+                return parsed
         logger.warning(f"No valid JSON found in LLM output: {raw_output[:200]}")
-        return {}
+        return self._parse_key_value(raw_output)
+
+    def _try_load_json(self, candidate: str) -> dict[str, Any] | None:
+        if not candidate:
+            return None
+        try:
+            data = json.loads(candidate)
+            return data if isinstance(data, dict) else None
+        except json.JSONDecodeError:
+            pass
+        cleaned = re.sub(r',\s*([}\]])', r'\1', candidate)
+        try:
+            data = json.loads(cleaned)
+            return data if isinstance(data, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+    def _parse_key_value(self, raw_output: str) -> dict[str, Any]:
+        data: dict[str, Any] = {}
+        key_map = {
+            "narrative": "narrative",
+            "summary": "narrative",
+            "fraud_type": "fraud_type",
+            "fraud type": "fraud_type",
+            "confidence": "confidence",
+            "recommended_action": "recommended_action",
+            "action": "recommended_action",
+            "reasoning": "reasoning",
+        }
+        evidence: list[str] = []
+        current_field: str | None = None
+        for line in raw_output.splitlines():
+            line = line.strip().lstrip("*#- ").strip()
+            if not line:
+                continue
+            lowered = line.lower()
+            matched = None
+            for key, field in key_map.items():
+                if lowered.startswith(key + ":"):
+                    matched = field
+                    break
+            if matched:
+                current_field = matched
+                value = line.split(":", 1)[1].strip()
+                if value:
+                    if matched in ("fraud_type", "confidence", "recommended_action"):
+                        data[matched] = value.split(",")[0].strip()
+                    else:
+                        data[matched] = value
+                continue
+            if current_field == "narrative" and current_field not in data:
+                data["narrative"] = line
+            elif current_field == "narrative":
+                data["narrative"] += " " + line
+            elif current_field == "reasoning":
+                data["reasoning"] = data.get("reasoning", "") + " " + line
+            elif current_field is None and line.startswith(("- ", "* ")):
+                evidence.append(line.lstrip("-* ").strip())
+        if evidence:
+            data["key_evidence"] = evidence
+        if not data:
+            data["narrative"] = raw_output.strip()
+        return data
 
     def _to_report(self, data: dict[str, Any], txn_id: str) -> InvestigationReport:
         narrative = data.get("narrative", "") or ""

@@ -47,6 +47,8 @@ class EvidenceCollector:
 
     def collect(self, txn_id: str, ensemble_result: Any | None = None) -> InvestigationContext:
         items: list[EvidenceItem] = []
+        l1 = None
+        l2 = None
 
         if ensemble_result:
             l1 = getattr(ensemble_result, "layer1_result", None)

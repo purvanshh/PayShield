@@ -12,5 +12,6 @@ roles:
     - agent:manage
   system:
     - score:write
+    - investigation:read
     - metrics:read
     - health:read

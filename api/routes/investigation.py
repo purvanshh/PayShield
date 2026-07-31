@@ -32,15 +32,16 @@ async def get_investigation(
         data = json.loads(raw) if isinstance(raw, str) else raw
     except (json.JSONDecodeError, TypeError):
         raise HTTPException(status_code=500, detail="Invalid investigation data")
+    report = data.get("report") or data
     return InvestigationReportResponse(
-        txn_id=data.get("txn_id", txn_id),
-        narrative=data.get("narrative", ""),
-        fraud_type=data.get("fraud_type", "OTHER"),
-        confidence=data.get("confidence", "LOW"),
-        recommended_action=data.get("recommended_action", "ALLOW"),
-        key_evidence=data.get("key_evidence", []),
-        reasoning=data.get("reasoning", ""),
-        generated_at=datetime.fromisoformat(data["generated_at"]) if isinstance(data.get("generated_at"), str) else datetime.utcnow(),
+        txn_id=report.get("txn_id", txn_id),
+        narrative=report.get("narrative", ""),
+        fraud_type=report.get("fraud_type", "OTHER"),
+        confidence=report.get("confidence", "LOW"),
+        recommended_action=report.get("recommended_action", "ALLOW"),
+        key_evidence=report.get("key_evidence", []),
+        reasoning=report.get("reasoning", ""),
+        generated_at=datetime.fromisoformat(report["generated_at"]) if isinstance(report.get("generated_at"), str) else datetime.utcnow(),
     )
 
 
@@ -64,7 +65,7 @@ async def list_investigations(
             raw = await redis.get(k)
             if raw:
                 data = json.loads(raw) if isinstance(raw, str) else raw
-                all_reports.append(data)
+                all_reports.append(data.get("report") or data)
         except Exception:
             continue
     if fraud_type:

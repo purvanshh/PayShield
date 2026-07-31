@@ -24,6 +24,11 @@ GRAPH SUBGRAPH:
 {% endfor %}
 
 OUTPUT FORMAT (JSON):
+Respond with ONLY the JSON object shown below. Do NOT write code, do NOT write a
+program or function, do NOT use markdown, code fences, headings, or explanations.
+You are an analyst, not a programmer. The JSON object must have actual values —
+never empty strings or empty lists.
+
 {
   "narrative": "2-3 sentence summary",
   "fraud_type": "MULE_RING|BURST_ATTACK|MERCHANT_COLLUSION|ACCOUNT_TAKEOVER|OTHER",

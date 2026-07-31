@@ -18,6 +18,19 @@ except ImportError:
     EvidenceCollector = None
     NarrativeParser = None
 
+try:
+    from infrastructure.redis_bridge import create_sync_redis
+except ImportError:
+    from store.sync_redis import SyncRedisClient
+
+    def create_sync_redis():
+        import os
+        return SyncRedisClient(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", "6379")),
+            db=int(os.getenv("REDIS_DB", "0")),
+        )
+
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, queue="investigation")
 def generate_investigation(self, txn_id: str, ensemble_result_json: str):
@@ -50,17 +63,17 @@ def generate_investigation(self, txn_id: str, ensemble_result_json: str):
         report_dict = report.to_dict()
 
         try:
-            from infrastructure.redis_bridge import create_sync_redis
-            redis = create_sync_redis()
             result = {
                 "status": "success",
                 "txn_id": txn_id,
                 "report": report_dict,
                 "generated_at": datetime.utcnow().isoformat(),
             }
-            redis.set(f"investigation:{txn_id}", json.dumps(result), ttl=86400)
-        except Exception:
-            pass
+            redis = create_sync_redis()
+            ok = redis.set(f"investigation:{txn_id}", json.dumps(result), ttl=86400)
+            logger.info(f"Investigation stored for {txn_id}: {ok}")
+        except Exception as e:
+            logger.error(f"Investigation store failed for {txn_id}: {e}", exc_info=True)
 
         logger.info(f"Investigation complete for {txn_id}: {report_dict['fraud_type']}/{report_dict['confidence']}")
         return {"status": "success", "txn_id": txn_id, "report": report_dict}
