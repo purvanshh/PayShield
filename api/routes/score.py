@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import time
+import statistics
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 try:
-    from engine.statistical_filter import StatisticalFilter
+    from engine.statistical_filter import StatisticalFilter, GeoPoint
     from engine.ensemble import EnsembleFusionEngine, EnsembleResult
     _engines_available = True
 except ImportError:
@@ -28,6 +29,101 @@ try:
     _celery_available = True
 except ImportError:
     _celery_available = False
+
+
+async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, dict, GeoPoint | None, dict | None]:
+    """Record the transaction in Redis and derive velocity/geo features from real history."""
+    now = txn.timestamp.timestamp()
+    user_id = txn.user_id
+    device = txn.device_fingerprint or "UNKNOWN_DEVICE"
+    merchant = txn.merchant_id
+    amount = txn.amount
+
+    user_key = f"velocity:user:{user_id}"
+    dev_key = f"velocity:dev:{device}"
+    loc_key = f"velocity:loc:{user_id}"
+
+    entry = json.dumps({"ts": now, "amount": amount, "merchant": merchant, "user": user_id, "device": device})
+
+    try:
+        pipe = await redis.pipeline()
+        pipe.lpush(user_key, entry)
+        pipe.ltrim(user_key, 0, 999)
+        pipe.expire(user_key, 7 * 86400)
+        pipe.lpush(dev_key, entry)
+        pipe.ltrim(dev_key, 0, 999)
+        pipe.expire(dev_key, 7 * 86400)
+        await pipe.execute()
+    except Exception as e:
+        logger.warning(f"feature_record_failed: {e}")
+
+    def parse_entries(raw: list[str]) -> list[dict]:
+        out = []
+        for r in raw:
+            try:
+                d = json.loads(r)
+                out.append(d)
+            except Exception:
+                continue
+        return out
+
+    last_loc = None
+    try:
+        raw_loc = await redis.get(loc_key)
+        if raw_loc:
+            loc_data = json.loads(raw_loc)
+            last_loc = GeoPoint(lat=loc_data["lat"], lon=loc_data["lon"], timestamp=loc_data["ts"])
+    except Exception:
+        pass
+
+    if txn.location:
+        try:
+            await redis.set(loc_key, json.dumps({"lat": txn.location.lat, "lon": txn.location.lon, "ts": now}), ttl=7 * 86400)
+        except Exception:
+            pass
+
+    try:
+        user_txns = parse_entries(await redis.lrange(user_key, 0, -1))
+        dev_txns = parse_entries(await redis.lrange(dev_key, 0, -1))
+    except Exception:
+        user_txns, dev_txns = [], []
+
+    past = [e for e in user_txns if e["ts"] < now - 1]
+    window_5m = [e for e in past if e["ts"] >= now - 300]
+    window_1h = [e for e in past if e["ts"] >= now - 3600]
+    window_24h = [e for e in past if e["ts"] >= now - 86400]
+
+    amounts = [e["amount"] for e in past]
+    median_amount = statistics.median(amounts) if amounts else 500.0
+    std_amount = statistics.pstdev(amounts) if len(amounts) > 1 else median_amount * 0.25
+    z_score = (amount - median_amount) / std_amount if std_amount > 0 else 0.0
+
+    dev_window_24h = [e for e in dev_txns if e["ts"] >= now - 86400]
+    distinct_users_dev = len({e["user"] for e in dev_window_24h})
+
+    velocity_features = {
+        "txn_count_5m": len(window_5m),
+        "txn_count_1h": len(window_1h),
+        "amount_total_1h": round(sum(e["amount"] for e in window_1h), 2),
+        "device_txn_count_24h": len(dev_window_24h),
+        "distinct_users_last_24h": distinct_users_dev,
+        "ip_txn_count_5m": 0,
+        "distinct_merchants_1h": len({e["merchant"] for e in window_1h}),
+    }
+    deviation_features = {
+        "baseline_txn_count_24h": len(window_24h),
+        "median_amount_30d": median_amount,
+        "amount_z_score": round(z_score, 4),
+    }
+    baseline = {
+        "max_location_distance_km": 50.0,
+        "centroid_lat": last_loc.lat if last_loc else None,
+        "centroid_lon": last_loc.lon if last_loc else None,
+    }
+    if baseline["centroid_lat"] is None:
+        baseline = None
+
+    return velocity_features, deviation_features, last_loc, baseline
 
 
 @router.post("/score", response_model=FraudScoreResponse)
@@ -53,8 +149,26 @@ async def score_transaction(
     txn_dict["timestamp"] = txn.timestamp.timestamp()
 
     try:
+        velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+    except Exception as e:
+        logger.warning(f"feature_build_failed: {e}")
+        velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
+
+    try:
         if stat_filter:
-            layer1_result = await stat_filter.evaluate(txn_dict, redis)
+            layer1_result = await stat_filter.evaluate(
+                velocity_features,
+                deviation_features,
+                current_loc=GeoPoint(lat=txn.location.lat, lon=txn.location.lon, timestamp=txn.timestamp.timestamp()) if txn.location else None,
+                last_loc=last_loc,
+                baseline=baseline,
+                account_age_days=365.0,
+                user_country=None,
+                txn_country=None,
+                merchant_id=txn.merchant_id,
+                amount=txn.amount,
+                is_shell_merchant=False,
+            )
         else:
             layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
     except Exception as e:
@@ -137,10 +251,20 @@ async def batch_score(
     async def score_single(txn: ScoreRequest):
         async with sem:
             try:
-                txn_dict = txn.model_dump()
-                txn_dict["timestamp"] = txn.timestamp.timestamp()
+                try:
+                    velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+                except Exception:
+                    velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
                 if stat_filter:
-                    layer1_result = await stat_filter.evaluate(txn_dict, redis)
+                    layer1_result = await stat_filter.evaluate(
+                        velocity_features,
+                        deviation_features,
+                        current_loc=GeoPoint(lat=txn.location.lat, lon=txn.location.lon, timestamp=txn.timestamp.timestamp()) if txn.location else None,
+                        last_loc=last_loc,
+                        baseline=baseline,
+                        merchant_id=txn.merchant_id,
+                        amount=txn.amount,
+                    )
                 else:
                     layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
                 l2r = type("L2", (), {"fraud_probability": 0.0, "source": "L2_GNN", "graph_features": {}, "latency_ms": 0.0})()
