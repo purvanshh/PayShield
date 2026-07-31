@@ -4,8 +4,8 @@
 
 ### L2 GNN — first measured performance (`scripts/benchmark_gnn.py`)
 - Heterogeneous ego-graph dataset built from the synthetic UPI generator (30k txns, 5,558 ego-graphs, user-disjoint split)
-- **Measured**: test AUC-ROC 0.692, PR-AUC 0.198, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p90 1.5 ms / p99 2.5 ms (CPU)
-- **Baseline**: edge-free MLP AUC-ROC 0.481, PR-AUC 0.056 — graph structure worth ~3.5× PR-AUC
+- **Measured**: test PR-AUC 0.198 (lead metric for imbalanced fraud — 3.5× vs. baseline), AUC-ROC 0.692, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p90 1.5 ms / p99 2.5 ms (CPU)
+- **Baseline**: edge-free MLP PR-AUC 0.056 (AUC-ROC 0.481) — graph structure worth ~3.5× PR-AUC lift
 - Corrected unmeasured model-card claims (AUC ">0.92" → 0.692; params ~15K → 53,826; latency "<50 ms" → p99 2.5 ms)
 - Results: `models/gnn_benchmark_results.json`; card: `models/payshield_gnn_v1_card.md`
 

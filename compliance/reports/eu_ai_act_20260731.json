@@ -1,0 +1,56 @@
+{
+  "framework": "EU_AI_ACT",
+  "score": 33,
+  "findings": [
+    {
+      "control_id": "RM-1",
+      "severity": "high",
+      "description": "Risk assessment document not found \u2014 EU AI Act requires documented risk management",
+      "remediation": "Create risk assessment document at docs/security/risk-assessment.md and update quarterly",
+      "status": "open",
+      "evidence": {}
+    },
+    {
+      "control_id": "DG-1",
+      "severity": "medium",
+      "description": "Bias detection report directory not found",
+      "remediation": "Run bias detection pipeline and store reports in reports/bias_detection/",
+      "status": "open",
+      "evidence": {}
+    },
+    {
+      "control_id": "DG-2",
+      "severity": "medium",
+      "description": "Demographic performance metrics tracking not enabled",
+      "remediation": "Set TRACK_DEMOGRAPHIC_METRICS=true and configure per-group performance monitoring",
+      "status": "open",
+      "evidence": {}
+    },
+    {
+      "control_id": "TR-1",
+      "severity": "high",
+      "description": "No model cards found \u2014 EU AI Act requires transparency documentation",
+      "remediation": "Generate model cards for all production models",
+      "status": "open",
+      "evidence": {}
+    },
+    {
+      "control_id": "HO-1",
+      "severity": "high",
+      "description": "Human review agent not enabled \u2014 EU AI Act requires human oversight for high-risk AI",
+      "remediation": "Set ENABLE_HUMAN_REVIEW=true and ensure HumanReviewAgent is operational",
+      "status": "open",
+      "evidence": {}
+    },
+    {
+      "control_id": "RB-1",
+      "severity": "medium",
+      "description": "Adversarial testing reports not found \u2014 quarterly robustness testing required",
+      "remediation": "Run adversarial testing (noise injection on features) and store reports in reports/adversarial/",
+      "status": "open",
+      "evidence": {}
+    }
+  ],
+  "passed": false,
+  "generated_at": "2026-07-31T17:31:34.138437+00:00"
+}

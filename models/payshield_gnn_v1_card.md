@@ -30,13 +30,16 @@
 
 ## Performance (measured 2026-07-31)
 
-| Metric | Value |
-|--------|-------|
-| Test AUC-ROC | **0.692** |
-| Test PR-AUC | **0.198** |
-| FPR @ 90% recall | 0.71 |
-| Edge-free MLP baseline AUC-ROC | 0.481 (PR-AUC 0.056) |
-| Inference p50 / p90 / p99 (CPU) | 1.0 / 1.5 / 2.5 ms |
+PR-AUC is the lead metric — at fraud rates ~0.1% (and 5% here), AUC-ROC is
+dominated by correctly ranking the legitimate majority; PR-AUC measures the
+minority (fraud) class directly.
+
+| Metric | GNN | Edge-free MLP baseline | Lift |
+|--------|-----|------------------------|------|
+| **Test PR-AUC (lead)** | **0.198** | 0.056 | **3.5×** |
+| Test AUC-ROC | 0.692 | 0.481 | +0.21 |
+| FPR @ 90% recall | 0.71 | 0.91 | −0.20 |
+| Inference p50 / p90 / p99 (CPU) | 1.0 / 1.5 / 2.5 ms | — | — |
 
 Provenance: `python scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`.
 ⚠️ This card previously claimed "AUC-ROC > 0.92" — that number was never measured and is replaced by the values above.

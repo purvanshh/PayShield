@@ -13,10 +13,13 @@
     "fraud_ratio": 0.05
   },
   "performance": {
-    "test_auc_roc": 0.692,
+    "lead_metric": "PR-AUC (minority class; AUC-ROC dominated by legitimate majority)",
     "test_pr_auc": 0.198,
+    "test_auc_roc": 0.692,
     "fpr_at_0.90_recall": 0.71,
     "baseline_mlp_auc_roc": 0.481,
+    "baseline_mlp_pr_auc": 0.056,
+    "pr_auc_lift_vs_baseline": 3.5,
     "inference_p50_ms_cpu": 1.0,
     "inference_p99_ms_cpu": 2.5,
     "parameters": 53826,

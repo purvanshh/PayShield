@@ -96,8 +96,8 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 
 - **Architecture**: 2-layer HeteroConv + SAGEConv (mean aggregation), hidden 64, global mean pooling readout + MLP, 53,826 params
 - **Graph schema**: node types `user` (5) / `merchant` (19) / `device` (4) / `transaction` (4); edge types `performed`, `to`, `used`, `shared_by`, `transferred_to` (P2P)
-- **Measured (synthetic, 2026-07-31)**: test AUC-ROC 0.692, PR-AUC 0.198, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p99 2.5 ms on CPU
-- **vs. edge-free MLP baseline**: AUC 0.48, PR-AUC 0.056 — the per-relationship propagation of HeteroConv is worth ~3.5× PR-AUC over ignoring graph structure
+- **Measured (synthetic, 2026-07-31)**: test PR-AUC 0.198 — the lead metric for imbalanced fraud (3.5× the edge-free MLP baseline 0.056); AUC-ROC 0.692, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p99 2.5 ms on CPU
+- **vs. edge-free MLP baseline**: PR-AUC 0.056, AUC 0.48 — the per-relationship propagation of HeteroConv is worth the ~3.5× PR-AUC lift over ignoring graph structure
 - **Provenance**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`; model card `models/payshield_gnn_v1_card.md`
 - ⚠️ Not yet fused into the live `/v1/score` decision path (see README Limitations)
 

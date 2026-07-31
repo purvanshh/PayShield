@@ -74,17 +74,19 @@ Everything below is measured against the live stack (`docker compose`), not simu
 
 Measured on 30k synthetic transactions (10k users, 1k merchants, 5% fraud, seed 42), user-disjoint 80/10/10 split, early-stopped training:
 
-| Metric | GNN (HeteroConv+GraphSAGE) | Edge-free MLP baseline |
-|--------|---------------------------|------------------------|
-| AUC-ROC (test) | **0.692** | 0.481 |
-| PR-AUC (test) | **0.198** | 0.056 |
-| FPR @ 90% recall | **0.71** | 0.91 |
-| Inference (CPU, per ego-graph) | p50 **1.0 ms** · p90 1.5 ms · p99 2.5 ms | — |
-| Parameters | 53,826 | — |
+| Metric (test set) | GNN (HeteroConv+GraphSAGE) | Edge-free MLP baseline | Lift |
+|-------------------|---------------------------|------------------------|------|
+| **PR-AUC** (lead metric for imbalanced fraud) | **0.198** | 0.056 | **3.5×** |
+| AUC-ROC | 0.692 | 0.481 | +0.21 |
+| FPR @ 90% recall | 0.71 | 0.91 | −0.20 |
+| Inference (CPU, per ego-graph) | p50 **1.0 ms** · p90 1.5 ms · p99 2.5 ms | — | — |
+| Parameters | 53,826 | — | — |
+
+**Why PR-AUC leads**: at fraud rates like 0.1%, AUC-ROC is dominated by correctly ranking the 99.9% legitimate majority — it can look high while the fraud class is missed. PR-AUC measures performance on the minority (fraud) class directly, so it's the honest number to lead with. The graph layer's value is the **3.5× PR-AUC lift** over an edge-free MLP, not the absolute 0.198 on synthetic data.
 
 Graph schema (heterogeneous): **node types** `user` (5 feat: credit score, account age, KYC tier, txn frequency, device count), `merchant` (19 feat: 15 MCC one-hot + amount/refund/age/city), `device` (4 feat: OS, app version, emulator), `transaction` (4 feat: amount, hour, weekend, salary-day). **Edge types**: `performed` (user→txn), `to` (txn→merchant), `used` (user→device), `shared_by` (device→user), `transferred_to` (user→user, P2P).
 
-Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets its own SAGEConv weight matrix, so the model learns *per-relationship* propagation (shared-device mule rings ≠ merchant transfers) instead of collapsing the graph into one undirected adjacency — and the measured gap above (AUC 0.69 vs 0.48, PR-AUC 3.5×) is the empirical justification: the edge-free MLP that ignores graph structure is barely better than a coin flip on this data. Full results: `models/gnn_benchmark_results.json`. Caveat: trained on synthetic data; the model card's earlier "AUC > 0.92" claim was never measured and is corrected to these numbers.
+Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets its own SAGEConv weight matrix, so the model learns *per-relationship* propagation (shared-device mule rings ≠ merchant transfers) instead of collapsing the graph into one undirected adjacency — and the measured 3.5× PR-AUC lift above is the empirical justification: the edge-free MLP that ignores graph structure is barely better than a coin flip on this data. Full results: `models/gnn_benchmark_results.json`. Caveat: trained on synthetic data; the model card's earlier "AUC > 0.92" claim was never measured and is corrected to these numbers.
 
 ### Compliance (programmatic checkers — see `COMPLIANCE_DELTA.md`)
 
@@ -135,7 +137,7 @@ Notable issues found and fixed while bringing the stack up end-to-end:
 | 15 | Container rebuilds wiped audit/explanation artifacts | code dirs shadowed by volumes | named volumes on leaf data dirs (`store/audit_logs`, `store/feedback`, `models/production/explanations`, `compliance/reports`) |
 | 16 | Synthetic generator crashed: `Cannot choose from an empty sequence` | `CITY_TIER_WEIGHTS` samples `tier4` but `INDIAN_CITIES` had no tier-4 cities | added 4 tier-4 cities (Agra, Varanasi, Kochi, Gwalior) |
 | 17 | Synthetic generator crashed on device generation | `random.choice` called with `weights=` kwarg (numpy API on stdlib RNG) | `rng.choices(..., weights=[...])[0]` |
-| 18 | GNN benchmark revealed the model card's `AUC > 0.92` was never measured | aspirational claim from the design phase | corrected to measured test AUC 0.692 (`scripts/benchmark_gnn.py`, `models/gnn_benchmark_results.json`); also fixed L2 claims: params 53,826 (not ~15K), CPU latency p99 2.5 ms (not < 50 ms) |
+| 18 | GNN benchmark revealed the model card's `AUC > 0.92` was never measured | aspirational claim from the design phase | corrected to measured test PR-AUC 0.198 (3.5× vs edge-free MLP 0.056) + AUC-ROC 0.692 (`scripts/benchmark_gnn.py`, `models/gnn_benchmark_results.json`); also fixed L2 claims: params 53,826 (not ~15K), CPU latency p99 2.5 ms (not < 50 ms) |
 
 ---
 
@@ -169,7 +171,7 @@ Honest accounting of what this system does not do yet:
 - **MFA**: PCI-DSS 8.3 deferred — TOTP for admin accounts is the next hardening item.
 - **GNN on CPU**: L2 is CPU-bound; a GPU would cut the already-sub-2.5ms inference further and speed up retraining.
 - **Real UPI volume**: everything is tested on synthetic data; real NPCI traffic has different seasonality and mule-ring density.
-- **GNN accuracy**: measured AUC-ROC 0.69 (PR-AUC 0.20) on synthetic ego-graphs — the relational lift over an edge-free MLP is real (3.5× PR-AUC) but the absolute numbers are modest; improvement paths: per-node readout instead of graph-level pooling, more history, real data.
+- **GNN accuracy**: measured test PR-AUC 0.198 (3.5× vs. edge-free MLP baseline 0.056), AUC-ROC 0.692 on synthetic ego-graphs — the relational lift over an edge-free MLP is real and consistent, but the absolute numbers are modest; improvement paths: per-node readout instead of graph-level pooling, more history, real data.
 - **Model retraining**: auto-trigger exists (reflection task) but the manual approval gate for promotion is not wired — `POST /admin/models/promote` is the manual step.
 - **LLM on CPU**: ~35 s per investigation is fine async, but GPU (or an API fallback) would enable real-time investigation.
 - **L2 in the live path**: `/v1/score` currently routes through L1 rules + Redis features; the GNN runs as a benchmarked module and in `graph_model.py` paths, not yet fused into every live decision.

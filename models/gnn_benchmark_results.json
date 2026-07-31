@@ -1,6 +1,7 @@
 {
   "generated_at": "2026-07-31T17:09:39Z",
   "device": "cpu",
+  "lead_metric": "PR-AUC — for imbalanced fraud, AUC-ROC is dominated by the legitimate majority; PR-AUC measures the minority (fraud) class directly",
   "data": {
     "source": "synthetic UPI generator (scripts/generate_synthetic_data.py)",
     "users": 10000,
@@ -91,7 +92,8 @@
       "f1@0.3": 0.1087,
       "f1@0.5": 0.0,
       "f1@0.7": 0.0
-    }
+    },
+    "pr_auc_lift_vs_gnn": 3.5
   },
   "limitations": [
     "trained on synthetic data; real UPI traffic has different seasonality",

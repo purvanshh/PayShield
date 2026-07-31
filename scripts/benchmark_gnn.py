@@ -432,6 +432,7 @@ def main():
     results = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "device": str(device),
+        "lead_metric": "PR-AUC — for imbalanced fraud, AUC-ROC is dominated by the legitimate majority; PR-AUC measures the minority (fraud) class directly",
         "data": {"source": "synthetic UPI generator (scripts/generate_synthetic_data.py)",
                  "users": args.users, "merchants": args.merchants,
                  "transactions": args.txns, "fraud_ratio": args.fraud_ratio, "seed": args.seed},
@@ -448,7 +449,8 @@ def main():
                 "test_metrics": gnn_test,
                 "inference_latency_ms_cpu": latency},
         "baseline": {"architecture": "edge-free MLP (FraudClassifier) on 5 target-user features",
-                     "test_metrics": mlp_test},
+                     "test_metrics": mlp_test,
+                     "pr_auc_lift_vs_gnn": round(gnn_test["auc_pr"] / max(mlp_test["auc_pr"], 1e-9), 1)},
         "limitations": [
             "trained on synthetic data; real UPI traffic has different seasonality",
             "graph-level readout mean-pools all users in the ego-graph",
@@ -462,10 +464,11 @@ def main():
     print(f"\nResults saved to {out}")
 
     print("\n=== Summary ===")
-    print(f"GNN test:      AUC-ROC {gnn_test['auc_roc']}  PR-AUC {gnn_test['auc_pr']}  "
+    print(f"GNN test:      PR-AUC {gnn_test['auc_pr']} (lead)  AUC-ROC {gnn_test['auc_roc']}  "
           f"FPR@0.90recall {gnn_test['fpr_at_0.90_recall']}")
-    print(f"MLP baseline:  AUC-ROC {mlp_test['auc_roc']}  PR-AUC {mlp_test['auc_pr']}  "
+    print(f"MLP baseline:  PR-AUC {mlp_test['auc_pr']}  AUC-ROC {mlp_test['auc_roc']}  "
           f"FPR@0.90recall {mlp_test.get('fpr_at_0.90_recall', 'n/a')}")
+    print(f"PR-AUC lift vs. edge-free baseline: {gnn_test['auc_pr'] / max(mlp_test['auc_pr'], 1e-9):.1f}x")
     print(f"Latency (CPU): p50 {latency['p50_ms']} ms  p90 {latency['p90_ms']} ms  "
           f"p99 {latency['p99_ms']} ms")
 

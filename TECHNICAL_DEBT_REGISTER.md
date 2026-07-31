@@ -15,7 +15,7 @@
 | TD-009 | Test coverage below 80% for agents and compliance modules | Regression risk | 2 weeks | P2 | TBD | Q4 2026 |
 | TD-010 | API rate limiter not distributed (in-memory per pod) | Ineffective with >1 replica | 2 days | P2 | TBD | Q4 2026 |
 | TD-011 | MFA not implemented for admin accounts (PCI-DSS 8.3) | PCI compliance gap (medium finding) | 3 days | P2 | TBD | Q4 2026 |
-| TD-012 | L2 GNN is a stub — registry has no production model | Graph layer adds no signal yet | 2 weeks | P1 | TBD | Q4 2026 |
+| TD-012 | L2 GNN benchmarked (PR-AUC 0.198 = 3.5× edge-free MLP) but not fused into live `/v1/score` decisions | graph signal validated offline only; live path is L1 rules + Redis features | 2 weeks | P1 | TBD | Q4 2026 |
 
 ## Resolved Debt & Fixes (2026-07-31)
 
@@ -33,6 +33,8 @@
 | PSI false spikes (43.4 → 3.86) | robust estimator: shared quantile bins + bin-count scaling + Laplace smoothing |
 | Drift sampling never recorded | missing `await` + zset member/score convention mismatch |
 | Artifacts wiped on container rebuild | named compose volumes on leaf data dirs |
+| GNN card claimed unmeasured AUC > 0.92 | measured PR-AUC 0.198 / AUC-ROC 0.692 (3.5× edge-free MLP), latency p99 2.5 ms — `scripts/benchmark_gnn.py` |
+| Synthetic generator crashed on `tier4` + `random.choice(weights=)` | added tier-4 cities; `choices(...)[0]`; guarded zero-attack division in fraud injector |
 
 ## Priority Definitions
 
