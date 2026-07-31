@@ -44,6 +44,15 @@ async def submit_feedback(
     await redis.ltrim("feedback:recent", 0, 999)
 
     try:
+        import os
+        feedback_dir = "store/feedback"
+        os.makedirs(feedback_dir, exist_ok=True)
+        with open(os.path.join(feedback_dir, f"{feedback_id}.json"), "w") as f:
+            json.dump(payload, f, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to persist feedback to disk: {e}")
+
+    try:
         from agents.human_review_agent import HumanReviewAgent
         from agents.base import AgentConfig
         from agents.message import AgentMessage

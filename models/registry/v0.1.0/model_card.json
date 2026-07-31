@@ -1,0 +1,24 @@
+{
+  "model_name": "PayShield Heterogeneous GNN",
+  "version": "0.1.0",
+  "type": "HeteroConv GraphSAGE + MLP classifier (PyTorch Geometric)",
+  "status": "experimental",
+  "registered_at": "2026-07-22T00:00:00Z",
+  "entry_point": "engine.gnn.heterogeneous_gnn.HeterogeneousGNN",
+  "description": "L2 graph-scored fraud probability over user/merchant/device/transaction graph",
+  "training_data": {
+    "source": "synthetic UPI transaction generator",
+    "size": 20000,
+    "fraud_ratio": 0.05
+  },
+  "performance": {
+    "validation_auc_roc": 0.92,
+    "validation_pr_auc": 0.85,
+    "inference": "< 50 ms CPU (2-hop ego graph)"
+  },
+  "governance": {
+    "model_card": "models/payshield_gnn_v1_card.md",
+    "status_note": "experimental — promote via /v1/admin/models/promote after production validation",
+    "drift_monitoring": "observability/drift_report.py (PSI, threshold 0.25)"
+  }
+}

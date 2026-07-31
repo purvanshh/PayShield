@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import time
 import statistics
 from datetime import datetime
@@ -154,6 +155,9 @@ async def score_transaction(
         logger.warning(f"feature_build_failed: {e}")
         velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
 
+    await _record_drift_samples(redis, velocity_features)
+
+    t1 = time.time()
     try:
         if stat_filter:
             layer1_result = await stat_filter.evaluate(
@@ -174,6 +178,7 @@ async def score_transaction(
     except Exception as e:
         logger.error(f"Layer1 evaluation failed: {e}")
         layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
+    l1_ms = (time.time() - t1) * 1000
 
     l1_decision = getattr(layer1_result, "decision", "ALLOW")
     if l1_decision == "BLOCK":
@@ -182,13 +187,18 @@ async def score_transaction(
             "decision": "BLOCK",
             "fraud_probability": 1.0,
             "layer_triggered": "L1_STATISTICAL",
-            "evidence": {"triggered_rules": getattr(layer1_result, "triggered_rules", [])},
+            "evidence": {
+                "triggered_rules": getattr(layer1_result, "triggered_rules", []),
+                "latency_breakdown": {"l1_rules_ms": round(l1_ms, 2), "ensemble_ms": 0.0},
+            },
             "latency_ms": 0.0,
             "model_version": "1.0.0",
         }
         elapsed = (time.time() - start) * 1000
         result["latency_ms"] = round(elapsed, 2)
+        _persist_explanation(txn, layer1_result, velocity_features, deviation_features, result)
         _enqueue_investigation(txn.txn_id, result)
+        _append_audit_entry(txn, result)
         try:
             await _cache_result(redis, txn_hash, result)
         except Exception:
@@ -201,11 +211,13 @@ async def score_transaction(
         "latency_ms": 0.0,
     })()
 
+    t2 = time.time()
     try:
         ensemble_result = ensemble.fuse(layer1_result, l2_result) if ensemble else EnsembleResult()
     except Exception as e:
         logger.error(f"Ensemble fusion failed: {e}")
         ensemble_result = EnsembleResult()
+    ensemble_ms = (time.time() - t2) * 1000
 
     response_data = {
         "txn_id": txn.txn_id,
@@ -215,6 +227,7 @@ async def score_transaction(
         "evidence": {
             "triggered_rules": getattr(layer1_result, "triggered_rules", []),
             "ensemble_confidence": getattr(ensemble_result, "confidence", 0.0),
+            "latency_breakdown": {"l1_rules_ms": round(l1_ms, 2), "ensemble_ms": round(ensemble_ms, 2)},
         },
         "latency_ms": 0.0,
         "model_version": "1.0.0",
@@ -223,6 +236,7 @@ async def score_transaction(
     response_data["latency_ms"] = round(elapsed, 2)
 
     if response_data["decision"] in ("BLOCK", "REVIEW"):
+        _persist_explanation(txn, layer1_result, velocity_features, deviation_features, response_data)
         _enqueue_investigation(txn.txn_id, response_data)
         await _broadcast_alert(request, txn.txn_id, response_data)
 
@@ -230,6 +244,8 @@ async def score_transaction(
         await _cache_result(redis, txn_hash, response_data)
     except Exception:
         pass
+
+    _append_audit_entry(txn, response_data, redis)
 
     return FraudScoreResponse(**response_data)
 
@@ -253,6 +269,7 @@ async def batch_score(
             try:
                 try:
                     velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+                    await _record_drift_samples(redis, velocity_features)
                 except Exception:
                     velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
                 if stat_filter:
@@ -325,3 +342,66 @@ async def _cache_result(redis, txn_hash: str, result: dict, ttl: int = 60):
         await redis.set(f"idempotent:{txn_hash}", json.dumps(result), ttl=ttl)
     except Exception:
         pass
+
+
+async def _record_drift_samples(redis, velocity_features: dict):
+    """Log per-feature values into time-scored zsets for PSI drift analysis.
+
+    Convention: member = "{ts}:{value}" (unique per sample), score = timestamp.
+    """
+    try:
+        import time as _time
+        now = _time.time()
+        pipe = await redis.pipeline()
+        for name, value in velocity_features.items():
+            if isinstance(value, (int, float)):
+                pipe.zadd(f"drift:feat:{name}", {f"{now}:{float(value)}": now})
+        pipe.zremrangebyscore("drift:feat:txn_count_5m", 0, now - 48 * 3600)
+        await pipe.execute()
+    except Exception as e:
+        logger.debug(f"drift_sample_record_failed: {e}")
+
+
+def _persist_explanation(txn, layer1_result, velocity_features: dict, deviation_features: dict, result: dict):
+    """Persist explanation artifacts for BLOCK/REVIEW decisions (RBI AI-1 / PCI 10.x)."""
+    try:
+        explanation_dir = "models/production/explanations"
+        os.makedirs(explanation_dir, exist_ok=True)
+        artifact = {
+            "txn_id": txn.txn_id,
+            "decision": result["decision"],
+            "triggered_rules": getattr(layer1_result, "triggered_rules", []),
+            "rule_details": getattr(layer1_result, "rule_details", []),
+            "velocity_features": velocity_features,
+            "deviation_features": deviation_features,
+            "explanation_source": "L1_STATISTICAL",
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+        path = os.path.join(explanation_dir, f"{txn.txn_id}.json")
+        with open(path, "w") as f:
+            json.dump(artifact, f, indent=2)
+    except Exception as e:
+        logger.debug(f"explanation_persist_failed: {e}")
+
+
+def _append_audit_entry(txn, result: dict, redis=None):
+    """Append tamper-evident, PII-masked audit entry for every decision."""
+    try:
+        from store.audit_log import AuditLogWriter
+        writer = AuditLogWriter()
+        writer.append(
+            event_type="SCORE_DECISION",
+            actor=txn.user_id,
+            decision=result["decision"],
+            payload={
+                "txn_id": txn.txn_id,
+                "merchant_id": txn.merchant_id,
+                "amount": txn.amount,
+                "device_fingerprint": txn.device_fingerprint,
+                "fraud_probability": result["fraud_probability"],
+                "layer_triggered": result["layer_triggered"],
+                "triggered_rules": result["evidence"].get("triggered_rules", []),
+            },
+        )
+    except Exception as e:
+        logger.debug(f"audit_append_failed: {e}")

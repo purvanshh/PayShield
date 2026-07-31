@@ -13,5 +13,6 @@ roles:
   system:
     - score:write
     - investigation:read
+    - feedback:write
     - metrics:read
     - health:read

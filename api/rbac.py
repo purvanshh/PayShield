@@ -2,7 +2,7 @@ import logging
 from functools import wraps
 from typing import Any, Callable
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
@@ -17,13 +17,16 @@ from api.auth import AuthManager, UserPrincipal
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)) -> Any:
-    if credentials is None:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    x_api_key: str | None = Header(default=None),
+) -> Any:
+    if credentials is None and x_api_key is None:
         raise HTTPException(status_code=401, detail="Missing authentication credentials")
     auth = AuthManager()
-    principal = auth.verify_access_token(credentials.credentials)
+    principal = auth.verify_access_token(credentials.credentials) if credentials else None
     if principal is None:
-        principal = auth.verify_api_key(credentials.credentials)
+        principal = auth.verify_api_key((credentials.credentials if credentials else x_api_key) or "")
     if principal is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return principal

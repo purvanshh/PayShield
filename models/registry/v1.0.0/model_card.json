@@ -1,0 +1,19 @@
+{
+  "model_name": "PayShield Statistical Risk Filter",
+  "version": "1.0.0",
+  "type": "Rule-based statistical pre-filter (velocity, geo, benford, z-score)",
+  "status": "production",
+  "registered_at": "2026-07-22T00:00:00Z",
+  "entry_point": "engine.statistical_filter.StatisticalFilter",
+  "description": "L1 statistical risk filter scoring every UPI transaction in real time",
+  "performance": {
+    "p50_latency_ms": 1.5,
+    "p90_latency_ms": 2.7,
+    "decision_accuracy": "rule-driven; threshold tuned on synthetic 20k txn benchmark"
+  },
+  "governance": {
+    "model_card": "models/payshield_gnn_v1_card.md (L2 companion)",
+    "explanation_artifacts": "models/production/explanations/{txn_id}.json",
+    "drift_monitoring": "observability/drift_report.py (PSI, threshold 0.25)"
+  }
+}
