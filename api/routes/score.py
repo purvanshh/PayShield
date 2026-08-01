@@ -32,6 +32,44 @@ try:
 except ImportError:
     _celery_available = False
 
+try:
+    from observability.metrics import (
+        fraud_score_histogram,
+        inference_latency,
+        layer1_block_rate,
+        layer2_escalation_rate,
+        llm_queue_depth,
+        redis_hit_rate,
+    )
+    _metrics_available = True
+except ImportError:
+    _metrics_available = False
+
+
+def _observe_l1_block(result: dict, l1_ms: float):
+    if not _metrics_available:
+        return
+    try:
+        layer1_block_rate.inc()
+        fraud_score_histogram.observe(1.0)
+        inference_latency.labels(layer="l1_rules").observe(l1_ms / 1000.0)
+    except Exception as e:
+        logger.debug(f"metrics_record_failed: {e}")
+
+
+def _observe_ensemble(result: dict, l1_ms: float, l2_ms: float, ensemble_ms: float, l2_escalated: bool):
+    if not _metrics_available:
+        return
+    try:
+        fraud_score_histogram.observe(result["fraud_probability"])
+        inference_latency.labels(layer="l1_rules").observe(l1_ms / 1000.0)
+        if l2_escalated:
+            layer2_escalation_rate.inc()
+            inference_latency.labels(layer="l2_gnn").observe(l2_ms / 1000.0)
+        inference_latency.labels(layer="ensemble").observe(ensemble_ms / 1000.0)
+    except Exception as e:
+        logger.debug(f"metrics_record_failed: {e}")
+
 
 async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, dict, GeoPoint | None, dict | None]:
     """Record the transaction in Redis and derive velocity/geo features from real history."""
@@ -198,6 +236,7 @@ async def score_transaction(
         }
         elapsed = (time.time() - start) * 1000
         result["latency_ms"] = round(elapsed, 2)
+        _observe_l1_block(result, l1_ms)
         _persist_explanation(txn, layer1_result, velocity_features, deviation_features, result)
         _enqueue_investigation(txn.txn_id, result)
         _append_audit_entry(txn, result)
@@ -244,6 +283,14 @@ async def score_transaction(
     }
     elapsed = (time.time() - start) * 1000
     response_data["latency_ms"] = round(elapsed, 2)
+
+    _observe_ensemble(
+        response_data,
+        l1_ms,
+        getattr(l2_result, "latency_ms", 0.0),
+        ensemble_ms,
+        l2_escalated=l2_status == "SUCCESS",
+    )
 
     if response_data["decision"] in ("BLOCK", "REVIEW"):
         _persist_explanation(txn, layer1_result, velocity_features, deviation_features, response_data)

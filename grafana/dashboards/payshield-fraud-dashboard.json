@@ -1,0 +1,167 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Layer 1 BLOCK Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(layer1_block_total[5m]))",
+          "legendFormat": "blocks/min",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Layer 2 Escalation Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(layer2_escalation_total[5m]))",
+          "legendFormat": "escalations/min",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Inference Latency by Layer (p95)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(inference_latency_seconds_bucket[5m])) by (le, layer))",
+          "legendFormat": "{{ layer }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Fraud Probability Distribution",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(fraud_score_bucket[5m])) by (le)",
+          "legendFormat": "<= {{ le }}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Infrastructure Health",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "up{job=\"payshield-api\"}",
+          "legendFormat": "API up",
+          "refId": "A"
+        },
+        {
+          "expr": "llm_investigation_queue_depth",
+          "legendFormat": "LLM queue depth",
+          "refId": "B"
+        },
+        {
+          "expr": "redis_feature_store_hit_rate",
+          "legendFormat": "Redis hit rate",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Recent BLOCK Events",
+      "type": "logs",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 16 },
+      "targets": [
+        {
+          "expr": "layer1_block_total",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["payshield", "fraud"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "PayShield Fraud Detection",
+  "uid": "payshield-fraud-overview",
+  "version": 1,
+  "weekStart": ""
+}

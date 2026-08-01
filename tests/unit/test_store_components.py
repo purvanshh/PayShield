@@ -362,8 +362,9 @@ class TestMetrics:
         assert metrics_module.redis_hit_rate._name == "redis_feature_store_hit_rate"
 
     def test_counters_increment(self):
+        before = metrics_module.layer1_block_rate._value.get()
         metrics_module.layer1_block_rate.inc(1)
-        assert metrics_module.layer1_block_rate._value.get() == 1.0
+        assert metrics_module.layer1_block_rate._value.get() == before + 1
 
 
 class TestPostgresGlobals:

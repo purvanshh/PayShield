@@ -38,6 +38,11 @@ class TestHealthEndpoint:
     async def test_metrics_endpoint(self, client):
         resp = await client.get("/metrics")
         assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/plain")
+        body = resp.text
+        assert "layer1_block_total" in body
+        assert "fraud_score" in body
+        assert "inference_latency_seconds" in body
 
 
 class TestScoreEndpoint:

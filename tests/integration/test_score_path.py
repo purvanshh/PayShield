@@ -526,3 +526,65 @@ class TestBatchScoring:
         results = resp.json()["results"]
         assert all(r["decision"] == "ALLOW" for r in results)
         assert all("error" in r["evidence"] for r in results)
+
+
+class TestMetricsInstrumentation:
+    async def _baseline(self, ac):
+        body = (await ac.get("/metrics")).text
+        return {
+            "layer1_block_total": _counter_value(body, "layer1_block_total"),
+            "layer2_escalation_total": _counter_value(body, "layer2_escalation_total"),
+        }
+
+    async def test_l1_block_and_l2_escalation_are_recorded(self, client):
+        ac, resources = client
+        before = await self._baseline(ac)
+
+        redis = resources["redis"]
+        now = datetime.utcnow().timestamp()
+        bursts = [now - 60 + i * 2 for i in range(25)]
+        redis.seed_velocity(
+            "U_METRIC_001", "DEV_METRIC_001", bursts,
+            amounts=[10000.0] * 25, merchants=["M5502"] * 25,
+        )
+        redis.seed_velocity(
+            "U_METRIC_002", "DEV_METRIC_001", bursts,
+            amounts=[10000.0] * 25, merchants=["M5502"] * 25,
+        )
+        block_resp = await ac.post(
+            "/v1/score",
+            json=_txn_payload("TXN_METRIC_01", user_id="U_METRIC_001", device="DEV_METRIC_001"),
+            headers=HEADERS,
+        )
+        assert block_resp.status_code == 200
+        assert block_resp.json()["decision"] == "BLOCK"
+
+        db = resources["graph_db"]
+        _seed_graph_history(db, "U_METRIC_L2", "M5502", "DEV_METRIC_L2")
+        resources["l2_inference"].prob = 0.8
+        l2_resp = await ac.post(
+            "/v1/score",
+            json=_txn_payload("TXN_METRIC_L2_01", user_id="U_METRIC_L2", device="DEV_METRIC_L2"),
+            headers=HEADERS,
+        )
+        assert l2_resp.status_code == 200
+
+        after = await self._baseline(ac)
+        assert after["layer1_block_total"] == before["layer1_block_total"] + 1
+        assert after["layer2_escalation_total"] == before["layer2_escalation_total"] + 1
+
+    async def test_metrics_endpoint_serves_instrumented_series(self, client):
+        ac, resources = client
+        resp = await ac.get("/metrics")
+        assert resp.status_code == 200
+        body = resp.text
+        assert "fraud_score_bucket" in body
+        assert 'inference_latency_seconds_bucket{layer="l1_rules"' in body
+        assert 'inference_latency_seconds_bucket{layer="ensemble"' in body
+
+
+def _counter_value(body: str, name: str) -> float:
+    for line in body.splitlines():
+        if line.startswith(name) and not line.startswith(name + "_"):
+            return float(line.split()[-1])
+    return 0.0
