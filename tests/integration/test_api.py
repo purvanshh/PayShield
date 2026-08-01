@@ -120,3 +120,38 @@ class TestFeedbackEndpoint:
         )
         if resp.status_code == 200:
             assert resp.json()["status"] == "ok"
+
+
+class TestExperimentsEndpoint:
+    async def test_experiment_lifecycle(self, client):
+        headers = {"X-API-Key": "payshield-dev-key-2026"}
+        created = await client.post(
+            "/admin/experiments",
+            json={
+                "name": "ab-test-1",
+                "challenger_version": "v2",
+                "traffic_split": 0.1,
+                "experiment_type": "MODEL_CHALLENGER",
+                "champion_version": "v1",
+            },
+            headers=headers,
+        )
+        assert created.status_code == 200
+        exp = created.json()
+        assert exp["status"] == "canary"
+        assert exp["name"] == "ab-test-1"
+
+        listed = await client.get("/admin/experiments", headers=headers)
+        assert listed.status_code == 200
+        assert any(e["experiment_id"] == exp["experiment_id"] for e in listed.json())
+
+        results = await client.get(
+            f"/admin/experiments/{exp['experiment_id']}/results", headers=headers
+        )
+        assert results.status_code == 200
+        data = results.json()
+        assert "champion_metrics" in data
+        assert "challenger_metrics" in data
+
+        missing = await client.get("/admin/experiments/nope/results", headers=headers)
+        assert missing.status_code == 404

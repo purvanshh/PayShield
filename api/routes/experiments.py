@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -36,9 +36,17 @@ class ExperimentMetricsResponse(BaseModel):
     recommendation: str
 
 
+_framework: Any = None
+
+
 def _get_framework():
-    from ml.ab_testing import ABTestFramework
-    return ABTestFramework()
+    """Return the process-level A/B framework (in-memory by design; swap for a
+    persistent backend when multi-instance deployment is required)."""
+    global _framework
+    if _framework is None:
+        from ml.ab_testing import ABTestFramework
+        _framework = ABTestFramework()
+    return _framework
 
 
 @router.post("", response_model=ExperimentResponse)
@@ -62,7 +70,7 @@ async def create_experiment(req: ExperimentCreateRequest):
             created_at=exp.created_at,
         )
     except (ValueError, RuntimeError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("")
@@ -110,7 +118,7 @@ async def promote_experiment(experiment_id: str):
         framework.promote(experiment_id)
         return {"status": "promoted", "experiment_id": experiment_id}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/{experiment_id}/rollback")
@@ -123,4 +131,4 @@ async def rollback_experiment(experiment_id: str):
         framework.rollback(experiment_id)
         return {"status": "rolled_back", "experiment_id": experiment_id}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
