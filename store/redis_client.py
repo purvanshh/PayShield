@@ -1,10 +1,31 @@
 import logging
 import time
+from typing import Literal
 
+from configs.config_loader import settings
 from store.connection_pool import RedisConnectionPool
 from store.exceptions import RedisUnavailableError
+from store.sync_redis import SyncRedisClient
 
 logger = logging.getLogger(__name__)
+
+
+def create_redis(mode: Literal["async", "sync"] = "async", **kwargs):
+    """Single factory for both Redis client flavours.
+
+    `mode="async"` returns the circuit-breaker-wrapped :class:`AsyncRedisClient`
+    for the API hot path; `mode="sync"` returns :class:`SyncRedisClient` for
+    Celery workers and scripts. Connection defaults come from configs/config.yaml
+    (env-overridable via PAYSHIELD_REDIS_*).
+    """
+    defaults = {
+        "host": settings.redis.host,
+        "port": settings.redis.port,
+        "db": settings.redis.db,
+    }
+    if mode == "sync":
+        return SyncRedisClient(**{**defaults, **kwargs})
+    return AsyncRedisClient(**{**defaults, **kwargs})
 
 
 class AsyncRedisClient:

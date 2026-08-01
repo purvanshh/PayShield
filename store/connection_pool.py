@@ -5,6 +5,8 @@ from functools import wraps
 
 import redis.asyncio as aioredis
 
+from configs.config_loader import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,9 +89,9 @@ class RedisConnectionPool:
         health_check_interval: float = 30.0,
         retry_on_timeout: bool = True,
     ):
-        host = host or os.getenv("REDIS_HOST", "localhost")
-        port = port or int(os.getenv("REDIS_PORT", "6379"))
-        db = db if db is not None else int(os.getenv("REDIS_DB", "0"))
+        host = host or settings.redis.host
+        port = port or settings.redis.port
+        db = db if db is not None else settings.redis.db
         password = password or os.getenv("REDIS_PASSWORD") or None
         self.pool = aioredis.ConnectionPool(
             host=host,

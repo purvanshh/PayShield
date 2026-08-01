@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 try:
-    from engine.statistical_filter import StatisticalFilter, GeoPoint
-    from engine.ensemble import EnsembleFusionEngine, EnsembleResult
+    from engine.statistical_filter import StatisticalFilter, GeoPoint, Layer1Result
+    from engine.ensemble import EnsembleFusionEngine, EnsembleResult, Layer2Result
     _engines_available = True
 except ImportError:
     _engines_available = False
@@ -174,10 +174,10 @@ async def score_transaction(
                 is_shell_merchant=False,
             )
         else:
-            layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
+            layer1_result = Layer1Result()
     except Exception as e:
         logger.error(f"Layer1 evaluation failed: {e}")
-        layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
+        layer1_result = Layer1Result()
     l1_ms = (time.time() - t1) * 1000
 
     l1_decision = getattr(layer1_result, "decision", "ALLOW")
@@ -205,11 +205,7 @@ async def score_transaction(
             pass
         return FraudScoreResponse(**result)
 
-    l2_result = type("L2", (), {
-        "fraud_probability": 0.0, "source": "L2_GNN",
-        "graph_features": {"velocity": {}, "geo": {}, "benford": {}},
-        "latency_ms": 0.0,
-    })()
+    l2_result = Layer2Result(graph_features={"velocity": {}, "geo": {}, "benford": {}})
 
     t2 = time.time()
     try:
@@ -283,9 +279,9 @@ async def batch_score(
                         amount=txn.amount,
                     )
                 else:
-                    layer1_result = type("L1", (), {"decision": "ALLOW", "triggered_rules": [], "confidence": 0.0})()
-                l2r = type("L2", (), {"fraud_probability": 0.0, "source": "L2_GNN", "graph_features": {}, "latency_ms": 0.0})()
-                er = ensemble.fuse(layer1_result, l2r) if ensemble else type("ER", (), {"decision": "ALLOW", "confidence": 0.0, "source": "ENSEMBLE"})()
+                    layer1_result = Layer1Result()
+                l2r = Layer2Result(graph_features={})
+                er = ensemble.fuse(layer1_result, l2r) if ensemble else EnsembleResult()
                 return FraudScoreResponse(
                     txn_id=txn.txn_id,
                     decision=getattr(er, "decision", "ALLOW"),

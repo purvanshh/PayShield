@@ -35,6 +35,21 @@ class ModelUnavailableError(PayShieldException):
         super().__init__(status_code=503, detail=detail, error_code="MODEL_UNAVAILABLE")
 
 
+class InferenceError(PayShieldException):
+    def __init__(self, detail: str = "Model inference failed"):
+        super().__init__(status_code=503, detail=detail, error_code="INFERENCE_ERROR")
+
+
+class GraphError(PayShieldException):
+    def __init__(self, detail: str = "Graph operation failed"):
+        super().__init__(status_code=503, detail=detail, error_code="GRAPH_ERROR")
+
+
+class ComplianceError(PayShieldException):
+    def __init__(self, detail: str = "Compliance check failed"):
+        super().__init__(status_code=403, detail=detail, error_code="COMPLIANCE_VIOLATION")
+
+
 class BatchSizeExceededError(PayShieldException):
     def __init__(self, detail: str = "Batch size exceeds maximum of 100"):
         super().__init__(status_code=400, detail=detail, error_code="BATCH_SIZE_EXCEEDED")

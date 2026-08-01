@@ -1,8 +1,12 @@
-import os
+"""Backwards-compatible bridge to the consolidated Redis factory.
+
+New code should call :func:`store.redis_client.create_redis` directly with
+``mode="async"`` or ``mode="sync"``.
+"""
+
 from typing import Optional
 
-from store.redis_client import AsyncRedisClient
-from store.sync_redis import SyncRedisClient
+from store.redis_client import AsyncRedisClient, SyncRedisClient, create_redis
 
 
 def create_async_redis(
@@ -12,13 +16,7 @@ def create_async_redis(
     password: Optional[str] = None,
     **kwargs,
 ) -> AsyncRedisClient:
-    return AsyncRedisClient(
-        host=host or os.getenv("REDIS_HOST", "localhost"),
-        port=port or int(os.getenv("REDIS_PORT", "6379")),
-        db=db or int(os.getenv("REDIS_DB", "0")),
-        password=password or os.getenv("REDIS_PASSWORD") or None,
-        **kwargs,
-    )
+    return create_redis(mode="async", host=host, port=port, db=db, password=password, **kwargs)
 
 
 def create_sync_redis(
@@ -28,10 +26,4 @@ def create_sync_redis(
     password: Optional[str] = None,
     **kwargs,
 ) -> SyncRedisClient:
-    return SyncRedisClient(
-        host=host or os.getenv("REDIS_HOST", "localhost"),
-        port=port or int(os.getenv("REDIS_PORT", "6379")),
-        db=db or int(os.getenv("REDIS_DB", "0")),
-        password=password or os.getenv("REDIS_PASSWORD") or None,
-        **kwargs,
-    )
+    return create_redis(mode="sync", host=host, port=port, db=db, password=password, **kwargs)

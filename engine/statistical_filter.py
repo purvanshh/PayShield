@@ -1,16 +1,20 @@
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Literal
+
+from configs.config_loader import settings
+from engine.constants import Decision, RuleType
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class FilterResult:
-    action: Literal["ALLOW", "ESCALATE", "BLOCK"] = "ALLOW"
-    stage: str = "velocity"
+    action: Decision = Decision.ALLOW
+    stage: RuleType = RuleType.VELOCITY
     triggered_rules: list[str] = field(default_factory=list)
     rule_details: list[dict] = field(default_factory=list)
     confidence: float = 0.0
@@ -23,7 +27,7 @@ class FilterResult:
 class VelocityRule:
     name: str
     condition: Callable[..., bool]
-    action: Literal["ALLOW", "ESCALATE", "BLOCK"]
+    action: Decision
     severity: int
     description: str = ""
 
@@ -41,42 +45,42 @@ class VelocityFilter:
             VelocityRule(
                 name="V-RULE-01",
                 condition=lambda v, d, **kw: v.get("txn_count_5m", 0) > 10 and (d or {}).get("baseline_txn_count_24h", 999) < 5,
-                action="BLOCK",
+                action=Decision.BLOCK,
                 severity=5,
                 description="Burst attack: 5min count > 10 with low baseline",
             ),
             VelocityRule(
                 name="V-RULE-02",
                 condition=self._zscore_rule,
-                action="ESCALATE",
+                action=Decision.ESCALATE,
                 severity=3,
                 description="Txn count Z-score exceeds threshold",
             ),
             VelocityRule(
                 name="V-RULE-03",
                 condition=lambda v, d, **kw: v.get("amount_total_1h", 0) > 5 * (d or {}).get("median_amount_30d", 500) and v.get("txn_count_1h", 0) > 3,
-                action="ESCALATE",
+                action=Decision.ESCALATE,
                 severity=4,
                 description="Amount sum > 5x median with elevated count",
             ),
             VelocityRule(
                 name="V-RULE-04",
                 condition=lambda v, d, **kw: v.get("device_txn_count_24h", 0) > 20 and v.get("distinct_users_last_24h", 1) > 1,
-                action="BLOCK",
+                action=Decision.BLOCK,
                 severity=5,
                 description="Device flood: >20 txns across multiple users",
             ),
             VelocityRule(
                 name="V-RULE-05",
                 condition=lambda v, d, **kw: v.get("ip_txn_count_5m", 0) > 15,
-                action="ESCALATE",
+                action=Decision.ESCALATE,
                 severity=3,
                 description="IP burst: >15 txns from same IP in 5min",
             ),
             VelocityRule(
                 name="V-RULE-06",
                 condition=lambda v, d, **kw: v.get("distinct_merchants_1h", 0) > 10,
-                action="ESCALATE",
+                action=Decision.ESCALATE,
                 severity=4,
                 description="Card testing: >10 distinct merchants in 1h",
             ),
@@ -86,7 +90,7 @@ class VelocityFilter:
         if not deviation_features:
             return False
         z = abs(deviation_features.get("amount_z_score", 0))
-        return z > (self.config.get("velocity_zscore_threshold", 3.0))
+        return z > self.config.get("velocity_zscore_threshold", settings.thresholds.velocity_zscore)
 
     async def evaluate(self, velocity_features: dict, deviation_features: dict | None = None, whitelist: set[str] | None = None) -> FilterResult:
         start = time.perf_counter()
@@ -103,20 +107,20 @@ class VelocityFilter:
 
         if not triggered:
             elapsed = (time.perf_counter() - start) * 1000
-            return FilterResult(action="ALLOW", latency_ms=round(elapsed, 3), population_stats=population_stats)
+            return FilterResult(action=Decision.ALLOW, latency_ms=round(elapsed, 3), population_stats=population_stats)
 
-        has_block = any(r.action == "BLOCK" for r in triggered)
+        has_block = any(r.action == Decision.BLOCK for r in triggered)
         max_severity = max(r.severity for r in triggered)
         severity_sum = sum(r.severity for r in triggered)
 
         if has_block:
-            action = "BLOCK"
+            action = Decision.BLOCK
             confidence = 1.0
         elif max_severity >= 4 or severity_sum >= 7:
-            action = "ESCALATE"
+            action = Decision.ESCALATE
             confidence = min(1.0, severity_sum / 10.0)
         else:
-            action = "ALLOW"
+            action = Decision.ALLOW
             confidence = 0.0
 
         elapsed = (time.perf_counter() - start) * 1000
@@ -139,10 +143,6 @@ class VelocityFilter:
             }
         except Exception:
             return None
-
-
-import math
-from dataclasses import dataclass
 
 
 @dataclass
@@ -174,7 +174,7 @@ class GeoSpatialFilter:
     def __init__(self, redis_client=None, config: dict | None = None):
         self.redis = redis_client
         self.config = config or {}
-        self.max_velocity_kmh = self.config.get("geo_velocity_max_kmh", 900.0)
+        self.max_velocity_kmh = self.config.get("geo_velocity_max_kmh", settings.thresholds.geo_velocity_max_kmh)
         self.HIGH_RISK_COUNTRIES = self.config.get("high_risk_countries", [])
 
     async def evaluate(self, current_loc: GeoPoint, last_loc: GeoPoint | None, baseline: dict | None = None, account_age_days: float = 365.0, user_country: str | None = None, txn_country: str | None = None) -> FilterResult:
@@ -206,26 +206,26 @@ class GeoSpatialFilter:
 
         if not triggered:
             elapsed = (time.perf_counter() - start) * 1000
-            return FilterResult(action="ALLOW", stage="geo", latency_ms=round(elapsed, 3))
+            return FilterResult(action=Decision.ALLOW, stage=RuleType.GEO, latency_ms=round(elapsed, 3))
 
         has_block = any(t["action"] == "BLOCK" for t in triggered)
         max_severity = max(t["severity"] for t in triggered)
         severity_sum = sum(t["severity"] for t in triggered)
 
         if has_block:
-            action = "BLOCK"
+            action = Decision.BLOCK
             confidence = 1.0
         elif max_severity >= 4 or severity_sum >= 7:
-            action = "ESCALATE"
+            action = Decision.ESCALATE
             confidence = min(1.0, severity_sum / 10.0)
         else:
-            action = "ALLOW"
+            action = Decision.ALLOW
             confidence = 0.0
 
         elapsed = (time.perf_counter() - start) * 1000
         return FilterResult(
             action=action,
-            stage="geo",
+            stage=RuleType.GEO,
             triggered_rules=[t["name"] for t in triggered],
             rule_details=triggered,
             confidence=round(confidence, 4),
@@ -271,9 +271,9 @@ class BenfordFilter:
     def __init__(self, redis_client=None, config: dict | None = None):
         self.redis = redis_client
         self.config = config or {}
-        self.critical_005 = self.config.get("benford_chi2_critical", self.CHI2_CRITICAL_005)
+        self.critical_005 = self.config.get("benford_chi2_critical", settings.thresholds.benford_chi2_critical)
         self.critical_001 = self.config.get("benford_chi2_critical_001", self.CHI2_CRITICAL_001)
-        self.min_samples = self.config.get("min_benford_samples", self.MIN_SAMPLES)
+        self.min_samples = self.config.get("min_benford_samples", settings.thresholds.min_benford_samples)
         self.whitelisted_merchants: set[str] = set(self.config.get("benford_whitelist", []))
 
     def _merchant_key(self, merchant_id: str) -> str:
@@ -317,7 +317,7 @@ class BenfordFilter:
 
         if merchant_id in self.whitelisted_merchants:
             elapsed = (time.perf_counter() - start) * 1000
-            return FilterResult(action="ALLOW", stage="benford", latency_ms=round(elapsed, 3))
+            return FilterResult(action=Decision.ALLOW, stage=RuleType.BENFORD, latency_ms=round(elapsed, 3))
 
         await self.update_merchant_distribution(merchant_id, amount)
         stats = await self.get_merchant_stats(merchant_id)
@@ -333,19 +333,19 @@ class BenfordFilter:
 
         if not triggered:
             elapsed = (time.perf_counter() - start) * 1000
-            return FilterResult(action="ALLOW", stage="benford", latency_ms=round(elapsed, 3))
+            return FilterResult(action=Decision.ALLOW, stage=RuleType.BENFORD, latency_ms=round(elapsed, 3))
 
         has_block = any(t["action"] == "BLOCK" for t in triggered)
         max_severity = max(t["severity"] for t in triggered)
         severity_sum = sum(t["severity"] for t in triggered)
 
-        action = "BLOCK" if has_block else ("ESCALATE" if max_severity >= 4 or severity_sum >= 7 else "ALLOW")
+        action = Decision.BLOCK if has_block else (Decision.ESCALATE if max_severity >= 4 or severity_sum >= 7 else Decision.ALLOW)
         confidence = 1.0 if has_block else min(1.0, severity_sum / 10.0)
 
         elapsed = (time.perf_counter() - start) * 1000
         return FilterResult(
             action=action,
-            stage="benford",
+            stage=RuleType.BENFORD,
             triggered_rules=[t["name"] for t in triggered],
             rule_details=triggered,
             confidence=round(confidence, 4),
@@ -355,7 +355,7 @@ class BenfordFilter:
 
 @dataclass
 class Layer1Result:
-    decision: Literal["ALLOW", "ESCALATE", "BLOCK"] = "ALLOW"
+    decision: Literal["ALLOW", "ESCALATE", "BLOCK"] = Decision.ALLOW
     confidence: float = 0.0
     triggered_rules: list[str] = field(default_factory=list)
     rule_details: list[dict] = field(default_factory=list)
@@ -385,13 +385,13 @@ class DecisionGate:
         has_block = any(d.get("action") == "BLOCK" for d in all_details)
 
         if has_block:
-            action: Literal["ALLOW", "ESCALATE", "BLOCK"] = "BLOCK"
+            action: Literal["ALLOW", "ESCALATE", "BLOCK"] = Decision.BLOCK
             confidence = 1.0
         elif max_severity >= 4 or severity_sum >= 7:
-            action = "ESCALATE"
+            action = Decision.ESCALATE
             confidence = min(1.0, severity_sum / 10.0)
         else:
-            action = "ALLOW"
+            action = Decision.ALLOW
             confidence = 0.0
 
         total_latency = sum(r.latency_ms for r in results)

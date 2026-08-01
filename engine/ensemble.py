@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from engine.constants import Decision, LayerName, L2Status
+from configs.config_loader import settings
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -21,16 +24,17 @@ CALIBRATION_DIR = Path("models/calibration")
 @dataclass
 class Layer2Result:
     fraud_probability: float = 0.0
-    source: str = "L2_GNN"
+    source: str = LayerName.L2_GNN.value
     graph_features: dict | None = None
     latency_ms: float = 0.0
+    status: L2Status = L2Status.SUCCESS
 
 
 @dataclass
 class EnsembleResult:
-    decision: Literal["ALLOW", "REVIEW", "BLOCK"] = "ALLOW"
+    decision: Literal["ALLOW", "REVIEW", "BLOCK"] = Decision.ALLOW
     confidence: float = 0.0
-    source: Literal["L1_STATISTICAL", "L2_GNN", "ENSEMBLE"] = "L2_GNN"
+    source: LayerName = LayerName.L2_GNN
     triggered_rules: list[str] = field(default_factory=list)
     layer1_result: Any = None
     layer2_result: Any = None
@@ -79,10 +83,11 @@ class ConfidenceCalibrator:
 
 class EnsembleFusionEngine:
     def __init__(self, layer1_weight: float = 0.3, layer2_weight: float = 0.7,
-                 fraud_threshold: float = 0.85, calibrator: ConfidenceCalibrator | None = None):
+                 fraud_threshold: float | None = None,
+                 calibrator: ConfidenceCalibrator | None = None):
         self.layer1_weight = layer1_weight
         self.layer2_weight = layer2_weight
-        self.fraud_threshold = fraud_threshold
+        self.fraud_threshold = fraud_threshold if fraud_threshold is not None else settings.thresholds.block_probability
         self.calibrator = calibrator or ConfidenceCalibrator()
         self.disagreements: list[dict] = []
 
@@ -97,7 +102,7 @@ class EnsembleFusionEngine:
             return EnsembleResult(
                 decision="BLOCK",
                 confidence=1.0,
-                source="L1_STATISTICAL",
+                source=LayerName.L1_STATISTICAL,
                 triggered_rules=l1_rules,
                 layer1_result=layer1_result,
                 latency_ms=round(elapsed, 3),
@@ -108,12 +113,12 @@ class EnsembleFusionEngine:
         if l1_decision == "ESCALATE":
             boosted_score = min(1.0, l2_prob + 0.15)
             calibrated = self.calibrator.calibrate(boosted_score)
-            decision: Literal["ALLOW", "REVIEW", "BLOCK"] = "BLOCK" if boosted_score >= self.fraud_threshold else "REVIEW"
+            decision: Literal["ALLOW", "REVIEW", "BLOCK"] = Decision.BLOCK if boosted_score >= self.fraud_threshold else Decision.REVIEW
             elapsed = (time.perf_counter() - start) * 1000
             return EnsembleResult(
                 decision=decision,
                 confidence=round(calibrated, 4),
-                source="ENSEMBLE",
+                source=LayerName.ENSEMBLE,
                 triggered_rules=l1_rules,
                 layer1_result=layer1_result,
                 layer2_result=layer2_result,
@@ -122,11 +127,11 @@ class EnsembleFusionEngine:
 
         calibrated = self.calibrator.calibrate(l2_prob)
         if l2_prob >= self.fraud_threshold:
-            decision = "BLOCK"
+            decision = Decision.BLOCK
         elif l2_prob >= 0.5:
-            decision = "REVIEW"
+            decision = Decision.REVIEW
         else:
-            decision = "ALLOW"
+            decision = Decision.ALLOW
 
         if l1_decision == "ALLOW" and decision == "BLOCK":
             self._log_disagreement(layer1_result, layer2_result, "ALLOW_vs_BLOCK")
@@ -137,7 +142,7 @@ class EnsembleFusionEngine:
         return EnsembleResult(
             decision=decision,
             confidence=round(calibrated, 4),
-            source="L2_GNN",
+            source=LayerName.L2_GNN,
             triggered_rules=l1_rules,
             layer1_result=layer1_result,
             layer2_result=layer2_result,

@@ -1,6 +1,7 @@
 import json
 import logging
 
+from store.redis_client import create_redis
 from tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -22,11 +23,10 @@ def run_nightly_reflection(self, period_hours: int = 24):
 
         result = report.to_dict()
         try:
-            from infrastructure.redis_bridge import create_sync_redis
-            redis = create_sync_redis()
+            redis = create_redis(mode="sync")
             redis.set("reflection:latest", json.dumps(result), ttl=86400 * 7)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"reflection_store_failed: {e}")
 
         return result
     except Exception as exc:
@@ -53,13 +53,12 @@ def sync_reflection_weights(self):
             weight_adjustments[target] = change
 
         try:
-            from infrastructure.redis_bridge import create_sync_redis
-            redis = create_sync_redis()
+            redis = create_redis(mode="sync")
             redis.set("reflection:weights", json.dumps(weight_adjustments), ttl=86400)
             redis.set("reflection:weights_timestamp", str(1449462227), ttl=86400)
             logger.info(f"Weight adjustments saved: {len(weight_adjustments)} targets")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"reflection_store_failed: {e}")
 
         return {"status": "synced", "adjustments": weight_adjustments}
     except Exception as exc:

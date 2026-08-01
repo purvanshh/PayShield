@@ -5,6 +5,8 @@ from typing import Any
 
 import yaml
 
+from configs.config_loader import settings
+
 
 @dataclass
 class OllamaConfig:
@@ -18,8 +20,9 @@ class OllamaConfig:
     temperature: float = 0.1
 
     def __post_init__(self):
-        self.base_url = os.getenv("OLLAMA_BASE_URL", self.base_url)
-        self.model = os.getenv("OLLAMA_MODEL", self.model)
+        self.base_url = os.getenv("OLLAMA_BASE_URL", settings.ollama.base_url)
+        self.model = os.getenv("OLLAMA_MODEL", settings.ollama.model)
+        self.temperature = float(os.getenv("OLLAMA_TEMPERATURE", settings.ollama.temperature))
 
     @classmethod
     def from_yaml(cls, path: str | Path = "configs/config.yaml") -> "OllamaConfig":
