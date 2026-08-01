@@ -98,11 +98,24 @@ async def lifespan_manager(app: FastAPI):
     except Exception as e:
         logger.warning(f"alert_broadcaster_skipped: {e}")
 
+    try:
+        from store.audit_log import async_audit_logger
+        async_audit_logger.start()
+        resources["audit_logger"] = async_audit_logger
+        logger.info("audit_logger_started")
+    except Exception as e:
+        logger.warning(f"audit_logger_skipped: {e}")
+
     app.state.resources = resources
     logger.info("payshield_startup_complete")
     yield
 
     logger.info("payshield_shutdown_begin")
+    if resources.get("audit_logger"):
+        try:
+            await resources["audit_logger"].stop()
+        except Exception:
+            pass
     if resources.get("redis"):
         await resources["redis"].close()
     if resources.get("neo4j"):

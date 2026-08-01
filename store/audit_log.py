@@ -5,11 +5,14 @@ hash of the previous entry, making retroactive modification detectable.
 PII (PANs, UPI identifiers, device fingerprints) is masked before write.
 """
 
+import asyncio
 import hashlib
 import json
 import logging
 import os
 import re
+import time
+import uuid
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -129,7 +132,7 @@ class AuditLogWriter:
                     if entry["prev_hash"] != prev_hash:
                         return False, count
                     canonical = json.dumps(
-                        {k: v for k, v in entry.items() if k != "hash"},
+                        {k: v for k, v in entry.items() if k not in ("hash", "entry_id")},
                         sort_keys=True, separators=(",", ":"),
                     )
                     if hashlib.sha256(canonical.encode()).hexdigest() != entry["hash"]:
@@ -141,3 +144,101 @@ class AuditLogWriter:
     @property
     def entry_count(self) -> int:
         return self._entry_count
+
+
+class AsyncAuditLogWriter:
+    """Fire-and-forget audit appends: enqueue in <1ms, flush in the background.
+
+    The score hot path never blocks on disk I/O. Entries are batched and
+    flushed by a background worker either every ``flush_interval`` seconds or
+    as soon as ``batch_size`` entries are pending, whichever comes first.
+    """
+
+    def __init__(
+        self,
+        writer: AuditLogWriter | None = None,
+        flush_interval: float = 1.0,
+        batch_size: int = 100,
+        max_queue: int = 10000,
+    ):
+        self._writer = writer or AuditLogWriter()
+        self._flush_interval = flush_interval
+        self._batch_size = batch_size
+        self._queue: asyncio.Queue = asyncio.Queue(maxsize=max_queue)
+        self._task: asyncio.Task | None = None
+
+    @property
+    def pending_count(self) -> int:
+        return self._queue.qsize()
+
+    @property
+    def flushed_count(self) -> int:
+        return self._writer.entry_count
+
+    def append(self, event_type: str, actor: str, decision: str, payload: dict) -> str:
+        """Enqueue an entry. Non-blocking; returns an entry_id immediately."""
+        entry_id = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}_{uuid.uuid4().hex[:8]}"
+        try:
+            self._queue.put_nowait((entry_id, event_type, actor, decision, payload))
+        except asyncio.QueueFull:
+            logger.warning("audit_queue_full; entry dropped")
+        return entry_id
+
+    async def flush(self):
+        """Drain everything currently queued (used on shutdown and in tests)."""
+        batch = []
+        while not self._queue.empty():
+            batch.append(self._queue.get_nowait())
+        self._write_batch(batch)
+
+    def _write_batch(self, batch):
+        for entry_id, event_type, actor, decision, payload in batch:
+            try:
+                self._writer.append(event_type, actor, decision, payload)
+            except Exception as e:
+                logger.warning(f"audit_write_failed: {e}")
+
+    def start(self) -> "AsyncAuditLogWriter":
+        if self._task is None or self._task.done():
+            self._task = asyncio.get_event_loop().create_task(self._worker())
+        return self
+
+    async def stop(self):
+        if self._task is None:
+            return
+        self._task.cancel()
+        try:
+            await self._task
+        except (asyncio.CancelledError, Exception):
+            pass
+        await self.flush()
+        self._task = None
+
+    async def _worker(self):
+        loop = asyncio.get_event_loop()
+        while True:
+            batch = []
+            deadline = loop.time() + self._flush_interval
+            try:
+                while len(batch) < self._batch_size:
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        break
+                    try:
+                        item = await asyncio.wait_for(self._queue.get(), timeout=remaining)
+                    except asyncio.TimeoutError:
+                        break
+                    batch.append(item)
+                    if self._queue.empty():
+                        break
+            except asyncio.CancelledError:
+                if batch:
+                    self._write_batch(batch)
+                raise
+            if batch:
+                self._write_batch(batch)
+                if len(batch) >= self._batch_size and not self._queue.empty():
+                    continue
+
+
+async_audit_logger = AsyncAuditLogWriter()

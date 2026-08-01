@@ -54,6 +54,10 @@ class FakePipeline:
         self._ops.append(("setex", key, ttl, value))
         return self
 
+    def get(self, key):
+        self._ops.append(("get", key))
+        return self
+
     async def execute(self):
         store = self._store
         results = []
@@ -88,6 +92,9 @@ class FakePipeline:
                 store.strings[key] = op[2]
             elif cmd == "setex":
                 store.strings[key] = op[3]
+            elif cmd == "get":
+                results.append(store.strings.get(key))
+                continue
             results.append(1)
         return results
 
@@ -199,9 +206,16 @@ class FakeRedis:
     async def keys(self, pattern):
         return [
             k
-            for k in list(self._store.zsets) + list(self._store.sets)
+            for k in list(self._store.strings) + list(self._store.zsets) + list(self._store.sets)
             if _pattern_match(pattern, k)
         ]
+
+    async def incr(self, key):
+        self._store.strings[key] = str(int(self._store.strings.get(key, "0")) + 1)
+        return int(self._store.strings[key])
+
+    async def config_get(self, parameter):
+        return {"maxmemory-policy": "allkeys-lru"}
 
     @property
     def _client(self):

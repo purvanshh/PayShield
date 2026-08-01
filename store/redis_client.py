@@ -35,9 +35,18 @@ class AsyncRedisClient:
 
     async def ping(self) -> bool:
         try:
-            return await self.pool.circuit_breaker.call(self._client.ping)
+            ok = await self.pool.circuit_breaker.call(self._client.ping)
+            if hasattr(self.pool, "ensure_memory_policy"):
+                await self.pool.ensure_memory_policy()
+            return ok
         except RedisUnavailableError:
             return False
+
+    async def incr(self, key: str) -> int:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.incr, key)
+        except RedisUnavailableError:
+            return 0
 
     async def get(self, key: str) -> str | None:
         try:

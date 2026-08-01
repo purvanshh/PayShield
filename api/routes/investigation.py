@@ -59,13 +59,28 @@ async def list_investigations(
         keys = await redis.keys("investigation:*") or []
     except Exception:
         pass
+    if not keys:
+        return InvestigationListResponse(total=0, page=page, page_size=page_size, results=[])
+    raw_values = []
+    try:
+        pipe = await redis.pipeline()
+        for k in keys:
+            pipe.get(k)
+        raw_values = await pipe.execute()
+    except Exception:
+        raw_values = []
+        for k in keys:
+            try:
+                raw_values.append(await redis.get(k))
+            except Exception:
+                raw_values.append(None)
     all_reports = []
-    for k in keys:
+    for raw in raw_values:
+        if not raw:
+            continue
         try:
-            raw = await redis.get(k)
-            if raw:
-                data = json.loads(raw) if isinstance(raw, str) else raw
-                all_reports.append(data.get("report") or data)
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            all_reports.append(data.get("report") or data)
         except Exception:
             continue
     if fraud_type:

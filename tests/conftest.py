@@ -5,6 +5,22 @@ from data.synthetic_upi import SyntheticUPIGenerator
 from store.graph_db import GraphDB
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_rate_limiter(monkeypatch):
+    """Keep the IP rate-limit middleware in-memory and per-test.
+
+    The module-level limiter otherwise binds to a real Redis (if one is
+    running on localhost), making counters persist across tests.
+    """
+    from api.security import RateLimiter
+
+    limiter = RateLimiter(redis_url=None)
+    monkeypatch.setattr("api.security.rate_limiter", limiter)
+    monkeypatch.setattr("api.main.rate_limiter", limiter)
+    yield
+    limiter._local_store.clear()
+
+
 @pytest.fixture(scope="session")
 def synthetic_data():
     gen = SyntheticUPIGenerator(n_users=100, n_merchants=50, n_transactions=1000, fraud_ratio=0.05)

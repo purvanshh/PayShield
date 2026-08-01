@@ -29,3 +29,4 @@ sqlalchemy>=2.0.0
 asyncpg>=0.29.0
 neo4j>=5.19.0
 sse-starlette>=2.0.0
+PyJWT>=2.8.0

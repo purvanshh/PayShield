@@ -1,5 +1,10 @@
+import base64
 import hashlib
+import hmac
 import logging
+import os
+import struct
+import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -12,8 +17,6 @@ try:
 except ImportError:
     pyjwt = None
     _has_jwt = False
-
-import os
 
 JWT_SECRET = os.getenv("JWT_SECRET", "payshield-jwt-secret-dev-2026")
 JWT_ALGORITHM = "HS256"
@@ -37,11 +40,59 @@ class UserPrincipal:
         self.auth_type = "jwt"
 
 
+class TOTPManager:
+    """RFC 6238 time-based one-time passwords (SHA-1, 6 digits, 30s step).
+
+    Pure stdlib implementation so admin MFA works without an extra dependency.
+    """
+
+    STEP_SECONDS = 30
+    DIGITS = 6
+
+    def __init__(self, secret: str | None = None):
+        self.secret = secret or base64.b32encode(os.urandom(20)).decode()
+
+    @staticmethod
+    def generate_secret() -> str:
+        return base64.b32encode(os.urandom(20)).decode()
+
+    @staticmethod
+    def _code_for(secret: str, counter: int) -> str:
+        key = base64.b32decode(secret, casefold=True)
+        msg = struct.pack(">Q", counter)
+        digest = hmac.new(key, msg, hashlib.sha1).digest()
+        offset = digest[-1] & 0x0F
+        binary = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+        return str(binary % (10 ** TOTPManager.DIGITS)).zfill(TOTPManager.DIGITS)
+
+    def current_code(self, at: float | None = None) -> str:
+        counter = int((at if at is not None else time.time()) // self.STEP_SECONDS)
+        return self._code_for(self.secret, counter)
+
+    def verify(self, code: str, window: int = 1, at: float | None = None) -> bool:
+        if not code or not code.isdigit():
+            return False
+        counter = int((at if at is not None else time.time()) // self.STEP_SECONDS)
+        for offset in range(-window, window + 1):
+            if self._code_for(self.secret, counter + offset) == code:
+                return True
+        return False
+
+    def provision_uri(self, username: str, issuer: str = "PayShield") -> str:
+        label = f"{issuer}:{username}"
+        return (
+            f"otpauth://totp/{label}?secret={self.secret}"
+            f"&issuer={issuer}&algorithm=SHA1&digits={self.DIGITS}&period={self.STEP_SECONDS}"
+        )
+
+
 class AuthManager:
     def __init__(self, secret: str = JWT_SECRET):
         self.secret = secret
         self._api_keys: dict[str, dict] = {}
         self._revoked_tokens: set[str] = set()
+        self._totp_secrets: dict[str, str] = {}
+        self._totp_enabled: dict[str, bool] = {}
         self._load_dev_keys()
 
     def _load_dev_keys(self):
@@ -115,16 +166,53 @@ class AuthManager:
             return None
 
     def refresh_access_token(self, refresh_token: str) -> tuple[str, str] | None:
-        principal = self.verify_access_token(refresh_token)
-        if principal is None:
+        if not _has_jwt:
+            principal = self.verify_access_token(refresh_token)
+            if principal is None:
+                return None
+            self._revoked_tokens.add(refresh_token)
+            new_access = self.create_access_token(principal.user_id, principal.role)
+            new_refresh = self.create_access_token(
+                principal.user_id, principal.role,
+                expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+            )
+            return new_access, new_refresh
+        try:
+            payload = pyjwt.decode(refresh_token, self.secret, algorithms=[JWT_ALGORITHM])
+            jti = payload.get("jti", "")
+        except Exception:
             return None
-        self._revoked_tokens.add(refresh_token)
-        new_access = self.create_access_token(principal.user_id, principal.role)
+        if jti in self._revoked_tokens:
+            return None
+        self._revoked_tokens.add(jti)
+        new_access = self.create_access_token(payload.get("sub", ""), payload.get("role", "analyst"))
         new_refresh = self.create_access_token(
-            principal.user_id, principal.role,
+            payload.get("sub", ""), payload.get("role", "analyst"),
             expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         )
         return new_access, new_refresh
 
     def revoke_token(self, token: str):
         self._revoked_tokens.add(token)
+
+    def setup_totp(self, user_id: str, username: str = "") -> tuple[str, str]:
+        """Provision a TOTP secret for an account. Returns (secret, otpauth URI)."""
+        secret = TOTPManager.generate_secret()
+        self._totp_secrets[user_id] = secret
+        uri = TOTPManager(secret).provision_uri(username or user_id)
+        return secret, uri
+
+    def verify_totp(self, user_id: str, code: str) -> bool:
+        secret = self._totp_secrets.get(user_id)
+        if secret is None:
+            return False
+        if not TOTPManager(secret).verify(code):
+            return False
+        self._totp_enabled[user_id] = True
+        return True
+
+    def is_totp_enabled(self, user_id: str) -> bool:
+        return bool(self._totp_enabled.get(user_id))
+
+
+auth_manager = AuthManager()

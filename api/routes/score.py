@@ -500,23 +500,36 @@ def _persist_explanation(txn, layer1_result, velocity_features: dict, deviation_
 
 
 def _append_audit_entry(txn, result: dict, redis=None):
-    """Append tamper-evident, PII-masked audit entry for every decision."""
+    """Append tamper-evident, PII-masked audit entry for every decision.
+
+    Uses the async queue-backed logger when available (non-blocking, <1ms);
+    falls back to the synchronous writer otherwise.
+    """
+    payload = {
+        "txn_id": txn.txn_id,
+        "merchant_id": txn.merchant_id,
+        "amount": txn.amount,
+        "device_fingerprint": txn.device_fingerprint,
+        "fraud_probability": result["fraud_probability"],
+        "layer_triggered": result["layer_triggered"],
+        "triggered_rules": result["evidence"].get("triggered_rules", []),
+    }
     try:
-        from store.audit_log import AuditLogWriter
-        writer = AuditLogWriter()
-        writer.append(
+        from store.audit_log import AuditLogWriter, async_audit_logger
+        async_audit_logger.append(
             event_type="SCORE_DECISION",
             actor=txn.user_id,
             decision=result["decision"],
-            payload={
-                "txn_id": txn.txn_id,
-                "merchant_id": txn.merchant_id,
-                "amount": txn.amount,
-                "device_fingerprint": txn.device_fingerprint,
-                "fraud_probability": result["fraud_probability"],
-                "layer_triggered": result["layer_triggered"],
-                "triggered_rules": result["evidence"].get("triggered_rules", []),
-            },
+            payload=payload,
         )
-    except Exception as e:
-        logger.debug(f"audit_append_failed: {e}")
+    except Exception:
+        try:
+            writer = AuditLogWriter()
+            writer.append(
+                event_type="SCORE_DECISION",
+                actor=txn.user_id,
+                decision=result["decision"],
+                payload=payload,
+            )
+        except Exception as e:
+            logger.debug(f"audit_append_failed: {e}")

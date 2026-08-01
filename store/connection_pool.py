@@ -114,6 +114,27 @@ class RedisConnectionPool:
         except Exception:
             return False
 
+    async def ensure_memory_policy(self) -> str | None:
+        """Verify Redis is running with maxmemory-policy=allkeys-lru.
+
+        A volatile-only or no-eviction policy can cause counters and velocity
+        windows to be evicted under memory pressure, silently degrading fraud
+        detection. Logs a warning (non-fatal) when misconfigured.
+        """
+        try:
+            info = await self.client.config_get("maxmemory-policy")
+        except Exception:
+            return None
+        if not isinstance(info, dict):
+            return None
+        policy = info.get("maxmemory-policy")
+        if policy and policy != "allkeys-lru":
+            logger.warning(
+                f"redis_maxmemory_policy={policy} (expected allkeys-lru); "
+                "rate-limit and velocity counters may be evicted under memory pressure"
+            )
+        return policy
+
     async def close(self):
         await self.client.close()
         await self.pool.disconnect()

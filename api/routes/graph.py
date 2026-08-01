@@ -91,6 +91,8 @@ async def get_entity_network(
     request: Request,
     hops: int = Query(2, ge=1, le=5),
     entity_type: str = Query("user"),
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
 ):
     try:
         db, db_type = _get_graph_db(request)
@@ -108,15 +110,23 @@ async def get_entity_network(
 
         network_score = db.get_network_score(entity_id) if hasattr(db, "get_network_score") else {"network_score": 0.0}
 
+        total_nodes = len(nodes_list)
+        total_edges = len(edges_list)
+        page_nodes = nodes_list[offset:offset + limit]
+        page_edges = edges_list[offset:offset + limit]
+
         return {
             "entity_id": entity_id,
             "entity_type": entity_type,
             "hops": hops,
             "network_score": network_score.get("network_score", 0.0),
-            "nodes": nodes_list,
-            "edges": edges_list,
-            "total_nodes": len(nodes_list),
-            "total_edges": len(edges_list),
+            "nodes": page_nodes,
+            "edges": page_edges,
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "offset": offset,
+            "limit": limit,
+            "has_more": offset + limit < max(total_nodes, total_edges),
             "backend": db_type,
         }
     except HTTPException:
