@@ -2,7 +2,7 @@
 
 ## Sign-Off Statement
 
-We, the undersigned, confirm that PayShield v1.0.0 has been reviewed against the criteria defined in the 60-phase implementation plan and meets the requirements for production deployment.
+We, the undersigned, confirm that PayShield v1.0.0 has been reviewed against the criteria defined in the 10-phase implementation plan and meets the requirements for portfolio demonstration.
 
 ## Signatures
 

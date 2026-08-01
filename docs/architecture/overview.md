@@ -99,7 +99,7 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 - **Measured (synthetic, 2026-07-31)**: test PR-AUC 0.198 — the lead metric for imbalanced fraud (3.5× the edge-free MLP baseline 0.056); AUC-ROC 0.692, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p99 2.5 ms on CPU
 - **vs. edge-free MLP baseline**: PR-AUC 0.056, AUC 0.48 — the per-relationship propagation of HeteroConv is worth the ~3.5× PR-AUC lift over ignoring graph structure
 - **Provenance**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`; model card `models/payshield_gnn_v1_card.md`
-- ⚠️ Not yet fused into the live `/v1/score` decision path (see README Limitations)
+- ✅ Conditionally fused — runs live for returning users (`SUCCESS`, prob > 0); skips for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`). 40 ms timeout guard with L1 fallback on TIMEOUT / ERROR / MODEL_UNAVAILABLE.
 
 ### Ensemble Fusion Engine
 - Fuses L1 rule scores + GNN probability via weighted fusion
@@ -148,25 +148,28 @@ Stubs: `planner_agent` (only `COMPLEX_INVESTIGATION_REQUEST`), `collective_agent
 
 - Network policies restrict pod-to-pod communication
 - TLS termination at ingress
-- JWT tokens with configurable expiry
+- JWT tokens with 7-day sliding refresh rotation (HS256)
+- TOTP MFA for admin accounts (RFC 6238, SHA-1, 30s step, pure stdlib)
+- API Key authentication (SHA-256 hashed)
+- Per-API-key rate limiting (1000 req/hr, Redis incr+TTL) + per-user limits
 - Sealed secrets for K8s secret management
 - Read-only root filesystem for containers
 - Non-root user execution
-- CORS origin validation
+- CORS origin validation (env-driven `FRONTEND_URL`, no wildcard)
 - SQL injection protection (parameterized queries)
 
 ## Observability
 
 - **Metrics**: Prometheus (API latency, error rates, queue depth, model confidence)
 - **Logging**: Structured JSON logging (stdout → Loki)
-- **Tracing**: OpenTelemetry for distributed tracing
-- **Alerts**: Alertmanager (PagerDuty/Slack)
-- **Dashboards**: Grafana (pre-built for each component)
-- **Error Tracking**: Sentry integration
+- **Tracing**: Correlation IDs via `CorrelationIdMiddleware` (logged on every request)
+- **Alerts**: `prometheus/alerts.yml` (5 rules)
+- **Dashboards**: Grafana — `payshield-fraud-dashboard.json` (4 panels)
 - **Drift**: PSI monitoring per feature (`drift:feat:*` zsets, rolling 24h windows; `GET /admin/drift/psi`) — robust estimator: shared quantile bins, bin-count scaling, Laplace smoothing
 
 ## Compliance
 
-- **PCI-DSS**: 90/100 (passed) — AES-256 `ENCRYPTION_KEY`, RBAC enforced, hash-chained PII-masked audit log; MFA (8.3) deferred
+- **PCI-DSS**: 90/100 (passed) — AES-256 `ENCRYPTION_KEY`, RBAC enforced, hash-chained PII-masked audit log; MFA resolved (P9 TOTP)
 - **RBI**: 100/100 (passed) — `DATA_REGION=IN`, explanation artifacts for every BLOCK/REVIEW, analyst feedback loop, versioned model cards
+- **EU AI Act**: 100/100 (passed) — 13 controls including conformity assessment, post-market monitoring, human oversight logging, fairness audit (SPD/EOD)
 - Full before/after: `COMPLIANCE_DELTA.md`

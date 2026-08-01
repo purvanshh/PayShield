@@ -22,8 +22,10 @@ We aim to:
 
 ## Security Practices
 
-- **Authentication**: API keys (`x-api-key`) + JWT tokens with configurable expiry
-- **Authorization**: RBAC enforced on all admin endpoints (`ENFORCE_RBAC=true` in compose; roles in `configs/rbac.yaml`)
+- **Authentication**: API keys (`x-api-key`, SHA-256 hashed) + JWT tokens (HS256, 7-day sliding refresh rotation) + TOTP MFA (RFC 6238, SHA-1, 30s step, pure stdlib) for admin accounts
+- **Rate Limiting**: Per-API-key 1000 req/hr + per-user limits via Redis incr+TTL; 429 with Retry-After header; IP-based sliding window (200 req/min) as coarse guard
+- **CORS**: Env-driven `FRONTEND_URL` (no wildcard); SecurityHeadersMiddleware (CSP, HSTS, X-Content-Type-Options)
+- **Authorization**: RBAC enforced on all admin endpoints (`ENFORCE_RBAC=true`; roles in `configs/rbac.yaml`)
 - **Encryption**: TLS 1.3 in transit, AES-256 at rest (`ENCRYPTION_KEY` env, PCI-DSS 3.4)
 - **Audit**: Tamper-evident audit log — append-only JSONL with SHA-256 hash chaining and PII masking (PAN, UPI IDs, device fingerprints) written on every scoring decision (`store/audit_log.py`, PCI-DSS 10.1)
 - **Secrets**: SealedSecrets in Kubernetes — encrypted in Git, only decryptable by cluster; dev-only defaults in `.env.example` must be rotated in production
@@ -34,8 +36,8 @@ We aim to:
 
 | Area | Status |
 |------|--------|
-| MFA for admin accounts (PCI-DSS 8.3) | Deferred — TOTP login is the next hardening item |
 | Dashboard auth tokens in localStorage (TD-003) | Pending — httpOnly cookies planned |
+| OpenTelemetry distributed tracing | Not wired — correlation IDs available |
 
 ## Disclosure Policy
 

@@ -1,179 +1,106 @@
 # ML Model Guide
 
-## Model Training
+## GNN Model Training
 
-### Training a New Model
+### Training the Graph Neural Network
 
 ```bash
-# Prepare training data
-python scripts/prepare_training_data.py --start-date 2026-01-01 --end-date 2026-06-30
+# Generate synthetic training data
+python scripts/generate_synthetic_data.py --users 10000 --merchants 1000 --transactions 30000 --fraud-ratio 0.05
 
-# Train all models
-python ml/training/train_pipeline.py --config configs/training.yaml
+# Train the GNN
+python scripts/train_gnn.py --epochs 60 --early-stopping 10 --lr 0.001
 
-# Train single model
-python ml/training/train_single.py --model xgboost --params configs/xgboost_params.json
+# Benchmark against edge-free MLP baseline
+python scripts/benchmark_gnn.py
 
-# Evaluate model
-python ml/training/evaluate.py --model-path models/v2/xgboost.pkl --test-data data/test.parquet
+# Results are written to models/gnn_benchmark_results.json
+```
+
+### Calibration Pipeline
+
+```bash
+# Fit isotonic calibrator on validation predictions
+# (handled by engine/ensemble.py during training)
+python -c "
+from engine.ensemble import ConfidenceCalibrator
+from models.gnn_benchmark_results import validation_scores, validation_labels
+calibrator = ConfidenceCalibrator()
+calibrator.fit(validation_scores, validation_labels)
+calibrator.save('models/production/calibrator_v1.pkl')
+"
+```
+
+Post-fitting: ECE 0.055 → 0.010.
+
+### Model Card Generation
+
+```bash
+# Auto-generate from benchmark JSON (zero hand-edited metrics)
+python scripts/generate_model_card.py
+# → models/payshield_gnn_v1_card.md
+```
+
+### Fairness Audit
+
+```bash
+# Compute SPD/EOD on synthetic demographic slices
+python models/fairness_audit.py
 ```
 
 ### Training Configuration
 
-```yaml
-# configs/training.yaml
-training:
-  test_size: 0.2
-  validation_size: 0.1
-  random_state: 42
-  n_folds: 5
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Architecture | HeteroConv + SAGEConv (mean aggr) | Per-edge-type weight matrices |
+| Layers | 2 | Hidden dimension 64 |
+| Readout | Global mean pool + MLP | Graph-level classification |
+| Parameters | 53,826 | — |
+| Train/Val/Test | 80/10/10 | User-disjoint split |
+| Early stopping | 10 epochs | On validation PR-AUC |
+| Optimizer | Adam | lr 0.001, weight decay 1e-5 |
+| Schedule | Cosine annealing | — |
+| Training time | ~90 s | Synthetic data, CPU |
 
-models:
-  xgboost:
-    params:
-      n_estimators: 500
-      max_depth: 8
-      learning_rate: 0.01
-      subsample: 0.8
-      colsample_bytree: 0.8
-      scale_pos_weight: 3.0
-
-  lightgbm:
-    params:
-      n_estimators: 500
-      num_leaves: 64
-      learning_rate: 0.01
-      feature_fraction: 0.8
-      bagging_fraction: 0.8
-      bagging_freq: 5
-      class_weight: balanced
-
-  catboost:
-    params:
-      iterations: 500
-      depth: 8
-      learning_rate: 0.01
-      l2_leaf_reg: 3.0
-      auto_class_weights: Balanced
-
-  random_forest:
-    params:
-      n_estimators: 300
-      max_depth: 16
-      min_samples_split: 50
-      min_samples_leaf: 20
-      class_weight: balanced_subsample
-
-  mlp:
-    params:
-      hidden_layer_sizes: [256, 128, 64]
-      activation: relu
-      solver: adam
-      alpha: 0.0001
-      batch_size: 256
-      early_stopping: true
-      max_iter: 200
-```
-
-## Model Evaluation
-
-### Metrics
-
-| Metric | Description | Target |
-|--------|-------------|--------|
-| AUC-ROC | Area under ROC curve | > 0.95 |
-| Precision | True positives / predicted positives | > 0.85 |
-| Recall | True positives / actual positives | > 0.90 |
-| F1 Score | Harmonic mean of precision & recall | > 0.87 |
-| FPR | False positive rate | < 0.05 |
-
-### Evaluation Report
+### Model Deployment
 
 ```bash
-python ml/training/evaluate.py --model-path models/v2/ensemble.pkl --report-format html
+# 1. Promote a model version
+POST /admin/models/promote  { "version": "v0.2.0" }
+
+# 2. The API picks up the new model on restart
+#    (hot-reload not implemented — requires restart)
+
+# 3. Verify L2 status distribution in Prometheus
+layer2_escalation_total{status="SUCCESS"}  # should be > 0 after promotion
 ```
+
+### Model Monitoring
+
+- **PSI drift**: `GET /admin/drift/psi` — daily comparison of feature distributions
+- **L2 status**: Prometheus `layer2_escalation_total` by status (SUCCESS/SKIPPED/TIMEOUT/ERROR/MODEL_UNAVAILABLE)
+- **Calibration**: ECE tracked; re-fit if ECE > 0.02
+- **Fairness**: Re-run `models/fairness_audit.py` after retraining; check SPD/EOD thresholds (< 0.15)
 
 ## Feature Engineering
 
-### Feature Groups
+### Feature Categories (computed live per request)
 
-| Group | Count | Examples |
-|-------|-------|----------|
-| Transaction | 25 | amount, currency, type, timestamp features |
-| Merchant | 30 | category, country, volume, velocity |
-| User | 45 | history, frequency, avg amount, behavioral |
-| Device | 35 | fingerprint, IP, user-agent, geo |
-| Network | 40 | ISP, ASN, proxy detection, reputation |
-| Temporal | 30 | hour, day, season, holiday, rolling windows |
+| Category | Features | Source |
+|----------|----------|--------|
+| Velocity | Txn count (5 min, 1 hr, 24 hr), amount total | Redis `velocity:user:*`, `velocity:dev:*` |
+| Geo | Haversine distance, geo-velocity, device consistency | Redis `velocity:loc:*` |
+| Benford | Chi-squared on first digit, digit pair distribution | In-memory |
+| Graph (L2) | Ego-graph node count, edge count, neighbor risk scores | `engine/graph_feature_engine.py` |
 
-### Adding New Features
+## Model Performance
 
-1. Add feature function in `ml/features/builder.py`
-2. Register in `ml/features/registry.py`
-3. Add to feature set in `configs/features.yaml`
-4. Run feature importance analysis
-5. Update model training pipeline
+| Metric | GNN | Edge-free MLP | Lift |
+|--------|-----|---------------|------|
+| PR-AUC | 0.195 | 0.052 | 3.8× |
+| AUC-ROC | 0.667 | 0.442 | +0.225 |
+| FPR @ 90% recall | 0.714 | 0.958 | −0.244 |
+| Inference (CPU) | p99 0.43 ms | — | — |
+| Graph schema | 4 node types, 5 edge types | — | — |
 
-## Model Serving
-
-### Loading Models
-
-```python
-from ml.models import ModelRegistry
-
-registry = ModelRegistry()
-model = registry.load("ensemble_v2")
-result = model.predict(features)
-```
-
-### Model Versioning
-
-- Models stored in S3: `s3://payshield-models/{name}/{version}/`
-- Local cache: `models/cache/{name}_{version}.pkl`
-- Version format: `v{major}.{minor}.{patch}`
-
-### Hot-Reload
-
-```python
-# Models auto-detect new versions from S3
-from ml.models import watch_for_updates
-watch_for_updates(interval_seconds=300)
-```
-
-## A/B Testing
-
-```yaml
-# configs/ab_testing.yaml
-experiments:
-  - name: ensemble_v2_vs_v3
-    variants:
-      - name: control
-        model: ensemble_v2
-        traffic: 50
-      - name: treatment
-        model: ensemble_v3
-        traffic: 50
-    metrics:
-      - precision
-      - recall
-      - latency_p99
-    duration_hours: 72
-```
-
-## Online Learning
-
-### Feedback Integration
-
-```python
-# Feedback loop from human reviews
-from ml.online_learning import OnlineLearner
-
-learner = OnlineLearner()
-learner.process_feedback(transaction_id="txn_001", actual_label="fraud")
-```
-
-### Model Updates
-
-- **Daily**: Incremental training on new labeled data
-- **Weekly**: Full retraining with feature engineering
-- **Monthly**: Architecture search and hyperparameter tuning
+Source: `models/gnn_benchmark_results.json`

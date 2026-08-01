@@ -2,20 +2,18 @@
 
 ## Metrics Collection
 
-### Prometheus Metrics
+### Prometheus Metrics (hot-path instrumented)
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `payshield_requests_total` | Counter | endpoint, status | Total API requests |
-| `payshield_request_duration_seconds` | Histogram | endpoint | Request latency |
-| `payshield_score_total` | Counter | decision | Scoring decisions |
-| `payshield_model_latency` | Histogram | model_name | Per-model latency |
-| `payshield_queue_depth` | Gauge | queue_name | Celery queue depth |
-| `payshield_investigations_total` | Counter | status | Investigation count |
-| `payshield_ensemble_confidence` | Gauge | model_name | Model confidence |
-| `payshield_active_connections` | Gauge | type | WebSocket connections |
-| `payshield_memory_usage_bytes` | Gauge | component | Memory consumption |
-| `payshield_cpu_usage_percent` | Gauge | component | CPU utilization |
+| `layer1_block_total` | Counter | `rule_class` | L1 block triggers by rule class |
+| `layer2_escalation_total` | Counter | `status` | L2 outcomes by status (SUCCESS/SKIPPED_NO_GRAPH/TIMEOUT/ERROR/MODEL_UNAVAILABLE) |
+| `fraud_score` | Histogram | `decision` | Final fraud score distribution by decision |
+| `inference_latency_seconds` | Histogram | `source` | Per-layer latency breakdown |
+| `l1_latency_seconds` | Histogram | — | L1 evaluation latency |
+| `l2_latency_seconds` | Histogram | — | GNN inference latency |
+| `redis_operation_total` | Counter | `operation`, `status` | Redis command success/failure counts |
+| `audit_append_total` | Counter | `status` | Audit log entry append counts |
 
 ### Exposed Endpoint
 
@@ -26,70 +24,33 @@ Content-Type: text/plain; version=0.0.4
 
 ## Alerting Rules
 
-### Critical Alerts
+Defined in `prometheus/alerts.yml`:
 
-```yaml
-groups:
-  - name: payshield-critical
-    rules:
-      - alert: APIHighErrorRate
-        expr: rate(payshield_requests_total{status=~"5.."}[5m]) / rate(payshield_requests_total[5m]) > 0.01
-        for: 2m
-        labels: { severity: critical }
-        annotations:
-          summary: "API error rate > 1%"
-
-      - alert: APIHighLatency
-        expr: histogram_quantile(0.99, rate(payshield_request_duration_seconds_bucket[5m])) > 0.5
-        for: 2m
-        labels: { severity: critical }
-        annotations:
-          summary: "p99 latency > 500ms"
-
-      - alert: QueueDepthCritical
-        expr: payshield_queue_depth > 10000
-        for: 1m
-        labels: { severity: critical }
-        annotations:
-          summary: "Celery queue depth > 10,000"
-```
-
-### Warning Alerts
-
-```yaml
-      - alert: HighMemoryUsage
-        expr: payshield_memory_usage_bytes / 1024 / 1024 / 1024 > 1.5
-        for: 5m
-        labels: { severity: warning }
-        annotations:
-          summary: "Container memory > 1.5GB"
-
-      - alert: LowModelConfidence
-        expr: payshield_ensemble_confidence < 0.6
-        for: 10m
-        labels: { severity: warning }
-        annotations:
-          summary: "Ensemble confidence below 0.6"
-```
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `HighL1BlockRate` | `layer1_block_total` > 50/min for 5 min | warning |
+| `L2EscalationSpike` | `layer2_escalation_total{status=~"TIMEOUT|ERROR"}` > 10/min | critical |
+| `ScoreLatencyP99High` | p99 `inference_latency_seconds` > 100 ms for 5 min | warning |
+| `FraudScoreTail` | p99 `fraud_score` > 0.95 for 10 min | warning |
+| `InvestigationQueueBacklog` | Celery queue depth > 100 | warning |
 
 ## Grafana Dashboards
 
-### Available Dashboards
+### Available Dashboard
 
-| Dashboard | Description |
-|-----------|-------------|
-| PayShield API | Request rate, latency, errors |
-| PayShield ML | Model performance, confidence distribution |
-| PayShield Queue | Celery queue depth, task processing |
-| PayShield System | CPU, memory, network |
-| PayShield Business | Transaction volume, approval rate |
+| Dashboard | File | Description |
+|-----------|------|-------------|
+| PayShield Fraud Detection | `prometheus/payshield-fraud-dashboard.json` | 4 panels: block rate (by rule class), L2 escalation spike, latency regression (p50/p90/p99), fraud-score histogram (by decision) |
 
-### Import Dashboards
+### Import
 
 ```bash
-# API dashboard
-kubectl create configmap payshield-api-dashboard --from-file=dashboards/api.json -n monitoring
+# Copy to Grafana provisioning dir
+cp prometheus/payshield-fraud-dashboard.json \
+   grafana/provisioning/dashboards/
 ```
+
+Grafana is pre-provisioned via `grafana/provisioning/` (datasource + dashboard).
 
 ## Drift Monitoring
 
@@ -181,21 +142,11 @@ corrected value 3.86, verdict unchanged. Drift reports are archived under
 
 ## Tracing
 
-### OpenTelemetry Export
+### Correlation IDs
+
+Every request gets a correlation ID via `CorrelationIdMiddleware` (logged in structured JSON). No OpenTelemetry integration — deferred to future phases.
 
 ```python
-from opentelemetry import trace
-tracer = trace.get_tracer(__name__)
-
-with tracer.start_as_current_span("score_transaction") as span:
-    span.set_attribute("transaction_id", txn_id)
-    span.set_attribute("amount", amount)
-    result = ensemble.predict(features)
-    span.set_attribute("score", result.score)
+# Correlation ID is automatically injected by middleware
+# Logs: {"correlation_id": "c95b4e9a-...", "message": "Transaction scored"}
 ```
-
-### Trace Propagation
-
-- W3C TraceContext for distributed tracing
-- Jaeger for trace visualization
-- Sampling rate: 10% (100% for errors)

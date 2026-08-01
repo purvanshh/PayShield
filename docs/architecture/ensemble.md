@@ -2,63 +2,115 @@
 
 ## Model Overview
 
-The PayShield ensemble consists of 5 base models and 1 meta-learner:
+The PayShield ensemble fuses two scoring layers:
 
-| Model | Type | Purpose | Weight |
-|-------|------|---------|--------|
-| XGBoost | Gradient Boosted Trees | General fraud patterns | 0.25 |
-| LightGBM | Gradient Boosted Trees | High-cardinality features | 0.25 |
-| CatBoost | Gradient Boosted Trees | Categorical features | 0.20 |
-| RandomForest | Bagged Trees | Robust baseline | 0.15 |
-| MLP | Neural Network | Complex interactions | 0.15 |
-| **Meta-Learner** | Gradient Boosting | Calibrated final output | — |
+| Layer | Type | Source | Weight (configurable) |
+|-------|------|--------|----------------------|
+| L1 | Statistical filter (12 rules) | Redis-backed velocity, geo, Benford features | 0.3 |
+| L2 | GNN (HeteroConv+SAGEConv) | `_run_l2_inference` (conditional) | 0.7 |
+| **Calibrator** | Isotonic regression | `models/production/calibrator_v1.pkl` | ECE 0.055 → 0.010 |
+
+L2 weight is dropped to 0 when `l2_status != SUCCESS` (SKIPPED_NO_GRAPH,
+TIMEOUT, MODEL_UNAVAILABLE, or ERROR). The ensemble falls back to L1-only
+fusion gracefully.
 
 ## Fusion Strategy
 
-### Weighted Voting
-```
-final_score = Σ(weight_i * model_i_confidence)
+### Weighted Blending
+
+```python
+if l2_status == SUCCESS:
+    raw_score = 0.3 * l1_confidence + 0.7 * l2_probability
+else:
+    raw_score = l1_confidence  # L1-only fallback
+calibrated_score = calibrator.calibrate(raw_score)
 ```
 
-### Confidence Thresholds
+### Decision Thresholds
+
+Thresholds are configurable via `thresholds.prod.yaml` / env overrides:
+
 | Threshold | Action |
 |-----------|--------|
-| ≥ 0.9 | Auto-approve (no investigation) |
-| 0.7 – 0.9 | Send to LLM investigator |
-| 0.5 – 0.7 | Send to agent orchestrator |
-| < 0.5 | Auto-decline (high confidence fraud) |
+| ≥ `block_probability` (default 0.85) | BLOCK |
+| ≥ `review_threshold` (default 0.50) | REVIEW |
+| < `review_threshold` | ALLOW |
+
+### Isotonic Calibration
+
+`engine/ensemble.py:48-98` — the calibrator is fitted during training and loaded
+at ensemble init from `models/production/calibrator_v1.pkl`.
+
+**Design decision — above-support passthrough:** Isotonic regression cannot
+extrapolate past the largest raw score seen during fitting. If a production
+transaction produces a raw confidence higher than the training maximum, isotonic
+clipping would make it impossible to reach the BLOCK threshold. The calibrator
+passes raw scores through above the support boundary — monotone, continuous
+at the support point (`X_thresholds_[-1]`).
+
+**Calibrated vs raw example:**
+
+| Raw score | Calibrated (within support) | Calibrated (above support) |
+|-----------|---------------------------|---------------------------|
+| 0.30 | 0.25 | — |
+| 0.60 | 0.55 | — |
+| 0.85 (support max) | 0.80 | — |
+| 0.95 | — | 0.95 (passthrough) |
 
 ## Training Pipeline
 
-### Offline Training
-1. Feature engineering on historical transactions
-2. Train each base model independently
-3. Train meta-learner on cross-validation predictions
-4. Evaluate against holdout set
-5. Version and register model
+### Calibrator Fitting (Phase 4)
 
-### Online Learning
-- Daily incremental training on new labeled data
-- Feedback incorporation within 1 hour
-- Automatic model rollback if metrics degrade
+```python
+calibrator.fit(confidences=[raw_scores_from_validation], labels=[0/1_labels])
+joblib.dump(calibrator.model, "models/production/calibrator_v1.pkl")
+```
+
+Post-fitting ECE: 0.055 → 0.010. The calibrator is loaded at `EnsembleFusionEngine`
+initialization (`engine/ensemble.py:109-110`).
+
+### Model Lifecycle
+
+1. **Train**: `scripts/train_gnn.py` on synthetic data (30k transactions)
+2. **Benchmark**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`
+3. **Calibrate**: Fit isotonic calibrator on validation set predictions
+4. **Register**: Version in `models/registry/`
+5. **Promote**: Manual `POST /admin/models/promote` (auto-promotion deferred)
+6. **Monitor**: PSI drift (`GET /admin/drift/psi`), L2 status distribution (Prometheus)
 
 ## Feature Engineering
 
-### Feature Categories
-- **Transaction**: amount, currency, timestamp, type
-- **Merchant**: category, location, age, volume
-- **User**: history, velocity, behavioral profile
-- **Device**: fingerprint, browser, OS, IP reputation
-- **Network**: geolocation, VPN/proxy detection, ASN
+### Feature Categories (Redis-backed, computed live per request)
 
-### Pipeline
+| Category | Features | Source |
+|----------|----------|--------|
+| Velocity | Transaction count (5 min, 1 hr, 24 hr), amount total | `velocity:user:*`, `velocity:dev:*` |
+| Geo | Haversine distance, geo-velocity (km/min), device-location consistency | `velocity:loc:*` |
+| Benford | Chi-squared test on amount first digit, digit pair distribution | In-memory computation |
+| Graph (L2 only) | Ego-graph node/edge counts, neighbor risk scores | `engine/graph_feature_engine.py` |
+
+### Pipeline (per request)
+
 ```
-Raw Transaction → Validation → Cleaning → Transformation → Selection → Feature Vector
+Raw Transaction → Redis velocity queries (zrangebyscore) → L1 rules → 
+[conditional] ego-graph extraction → GNN inference → weighted fusion → isotonic calibration → decision
 ```
 
 ## Model Hosting
 
-- Models stored in S3 with versioning
-- Cached locally with LRU eviction
-- Hot-reload on new version detection
-- Fallback to previous version on failure
+- Models in `models/production/` (calibrator) and `models/registry/` (GNN weights)
+- Loaded at app startup via `api/lifespan.py` → `app.state.resources["l2_inference"]`
+- Hot-reload not implemented — restart required for model promotion
+- Fallback on load failure: L2 returns MODEL_UNAVAILABLE, ensemble defaults to L1-only
+
+## GNN Performance (measured)
+
+| Metric | GNN | Edge-free MLP | Lift |
+|--------|-----|---------------|------|
+| PR-AUC (lead) | 0.195 | 0.052 | 3.8× |
+| AUC-ROC | 0.667 | 0.442 | +0.225 |
+| FPR @ 90% recall | 0.714 | 0.958 | −0.244 |
+| Inference (CPU, per ego-graph) | p99 0.43 ms | — | — |
+| Parameters | 53,826 | — | — |
+
+Source: `models/gnn_benchmark_results.json`, generated by `scripts/benchmark_gnn.py`.

@@ -13,11 +13,28 @@ All endpoints (except `/health*` and `/metrics`) require an API key:
 x-api-key: payshield-dev-key-2026
 ```
 
-Role-scoped endpoints (`Admin`, `Feedback`, RBAC-gated) additionally accept
-JWT bearer tokens and check permissions from `configs/rbac.yaml`. Roles:
-`system`, `analyst`, `admin` (`analyst`/`admin` include `feedback:write`).
+or a JWT Bearer token:
+
+```
+Authorization: Bearer <access_token>
+```
+
+Role-scoped endpoints (`Admin`, `Feedback`, RBAC-gated) additionally check
+permissions from `configs/rbac.yaml`. Roles: `system`, `analyst`, `admin`.
+
+Rate limits: per-API-key 1000 req/hr, per-user 1000 req/hr. Response:
+`429 Too Many Requests` with `Retry-After` header.
 
 Interactive docs: `http://localhost:8000/docs` (Swagger) · `/redoc` (ReDoc).
+
+## Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/auth/login` | Login with username/password → JWT access + refresh |
+| `POST` | `/v1/auth/refresh` | Rotate refresh token (7-day sliding window, old token revoked) |
+| `POST` | `/v1/auth/totp/setup` | Provision TOTP secret for admin account (requires admin JWT) |
+| `POST` | `/v1/auth/totp/verify` | Verify TOTP code (enables 2FA on success, requires admin JWT) |
 
 ## Fraud Scoring
 

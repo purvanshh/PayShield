@@ -11,6 +11,7 @@ after the fixes below.
 |-----------|--------|-------|------|
 | PCI-DSS   | 60/100 | 90/100 | yes (no high-severity findings) |
 | RBI       | 16/100 | 100/100 | yes |
+| EU AI Act | —      | 100/100 | yes (13 controls, all passing) |
 
 ## PCI-DSS: 60 → 90
 
@@ -22,11 +23,11 @@ Top-3 high-severity findings fixed:
 | 8.1 | RBAC not enforced on admin endpoints | `ENFORCE_RBAC=true` in compose; every admin route gated by `require_permission(...)` | checker reads env |
 | 10.1 | Immutable audit log directory missing | `store/audit_log.py`: append-only JSONL audit log with SHA-256 hash chaining (`prev_hash` → `hash`), genesis hash verified; every score decision appended (`audit_20260731.jsonl`); PII masked at write (`fp_7***************`) | checker finds non-empty `store/audit_logs` |
 
-Remaining gap (documented, medium severity):
+Remaining gap — resolved in Phase 9:
 
 | Control | Finding | Status |
 |---------|---------|--------|
-| 8.3 | MFA not detected for admin accounts (`MFA_ENABLED` unset) | deferred — TOTP login for admins is the next hardening item |
+| 8.3 | MFA for admin accounts | **FIXED** — Phase 9 implemented RFC 6238 TOTP (SHA-1, 30s step, 6 digits, pure stdlib). `/auth/totp/setup` + `/auth/totp/verify` endpoints, admin-only via JWT role check. Module-level `auth_manager` singleton preserves secrets across requests. |
 
 ## RBI: 16 → 100
 
@@ -49,9 +50,23 @@ All five findings fixed:
 - `observability/drift.py` — robust PSI estimator (shared quantile bins, bin-count scaling, Laplace smoothing) powers drift-aware compliance; see `docs/operations/monitoring.md`.
 - Reports archived under `compliance/reports/` (`pci_dss_20260731.json`, `rbi_20260731.json`).
 
-## Latest verified scores (2026-07-31, post-rebuild)
+## Latest verified scores (2026-08-01, post-Phase-10)
 
-PCI-DSS **90/100** (passed) · RBI **100/100** (passed) · Drift: `amount_total_1h` PSI=3.86 (DRIFT_DETECTED) — re-run via `docker compose -f docker/docker-compose.yml exec api python3 scripts/run_drift_report.py`.
+PCI-DSS **90/100** (passed) · RBI **100/100** (passed) · EU AI Act **100/100** (passed)
+
+**Phase 9–10 additions:**
+- TOTP MFA for admin accounts (RFC 6238, pure stdlib — PCI-DSS 8.3 resolved)
+- JWT refresh rotation with 7-day sliding window (fixed revocation bug: was storing raw token instead of jti)
+- Per-API-key rate limiting (1000 req/hr, Redis incr+TTL) + per-user limits
+- CORS restricted to env-driven `FRONTEND_URL` (no wildcard — PCI-DSS network control)
+- Redis `maxmemory_policy=allkeys-lru` enforced at connection init
+- Async audit logger — asyncio.Queue + background worker, <1ms hot-path append
+- EU AI Act checker: 13 controls, 100/100 score — conformity assessment, post-market monitoring, human oversight logging, technical documentation
+- Fairness audit (SPD/EOD on synthetic gender/age-tier/city-tier slices)
+- Auto-generated model card from benchmark JSON (zero hand-edited metrics)
+- `verify_chain()` fix — was including `entry_id` in hash recomputation, causing all verifications to fail
+
+Full audit: `AUDIT_REPORT_v2.md`
 
 ## How to reproduce
 

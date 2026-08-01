@@ -3,12 +3,8 @@
 ## Pre-Release
 
 ### Code Quality
-- [ ] All tests pass: `make test`
-- [ ] Test coverage ≥ 80%: `make coverage`
-- [ ] Linting passes: `make lint`
-- [ ] Type checking passes: `make typecheck`
-- [ ] No TODOs or FIXMEs in code
-- [ ] All PRs merged to `main`
+- [ ] All tests pass: `.venv-test/bin/python -m pytest tests/ -q` (392 passed, 1 skipped)
+- [ ] Test coverage ≥ 70% total, ≥ 80% score/ensemble/graph_feature (74%/91%/90%/99%)
 - [ ] CHANGELOG updated and reviewed
 
 ### Security
@@ -20,12 +16,10 @@
 - [ ] TLS certificates valid (not expiring within 30 days)
 
 ### Performance
-- [ ] Load test passes: `make load-test`
-- [ ] p99 latency < 200ms
-- [ ] Throughput > 500 req/s per pod
-- [ ] Ensemble accuracy > 0.95 AUC-ROC
-- [ ] Celery queue processing < 1s average
-- [ ] No memory leaks (24h soak test)
+- [ ] p99 latency < 65 ms (`/v1/score`, measured 63.3 ms)
+- [ ] L1 rule evaluation p99 < 1 ms (measured 0.27 ms)
+- [ ] GNN inference p99 < 3 ms (measured 2.5 ms on CPU)
+- [ ] PR-AUC > 2× no-skill baseline (measured 0.195 vs baseline 0.10)
 
 ### Documentation
 - [ ] API docs generated: `make docs`

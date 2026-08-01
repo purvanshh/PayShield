@@ -168,3 +168,6 @@ investigation path (~35 s, qwen2.5:3b on CPU) never blocks scoring.
 | React Lazy Loading | Dashboard | 4.2s | 1.1s | 3.8x |
 | Sync-path profiling | Scoring | p50 < 50ms (claimed) | p50 8.5ms, p90 15ms | measured, stage breakdown |
 | PSI estimator | Drift | PSI 43.4 (artifact) | PSI 3.86 (robust) | 11x magnitude, no false spikes |
+| Async audit queue (P9) | Hot-path append | sync file I/O (~5 ms) | asyncio.Queue + batch flush, <1ms | 5x, fire-and-forget |
+| Investigations batching (P9) | Listing N+1 GETs | N round trips | pipeline/MGET, 1 round trip | N-1× fewer calls |
+| Redis incr rate limits (P9) | Per-key counter | zset zremrangebyscore + zadd + zcard (3 ops) | incr + conditional expire (1 op) | 3× fewer round trips per check |

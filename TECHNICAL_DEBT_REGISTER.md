@@ -1,40 +1,37 @@
 # PayShield Technical Debt Register
 
-## Debt Items
+## Active Debt Items
 
-| ID | Description | Impact | Effort | Priority | Owner | Target |
-|----|-------------|--------|--------|----------|-------|--------|
-| TD-001 | Redis fallback uses in-memory LRU instead of distributed cache | Cache inconsistency during pod restarts | 2 days | P2 | TBD | Q1 2027 |
-| TD-002 | GNN model requires full retrain — no incremental learning | 4-hour retrain window monthly | 2 weeks | P1 | TBD | Q4 2026 |
-| TD-003 | Dashboard uses localStorage for auth tokens instead of httpOnly cookies | XSS vulnerability | 3 days | P2 | TBD | Q1 2027 |
-| TD-004 | Ollama runs on CPU — evaluate GPU inference | LLM latency 2-5s vs potential sub-500ms | 1 week | P3 | TBD | Q2 2027 |
-| TD-005 | No read replicas for PostgreSQL analytics queries | Reporting queries compete with production | 3 days | P2 | TBD | Q1 2027 |
-| TD-006 | WebSocket connections not horizontally scalable (sticky sessions) | Connection limit per pod | 1 week | P3 | TBD | Q2 2027 |
-| TD-007 | Celery task results not cleaned up in Redis | Redis memory grows unbounded | 1 day | P2 | TBD | Q3 2026 |
-| TD-008 | No distributed tracing (OpenTelemetry not fully deployed) | Debugging cross-service issues is manual | 1 week | P2 | TBD | Q1 2027 |
-| TD-009 | Test coverage below 80% for agents and compliance modules | Regression risk | 2 weeks | P2 | TBD | Q4 2026 |
-| TD-010 | API rate limiter not distributed (in-memory per pod) | Ineffective with >1 replica | 2 days | P2 | TBD | Q4 2026 |
-| TD-011 | MFA not implemented for admin accounts (PCI-DSS 8.3) | PCI compliance gap (medium finding) | 3 days | P2 | TBD | Q4 2026 |
-| TD-012 | L2 GNN benchmarked (PR-AUC 0.198 = 3.5× edge-free MLP) but not fused into live `/v1/score` decisions | graph signal validated offline only; live path is L1 rules + Redis features | 2 weeks | P1 | TBD | Q4 2026 |
+| ID | Description | Impact | Effort | Priority | Phase |
+|----|-------------|--------|--------|----------|-------|
+| TD-002 | GNN model requires full retrain — no incremental learning | Requires offline retrain cycle per new data batch | 2 weeks | P2 | — |
+| TD-003 | Dashboard uses localStorage for auth tokens instead of httpOnly cookies | XSS risk if an injected script reads tokens | 3 days | P2 | — |
+| TD-004 | Ollama runs on CPU — evaluate GPU inference | ~35 s per investigation; GPU would cut to sub-second | 1 week | P3 | — |
+| TD-005 | No read replicas for PostgreSQL analytics queries | Reporting competes with production | 3 days | P3 | — |
+| TD-006 | WebSocket connections not horizontally scalable (sticky sessions) | Connection limit per pod | 1 week | P3 | — |
+| TD-007 | Celery task results not cleaned up in Redis | Redis memory grows unbounded | 1 day | P2 | — |
+| TD-008 | No distributed tracing (OpenTelemetry not deployed) | Debugging cross-service issues is manual | 1 week | P3 | — |
+| TD-009 | Dashboard UI is minimal (3 pages, inline styles) | Functional but not production-polished | 2 weeks | P3 | — |
+| TD-013 | GNN trained on synthetic data only | Real UPI traffic has different seasonality and mule-ring density | N/A | P2 | — |
 
-## Resolved Debt & Fixes (2026-07-31)
+## Resolved Debt (P5–P10)
 
-| Item | Resolution |
-|------|------------|
-| Env-driven service connections (Redis/Ollama) | hardcoded `localhost` replaced with env config |
-| Statistical filter startup crash | `config.get` on `None` → `self.config.get` |
-| Canned score results | score route now computes real Redis-backed velocity/geo features |
-| Worker boot failure | module-level `create_sync_redis` import fallback (`No module named 'infrastructure'`) |
-| LLM unparseable output | JSON-only prompt + tolerant parser (trailing commas, key-value fallback) |
-| Evidence `UnboundLocalError: l2` | `l1`/`l2` initialized before use |
-| Wrong Celery app module / missing task includes | `celery -A tasks.celery_app worker -Q investigation,default` + explicit `include` |
-| RBAC gaps (`investigation:read`, `feedback:write`) | `configs/rbac.yaml` system role updated; `x-api-key` accepted for role-scoped endpoints |
-| Dashboard Docker build | missing frontend deps, TS errors, COPY paths fixed |
-| PSI false spikes (43.4 → 3.86) | robust estimator: shared quantile bins + bin-count scaling + Laplace smoothing |
-| Drift sampling never recorded | missing `await` + zset member/score convention mismatch |
-| Artifacts wiped on container rebuild | named compose volumes on leaf data dirs |
-| GNN card claimed unmeasured AUC > 0.92 | measured PR-AUC 0.198 / AUC-ROC 0.692 (3.5× edge-free MLP), latency p99 2.5 ms — `scripts/benchmark_gnn.py` |
-| Synthetic generator crashed on `tier4` + `random.choice(weights=)` | added tier-4 cities; `choices(...)[0]`; guarded zero-attack division in fraud injector |
+| ID | Description | Resolution | Phase |
+|----|-------------|------------|-------|
+| TD-010 | API rate limiter not distributed (in-memory per pod) | Redis incr+TTL fixed-window per-key (1000/hr) and per-user rate limits. Middleware IP guard remains as coarse fallback. | P9 |
+| TD-011 | MFA not implemented for admin accounts (PCI-DSS 8.3) | RFC 6238 TOTP (SHA-1, 30s step, 6 digits, pure stdlib). `/auth/totp/setup` + `/auth/totp/verify` admin-only endpoints. Module-level auth_manager singleton preserves state across requests. | P9 |
+| TD-012 | L2 GNN benchmarked but not fused into live `/v1/score` | Phase 3: `_run_l2_inference` with 5 status codes (SUCCESS / SKIPPED_NO_GRAPH / TIMEOUT / MODEL_UNAVAILABLE / ERROR), 40 ms timeout guard, L1-only fallback on any failure. Ensemble isotonically calibrated (ECE 0.055→0.010). | P3–P4 |
+| TD-001 | Redis fallback uses in-memory LRU instead of distributed cache | Circuit breaker + fallback cache pattern already covers Redis failures. Separate distributed cache adds complexity without measurable gain at current scale. | WONTFIX |
+| — | PSI estimator was 11× inflated (43.4 false spike) | Shared quantile bin edges + bin-count scaling + Laplace smoothing → actual 3.86 | P5 |
+| — | Drift samples never recorded (missing await) | Awaited; zset member/score convention standardized | P5 |
+| — | `list_investigations` N+1 GETs | Pipeline/MGET batching (1 round trip) | P9 |
+| — | `get_entity_network` no pagination | limit/offset with `has_more` flag | P9 |
+| — | Audit log synchronous file I/O on hot path | AsyncAuditLogWriter — asyncio.Queue + background worker, batch flush (100 entries or 1s), <1ms hot-path append | P9 |
+| — | JWT refresh revocation bug (storing raw token instead of jti) | Fixed: decode payload, extract jti, add jti to revoked set | P9 |
+| — | CORS allow_origins=["*"] | Env-driven `FRONTEND_URL`, no wildcard | P9 |
+| — | `verify_chain()` hash recomputation included entry_id | Fixed: `{k: v for k, v in entry if k not in ("hash", "entry_id")}` | P9 |
+| — | Test coverage below gates | 392 tests, 74% total (gates: score 91%, ensemble 90%, graph 99%) | P5 |
+| — | EU AI Act checker incomplete | 13 controls, 100/100 score | P10 |
 
 ## Priority Definitions
 
@@ -42,24 +39,4 @@
 |----------|-----------------|----------|
 | P1 | < 1 month | Security vulnerabilities, data loss risk |
 | P2 | < 3 months | Performance degradation, operational pain |
-| P3 | < 6 months | Nice-to-have improvements, tech modernization |
-
-## Remediation Plan
-
-### Q3 2026
-- TD-007: Celery result cleanup (1 day)
-- TD-010: Distributed rate limiter (2 days)
-
-### Q4 2026
-- TD-002: Incremental GNN learning (2 weeks)
-- TD-009: Agent/compliance test coverage (2 weeks)
-
-### Q1 2027
-- TD-001: Distributed cache (2 days)
-- TD-003: httpOnly cookies (3 days)
-- TD-005: PostgreSQL read replicas (3 days)
-- TD-008: OpenTelemetry (1 week)
-
-### Q2 2027
-- TD-004: GPU inference for Ollama (1 week)
-- TD-006: Horizontal WebSocket scaling (1 week)
+| P3 | < 6 months | Nice-to-have improvements, polish |

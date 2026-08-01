@@ -1,76 +1,114 @@
-# PayShield Architecture Review — v1.0.0
+# PayShield Architecture Review — v2 (Post-Phase-10)
 
 ## Executive Summary
 
-PayShield is a production-ready enterprise fraud detection system built over 60 implementation phases. The system processes real-time transactions through an ensemble of 5 ML models, with optional LLM-powered investigation and 12-agent multi-agent orchestration for complex decisions.
+PayShield is a real-time UPI fraud detection system with three-layer scoring:
+L1 statistical filter (sub-millisecond rule evaluation), L2 graph neural network
+(conditional fusion with 40 ms timeout guard), and L3 async LLM investigation
+(Celery + Ollama qwen2.5:3b). Delivered over 10 implementation phases.
 
-**Scale:** 1,000+ TPS per pod, sub-100ms p99 latency, 99.9% availability SLO.
+**Measured latency:** p50 8.5 ms, p90 15.0 ms, p99 63.3 ms for `/v1/score`.
 
 ## Architecture (C4 Model)
 
 ### Context
 ```
-[User] → [PayShield API] → [Ensemble ML] → [LLM Investigator] → [Agent System]
+[UPI Transaction] → [PayShield API] → [L1 Rules / L2 GNN / L3 LLM] → [Decision]
 ```
 
 ### Containers
-- **FastAPI** — REST + WebSocket API gateway (port 8000/8765)
-- **Celery** — Async task queue (Redis broker)
-- **PostgreSQL** — Transactional data + audit logs
-- **Redis** — Cache + Celery broker + rate limiter
-- **React Dashboard** — Analyst frontend
+- **FastAPI** — REST + WebSocket API gateway (port 8000)
+- **Celery** — Async task queue for LLM investigations (Redis broker)
+- **PostgreSQL** — Transactional data + audit metadata (SQLAlchemy + asyncpg)
+- **Redis** — Feature store (velocity/geo/Benford), Celery broker, rate limiter, investigation cache
+- **Ollama** — Local LLM inference (qwen2.5:3b, CPU, ~35 s per investigation)
+- **React Dashboard** — Vite+React skeleton (3 pages: Dashboard, Investigation, Login)
 
 ### Components
-- Feature engineering pipeline (200+ features)
-- 5-model ensemble + Gradient Boosting meta-learner
-- LLM investigator with structured prompts
-- 12-agent orchestrator (8 base + 4 advanced)
-- Prometheus metrics + Grafana dashboards
+- 3-layer scoring: L1 statistical filter (12 configurable rules) → L2 GNN (conditional fusion) → Ensemble (weighted + isotonic calibration)
+- L3 async LLM investigator (structured JSON prompts, tolerant parser)
+- 14-agent framework (12 concrete agents + router + state, tested in isolation)
+- Prometheus metrics + Grafana dashboard (4 panels)
+- 392 tests at 74% coverage (gates: score 91%, ensemble 90%, graph 99%)
 
 ## Technology Stack
 
-| Layer | Choice | Justification | Trade-offs |
-|-------|--------|--------------|------------|
-| API | FastAPI | Async, Pydantic validation, auto-docs | Fewer built-in features than Django |
-| ML | scikit-learn + XGBoost/LightGBM/CatBoost | Mature, well-tested, good for tabular | Not SOTA for graph data |
-| GNN | PyTorch Geometric | SOTA for graph fraud detection | Higher compute cost |
-| Queue | Celery + Redis | Simple ops, sufficient throughput | No replay out of box |
-| DB | PostgreSQL 16 | ACID, JSON, mature ecosystem | Schema migrations needed |
-| Cache | Redis 7 | Fast, multi-purpose | RDB persistence only |
-| Infra | Kubernetes | Portability, cost control | Operational complexity |
-| CI/CD | GitHub Actions + ArgoCD | GitOps, auto-deploy | Requires cluster access |
+| Layer | Choice | Justification |
+|-------|--------|--------------|
+| API | FastAPI | Async, Pydantic validation, auto-docs |
+| ML | PyTorch Geometric | HeteroConv + SAGEConv for heterogeneous graph fraud detection |
+| Feature store | Redis | Sub-ms reads for velocity/geo features |
+| Queue | Celery + Redis | Simple ops, sufficient for async investigations |
+| DB | PostgreSQL 16 | ACID, JSON, mature ecosystem |
+| Cache | Redis 7 | Multi-purpose (broker, cache, feature store, rate limiter) |
+| LLM | Ollama (qwen2.5:3b) | Local inference, no API dependency |
+| Auth | JWT (HS256) + API Key + TOTP MFA | Refresh rotation, per-key/per-user rate limits |
 
-## Performance Baseline
+## Performance Baseline (measured, 2026-08-01)
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| p50 latency | 35ms | < 50ms | PASS |
-| p95 latency | 72ms | < 100ms | PASS |
-| p99 latency | 120ms | < 200ms | PASS |
-| Throughput | 1,100 TPS | 1,000 TPS | PASS |
-| Ensemble AUC-ROC | 0.96 | > 0.95 | PASS |
-| False Positive Rate | 3.2% | < 5% | PASS |
-| Availability | 99.95% | 99.9% | PASS |
+| p50 latency (`/v1/score`) | 8.5 ms | < 50 ms | PASS |
+| p90 latency | 15.0 ms | < 100 ms | PASS |
+| p99 latency | 63.3 ms | < 200 ms | PASS |
+| L1 rule evaluation (p99) | 0.27 ms | < 1 ms | PASS |
+| GNN inference (CPU, per ego-graph) | p99 2.5 ms | < 5 ms | PASS |
+| PR-AUC (lead metric) | 0.198 (3.5× baseline) | > 2× prevalence | PASS |
+| AUC-ROC | 0.692 | > 0.65 | PASS |
+| Test coverage | 74% | > 70% | PASS |
+| Tests | 392 passed | > 300 | PASS |
 
 ## Security Posture
 
-- **Authentication**: JWT with configurable expiry
-- **Authorization**: RBAC on all admin endpoints
-- **Encryption**: TLS in transit, AES-256 at rest
-- **Network**: K8s network policies, pod-level isolation
-- **Secrets**: SealedSecrets in Git, encrypted
-- **Audit**: Immutable audit logs for all decisions
-- **Compliance**: PCI-DSS, RBI, EU AI Act automated checks
+- **Authentication**: JWT (HS256) with 7-day sliding refresh rotation + API Key (SHA-256 hashed) + TOTP MFA (RFC 6238, SHA-1, 30s step, pure stdlib)
+- **Rate Limiting**: Per-API-key 1000 req/hr + per-user limits via Redis incr+TTL; 429 with Retry-After header; IP-based sliding window (200 req/min) as coarse guard
+- **Authorization**: RBAC on all admin endpoints (`require_permission`), roles: system/admin/analyst
+- **CORS**: Env-driven `FRONTEND_URL` (no wildcard), security headers middleware (CSP, HSTS)
+- **Encryption**: AES-256 at rest via `ENCRYPTION_KEY`, TLS in transit
+- **Audit**: Hash-chained, tamper-evident JSONL log with PII masking; async queue-backed (`<1ms` append)
+- **Compliance**: PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100 (13 controls, programmatic checkers)
+
+## L2 Conditional Fusion Architecture
+
+```
+POST /v1/score
+    │
+    ├── L1: 12 statistical rules (p99 0.27 ms)
+    │   └── BLOCK? → return immediately
+    │
+    ├── _run_l2_inference(request, txn)
+    │   ├── l2_inference service loaded?  NO → MODEL_UNAVAILABLE
+    │   ├── Ego graph extracted?          < 2 nodes → SKIPPED_NO_GRAPH
+    │   ├── Inference > 40 ms?            YES → TIMEOUT
+    │   ├── Exception?                    YES → ERROR
+    │   └── All good                      → SUCCESS (prob > 0)
+    │
+    └── Ensemble fusion
+        ├── L2 status == SUCCESS?  → full L1+L2 weighted fusion
+        └── Otherwise              → L1-only fallback
+```
+
+This is a deliberate architectural choice: unconditionally blocking the hot path
+on a synthetic-data-trained GNN would degrade availability for no fraud-detection
+gain on fresh users. The five L2 status codes are surfaced in the API response
+and tracked via Prometheus.
 
 ## Technical Debt Register
 
-See [TECHNICAL_DEBT_REGISTER.md](TECHNICAL_DEBT_REGISTER.md) for full list.
+See [TECHNICAL_DEBT_REGISTER.md](TECHNICAL_DEBT_REGISTER.md). Key resolved items:
+L2 conditional fusion (Phase 3), ensemble calibrator fitting ECE 0.055→0.010
+(Phase 4), MFA/TOTP (Phase 9), per-key rate limits (Phase 9), async audit queue
+(Phase 9), investigations pipeline batching (Phase 9).
+
+Remaining: auto-model promotion needs manual approval gate, dashboard UI is
+minimal, GNN uses synthetic data, agents tested in isolation (27 tests).
 
 ## Scalability Analysis
 
-| Component | Current | Max (3 replicas) | Bottleneck |
-|-----------|---------|-----------------|------------|
-| API | 1,100 TPS | 3,300 TPS | CPU (model inference) |
-| Celery | 500 tasks/s | 2,000 tasks/s | Redis throughput |
-| PostgreSQL | 2,000 QPS | 8,000 QPS | Connection pool |
-| Redis | 10,000 ops/s | 50,000 ops/s | Memory bandwidth |
+| Component | Bottleneck | Mitigation |
+|-----------|-----------|------------|
+| API | CPU (model inference) | Async Semaphore (20 concurrent batch jobs) |
+| Redis | Memory bandwidth | Redis LRU (`allkeys-lru` enforced via `ensure_memory_policy`) |
+| PostgreSQL | Connection pool | SQLAlchemy async engine + asyncpg |
+| Celery | Redis throughput | Investigation queue is async, not hot-path |
+| Ollama | CPU (~35 s/investigation) | Async — never blocks scoring |
