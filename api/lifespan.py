@@ -61,6 +61,16 @@ async def lifespan_manager(app: FastAPI):
         resources["neo4j"] = None
 
     try:
+        from ml.inference import L2InferenceService
+        model_path = resources.get("model_path")
+        l2_service = L2InferenceService(model_path=model_path)
+        l2_service.load_model()
+        resources["l2_inference"] = l2_service
+        logger.info(f"l2_inference_ready: {l2_service.is_ready} ({l2_service.load_error})")
+    except Exception as e:
+        logger.warning(f"l2_inference_skipped: {e}")
+
+    try:
         from store.graph_db import NetworkXGraphDB
         resources["graph_db"] = NetworkXGraphDB()
         from store.graph_writer import GraphDBWriter

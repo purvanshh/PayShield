@@ -328,6 +328,8 @@ def main():
     ap.add_argument("--latency-runs", type=int, default=300)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--output", type=str, default="models/gnn_benchmark_results.json")
+    ap.add_argument("--save-model", action="store_true",
+                    help="persist the best GNN state dict to models/production/current.pt")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -462,6 +464,22 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2))
     print(f"\nResults saved to {out}")
+
+    if args.save_model:
+        from ml.registry import ModelRegistry
+        from pathlib import Path as _P
+        registry = ModelRegistry()
+        artifact = _P(registry.production_dir) / f"payshield_gnn_v1.pt"
+        torch.save({"state_dict": gnn.state_dict(),
+                    "hidden_channels": 64, "num_layers": 2, "dropout": 0.3,
+                    "edge_types": [list(et) for et in EDGE_TYPES],
+                    "metrics": {"auc_pr": gnn_test["auc_pr"], "auc_roc": gnn_test["auc_roc"]}},
+                   artifact)
+        symlink = _P(registry.production_dir) / "current.pt"
+        if symlink.exists() or symlink.is_symlink():
+            symlink.unlink()
+        symlink.symlink_to(artifact.name)
+        print(f"Model artifact saved: {artifact} (current.pt -> {artifact.name})")
 
     print("\n=== Summary ===")
     print(f"GNN test:      PR-AUC {gnn_test['auc_pr']} (lead)  AUC-ROC {gnn_test['auc_roc']}  "

@@ -21,6 +21,7 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 try:
     from engine.statistical_filter import StatisticalFilter, GeoPoint, Layer1Result
     from engine.ensemble import EnsembleFusionEngine, EnsembleResult, Layer2Result
+    from engine.constants import L2Status
     _engines_available = True
 except ImportError:
     _engines_available = False
@@ -206,7 +207,7 @@ async def score_transaction(
             pass
         return FraudScoreResponse(**result)
 
-    l2_result = Layer2Result(graph_features={"velocity": {}, "geo": {}, "benford": {}})
+    l2_result = await _run_l2_inference(request, txn)
 
     t2 = time.time()
     try:
@@ -216,6 +217,9 @@ async def score_transaction(
         ensemble_result = EnsembleResult()
     ensemble_ms = (time.time() - t2) * 1000
 
+    l2_status = getattr(l2_result, "status", None)
+    l2_prob = getattr(l2_result, "fraud_probability", None)
+
     response_data = {
         "txn_id": txn.txn_id,
         "decision": getattr(ensemble_result, "decision", "ALLOW"),
@@ -224,10 +228,19 @@ async def score_transaction(
         "evidence": {
             "triggered_rules": getattr(layer1_result, "triggered_rules", []),
             "ensemble_confidence": getattr(ensemble_result, "confidence", 0.0),
+            "l2_status": l2_status,
+            "l2_probability": l2_prob,
+            "l2_latency_ms": getattr(l2_result, "latency_ms", 0.0),
             "latency_breakdown": {"l1_rules_ms": round(l1_ms, 2), "ensemble_ms": round(ensemble_ms, 2)},
         },
         "latency_ms": 0.0,
         "model_version": "1.0.0",
+        "layer1_decision": getattr(layer1_result, "decision", "ALLOW"),
+        "layer1_confidence": getattr(layer1_result, "confidence", 0.0),
+        "layer2_probability": l2_prob,
+        "layer2_source": getattr(l2_result, "source", "L2_GNN"),
+        "layer2_status": l2_status,
+        "graph_features": getattr(l2_result, "graph_features", {}),
     }
     elapsed = (time.time() - start) * 1000
     response_data["latency_ms"] = round(elapsed, 2)
@@ -307,6 +320,49 @@ async def batch_score(
     results = await asyncio.gather(*[score_single(t) for t in batch.transactions])
     batch_ms = (time.time() - start) * 1000
     return BatchScoreResponse(results=list(results), batch_latency_ms=round(batch_ms, 2))
+
+
+async def _run_l2_inference(request: Request, txn: ScoreRequest) -> Layer2Result:
+    """Conditional L2 GNN inference.
+
+    - model not loaded        -> status=MODEL_UNAVAILABLE
+    - ego graph too small     -> status=SKIPPED_NO_GRAPH
+    - inference > 20ms        -> status=TIMEOUT
+    - otherwise               -> status=SUCCESS with fraud_probability
+
+    Never raises; the ensemble falls back to L1-only fusion on any failure.
+    """
+    try:
+        resources = getattr(request.app.state, "resources", {})
+        service = resources.get("l2_inference")
+        graph_db = resources.get("graph_db")
+        if service is None or graph_db is None:
+            return Layer2Result(status=L2Status.MODEL_UNAVAILABLE, graph_features={})
+
+        from engine.graph_feature_engine import extract_ego_graph_live
+
+        ego = extract_ego_graph_live(
+            graph_db.graph,
+            user_id=txn.user_id,
+            merchant_id=txn.merchant_id,
+            device_id=txn.device_fingerprint or None,
+        )
+        out = await service.predict(
+            ego,
+            user_id=txn.user_id,
+            merchant_id=txn.merchant_id,
+            device_id=txn.device_fingerprint or None,
+        )
+        return Layer2Result(
+            fraud_probability=out["fraud_probability"] if out["status"] == "SUCCESS" else None,
+            source="L2_GNN",
+            graph_features={"nodes": out.get("nodes", 0), "edges": out.get("edges", 0)},
+            latency_ms=out.get("latency_ms", 0.0),
+            status=L2Status(out["status"]),
+        )
+    except Exception as e:
+        logger.warning(f"l2_inference_failed: {e}")
+        return Layer2Result(status=L2Status.ERROR, graph_features={})
 
 
 async def _write_to_graph_db(request: Request, txn: ScoreRequest, velocity_features: dict):

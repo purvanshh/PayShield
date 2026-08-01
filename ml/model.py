@@ -74,6 +74,52 @@ class PayShieldGNN(torch.nn.Module):
         graph_emb = torch.cat([user_emb, txn_emb], dim=-1)
         return self.classifier(graph_emb)
 
+    @torch.no_grad()
+    def predict_proba(self, x_dict: dict[str, torch.Tensor],
+                      edge_index_dict: dict[tuple[str, str, str], torch.Tensor]) -> torch.Tensor:
+        """Return P(fraud) = sigmoid of the trained fraud logit (column 0).
+
+        The model is trained with BCEWithLogitsLoss on ``out[:, :1]`` only,
+        so column 1 is an untrained placeholder; softmax over both logits
+        would corrupt the probability. Output shape is (batch, 1).
+        """
+        self.eval()
+        logits = self.forward(x_dict, edge_index_dict)
+        return torch.sigmoid(logits[:, 0:1])
+
+    @torch.no_grad()
+    def predict_proba_safe(self, x_dict: dict[str, torch.Tensor],
+                           edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
+                           timeout_ms: float = 20.0) -> tuple[float, bool]:
+        """CPU inference guarded by an in-process timeout.
+
+        Returns (fraud_probability, timed_out). Inference runs in a worker
+        thread; if it does not finish within ``timeout_ms`` the caller gets
+        ``(0.0, True)`` and must fall back to L1-only fusion.
+        """
+        import asyncio
+        import threading
+
+        result: dict[str, float] = {}
+        error: list[Exception] = []
+
+        def _run():
+            try:
+                probs = self.predict_proba(x_dict, edge_index_dict)
+                result["prob"] = float(probs[0, 0])
+            except Exception as e:  # pragma: no cover - defensive
+                error.append(e)
+
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_ms / 1000.0)
+
+        if error:
+            raise error[0]
+        if thread.is_alive():
+            return 0.0, True
+        return result.get("prob", 0.0), False
+
     def forward_with_attention(self, x_dict: dict[str, torch.Tensor],
                                edge_index_dict: dict[tuple[str, str, str], torch.Tensor]) -> tuple[torch.Tensor, dict]:
         x_dict_out = x_dict

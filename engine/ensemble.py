@@ -23,7 +23,7 @@ CALIBRATION_DIR = Path("models/calibration")
 
 @dataclass
 class Layer2Result:
-    fraud_probability: float = 0.0
+    fraud_probability: float | None = None
     source: str = LayerName.L2_GNN.value
     graph_features: dict | None = None
     latency_ms: float = 0.0
@@ -108,15 +108,31 @@ class EnsembleFusionEngine:
                 latency_ms=round(elapsed, 3),
             )
 
-        l2_prob = layer2_result.fraud_probability if layer2_result else 0.0
+        l2_prob = None
+        if layer2_result is not None and layer2_result.fraud_probability is not None:
+            l2_prob = layer2_result.fraud_probability
 
         if l1_decision == "ESCALATE":
-            boosted_score = min(1.0, l2_prob + 0.15)
+            l2_signal = l2_prob if l2_prob is not None else 0.0
+            boosted_score = min(1.0, l2_signal + 0.15)
             calibrated = self.calibrator.calibrate(boosted_score)
             decision: Literal["ALLOW", "REVIEW", "BLOCK"] = Decision.BLOCK if boosted_score >= self.fraud_threshold else Decision.REVIEW
             elapsed = (time.perf_counter() - start) * 1000
             return EnsembleResult(
                 decision=decision,
+                confidence=round(calibrated, 4),
+                source=LayerName.ENSEMBLE,
+                triggered_rules=l1_rules,
+                layer1_result=layer1_result,
+                layer2_result=layer2_result,
+                latency_ms=round(elapsed, 3),
+            )
+
+        if l2_prob is None:
+            calibrated = self.calibrator.calibrate(0.0)
+            elapsed = (time.perf_counter() - start) * 1000
+            return EnsembleResult(
+                decision=Decision.ALLOW,
                 confidence=round(calibrated, 4),
                 source=LayerName.ENSEMBLE,
                 triggered_rules=l1_rules,
@@ -142,7 +158,7 @@ class EnsembleFusionEngine:
         return EnsembleResult(
             decision=decision,
             confidence=round(calibrated, 4),
-            source=LayerName.L2_GNN,
+            source="L2_GNN",
             triggered_rules=l1_rules,
             layer1_result=layer1_result,
             layer2_result=layer2_result,

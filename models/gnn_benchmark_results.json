@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-31T17:09:39Z",
+  "generated_at": "2026-08-01T09:40:49Z",
   "device": "cpu",
-  "lead_metric": "PR-AUC — for imbalanced fraud, AUC-ROC is dominated by the legitimate majority; PR-AUC measures the minority (fraud) class directly",
+  "lead_metric": "PR-AUC \u2014 for imbalanced fraud, AUC-ROC is dominated by the legitimate majority; PR-AUC measures the minority (fraud) class directly",
   "data": {
     "source": "synthetic UPI generator (scripts/generate_synthetic_data.py)",
     "users": 10000,
@@ -49,16 +49,16 @@
     "architecture": "HeteroConv + SAGEConv (mean aggr), 2 layers, hidden 64, global mean pooling + MLP readout",
     "parameters": 53826,
     "train_epochs_effective": "early-stopped, max 60",
-    "train_seconds": 331.6,
+    "train_seconds": 90.5,
     "test_split": {
       "graphs": 557,
       "positives": 44
     },
     "test_metrics": {
-      "auc_roc": 0.6918,
-      "auc_pr": 0.198,
-      "fpr_at_0.90_recall": 0.7115,
-      "threshold_at_0.90_recall": 0.0175,
+      "auc_roc": 0.6666,
+      "auc_pr": 0.195,
+      "fpr_at_0.90_recall": 0.7135,
+      "threshold_at_0.90_recall": 0.0078,
       "f1@0.3": 0.0,
       "precision@0.3": 0.0,
       "recall@0.3": 0.0,
@@ -70,30 +70,30 @@
       "recall@0.7": 0.0
     },
     "inference_latency_ms_cpu": {
-      "mean_ms": 0.998,
-      "p50_ms": 0.995,
-      "p90_ms": 1.458,
-      "p95_ms": 1.631,
-      "p99_ms": 2.497,
-      "max_ms": 3.083,
+      "mean_ms": 0.372,
+      "p50_ms": 0.368,
+      "p90_ms": 0.386,
+      "p95_ms": 0.39,
+      "p99_ms": 0.427,
+      "max_ms": 0.471,
       "runs": 300,
       "graph_nodes_min": 19,
       "graph_nodes_median": 48,
-      "graph_nodes_max": 75,
-      "graph_edges_median": 15
+      "graph_nodes_max": 81,
+      "graph_edges_median": 14
     }
   },
   "baseline": {
     "architecture": "edge-free MLP (FraudClassifier) on 5 target-user features",
     "test_metrics": {
-      "auc_roc": 0.4805,
-      "auc_pr": 0.056,
-      "fpr_at_0.90_recall": 0.9143,
+      "auc_roc": 0.442,
+      "auc_pr": 0.0518,
+      "fpr_at_0.90_recall": 0.9581,
       "f1@0.3": 0.1087,
       "f1@0.5": 0.0,
       "f1@0.7": 0.0
     },
-    "pr_auc_lift_vs_gnn": 3.5
+    "pr_auc_lift_vs_gnn": 3.8
   },
   "limitations": [
     "trained on synthetic data; real UPI traffic has different seasonality",
