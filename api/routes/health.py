@@ -23,6 +23,8 @@ async def health_check(redis=Depends(get_redis)):
     try:
         from store.neo4j_client import Neo4jGraphDB
         neo4j = Neo4jGraphDB()
+        await neo4j.connect()
+        await neo4j.close()
         checks["neo4j"] = "up"
     except Exception:
         checks["neo4j"] = "down"

@@ -40,6 +40,48 @@ class GraphFeatures:
         }
 
 
+def build_from_live_transaction(graph: nx.Graph, txn: dict, features: dict | None = None) -> nx.Graph:
+    """Incrementally add a live transaction to an in-memory NetworkX graph.
+
+    Mirrors the Neo4j write primitives so both backends converge on the same
+    state. `txn` is a dict with txn_id/user_id/merchant_id/amount/timestamp/
+    device_fingerprint/txn_type and optionally counterparty_user_id.
+    """
+    txn_id = str(txn.get("txn_id", ""))
+    user_id = str(txn.get("user_id", ""))
+    merchant_id = str(txn.get("merchant_id", ""))
+    device_id = str(txn.get("device_fingerprint") or "UNKNOWN_DEVICE")
+    amount = float(txn.get("amount", 0.0))
+    timestamp = txn.get("timestamp")
+
+    if not graph.has_node(txn_id):
+        graph.add_node(txn_id, node_type="Transaction", amount=amount, timestamp=str(timestamp or ""))
+    if user_id and not graph.has_node(user_id):
+        graph.add_node(user_id, node_type="User", user_id=user_id)
+    if merchant_id and not graph.has_node(merchant_id):
+        graph.add_node(merchant_id, node_type="Merchant", merchant_id=merchant_id)
+    if device_id != "UNKNOWN_DEVICE" and not graph.has_node(device_id):
+        graph.add_node(device_id, node_type="Device", device_id=device_id)
+
+    if user_id and not graph.has_edge(user_id, txn_id):
+        graph.add_edge(user_id, txn_id, edge_type="performed")
+    if merchant_id and not graph.has_edge(txn_id, merchant_id):
+        graph.add_edge(txn_id, merchant_id, edge_type="at")
+    if device_id != "UNKNOWN_DEVICE" and not graph.has_edge(txn_id, device_id):
+        graph.add_edge(txn_id, device_id, edge_type="used")
+
+    counterparty = txn.get("counterparty_user_id")
+    if txn.get("txn_type") == "P2P" and counterparty:
+        if not graph.has_node(counterparty):
+            graph.add_node(counterparty, node_type="User", user_id=counterparty)
+        if not graph.has_edge(user_id, txn_id):
+            graph.add_edge(user_id, txn_id, edge_type="transferred_to")
+        if not graph.has_edge(txn_id, counterparty):
+            graph.add_edge(txn_id, counterparty, edge_type="transferred_to")
+
+    return graph
+
+
 class EgoGraphExtractor:
     CACHE_PREFIX = "ego_graph"
     CACHE_TTL = 60

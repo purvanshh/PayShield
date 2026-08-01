@@ -85,6 +85,42 @@ class NetworkXGraphDB:
             "risk_clusters": len([n for n in ego.nodes() if ego.nodes[n].get("is_fraud", False)]),
         }
 
+    def create_transaction_node(self, txn_id: str, amount: float, timestamp: str | None = None):
+        self.add_node(txn_id, "Transaction", {"amount": amount, "timestamp": timestamp or ""})
+
+    def link_user_to_txn(self, user_id: str, txn_id: str):
+        if not self.graph.has_node(user_id):
+            self.add_node(user_id, "User", {"user_id": user_id})
+        if not self.graph.has_node(txn_id):
+            self.add_node(txn_id, "Transaction", {})
+        self.add_edge(user_id, txn_id, "performed")
+
+    def link_merchant_to_txn(self, merchant_id: str, txn_id: str):
+        if not self.graph.has_node(merchant_id):
+            self.add_node(merchant_id, "Merchant", {"merchant_id": merchant_id})
+        if not self.graph.has_node(txn_id):
+            self.add_node(txn_id, "Transaction", {})
+        self.add_edge(txn_id, merchant_id, "at")
+
+    def link_device_to_txn(self, device_id: str, txn_id: str, fingerprint_hash: str | None = None):
+        if not device_id or device_id == "UNKNOWN_DEVICE":
+            return
+        if not self.graph.has_node(device_id):
+            self.add_node(device_id, "Device", {"fingerprint_hash": fingerprint_hash or device_id})
+        if not self.graph.has_node(txn_id):
+            self.add_node(txn_id, "Transaction", {})
+        self.add_edge(txn_id, device_id, "used")
+
+    def link_p2p_transfer(self, from_user_id: str, to_user_id: str, txn_id: str):
+        if not self.graph.has_node(from_user_id):
+            self.add_node(from_user_id, "User", {"user_id": from_user_id})
+        if not self.graph.has_node(to_user_id):
+            self.add_node(to_user_id, "User", {"user_id": to_user_id})
+        if not self.graph.has_node(txn_id):
+            self.add_node(txn_id, "Transaction", {})
+        self.add_edge(from_user_id, txn_id, "transferred_to")
+        self.add_edge(txn_id, to_user_id, "transferred_to")
+
     def create_entity(self, entity_id: str, entity_type: str, features: dict | None = None):
         self.add_node(entity_id, entity_type, features)
         logger.info(f"Entity created: {entity_id} ({entity_type})")

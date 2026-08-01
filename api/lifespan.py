@@ -52,10 +52,26 @@ async def lifespan_manager(app: FastAPI):
     try:
         from store.neo4j_client import Neo4jGraphDB
         neo4j = Neo4jGraphDB()
+        await neo4j.connect()
+        await neo4j.initialize_schema()
         resources["neo4j"] = neo4j
         logger.info("neo4j_connected")
     except Exception as e:
         logger.warning(f"neo4j_connection_skipped: {e}")
+        resources["neo4j"] = None
+
+    try:
+        from store.graph_db import NetworkXGraphDB
+        resources["graph_db"] = NetworkXGraphDB()
+        from store.graph_writer import GraphDBWriter
+        resources["graph_writer"] = GraphDBWriter(
+            neo4j=resources.get("neo4j"),
+            networkx_db=resources.get("graph_db"),
+            redis=resources.get("redis"),
+        )
+        logger.info("graph_writer_ready")
+    except Exception as e:
+        logger.warning(f"graph_writer_skipped: {e}")
 
     from engine.ensemble import EnsembleFusionEngine
     from engine.statistical_filter import StatisticalFilter

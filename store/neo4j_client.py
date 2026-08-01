@@ -121,31 +121,87 @@ class Neo4jGraphDB:
                 props=props,
             )
 
-    async def create_transaction(self, txn_id: str, user_id: str, merchant_id: str, amount: float, device_id: str | None = None):
+    async def create_transaction_node(self, txn_id: str, amount: float, timestamp: datetime | float | str | None = None):
+        if isinstance(timestamp, (int, float)):
+            timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        props = {
+            "txn_id": txn_id,
+            "amount": amount,
+            "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
+        }
         async with self._driver.session() as session:
             await session.run(
                 """
-                MATCH (u:User {user_id: $user_id})
-                MATCH (m:Merchant {merchant_id: $merchant_id})
-                CREATE (t:Transaction {
-                    txn_id: $txn_id,
-                    amount: $amount,
-                    timestamp: datetime()
-                })
-                CREATE (u)-[:PERFORMED]->(t)
-                CREATE (t)-[:AT]->(m)
-                WITH t
-                OPTIONAL MATCH (d:Device {device_id: $device_id})
-                FOREACH (dev IN CASE WHEN d IS NOT NULL THEN [d] ELSE [] END |
-                    CREATE (t)-[:USED]->(dev)
-                )
+                MERGE (t:Transaction {txn_id: $txn_id})
+                SET t += $props
                 """,
                 txn_id=txn_id,
-                user_id=user_id,
-                merchant_id=merchant_id,
-                amount=amount,
-                device_id=device_id or "",
+                props=props,
             )
+
+    async def link_user_to_txn(self, user_id: str, txn_id: str):
+        async with self._driver.session() as session:
+            await session.run(
+                """
+                MERGE (u:User {user_id: $user_id})
+                MERGE (t:Transaction {txn_id: $txn_id})
+                MERGE (u)-[:PERFORMED]->(t)
+                """,
+                user_id=user_id,
+                txn_id=txn_id,
+            )
+
+    async def link_merchant_to_txn(self, merchant_id: str, txn_id: str):
+        async with self._driver.session() as session:
+            await session.run(
+                """
+                MERGE (m:Merchant {merchant_id: $merchant_id})
+                MERGE (t:Transaction {txn_id: $txn_id})
+                MERGE (t)-[:AT]->(m)
+                """,
+                merchant_id=merchant_id,
+                txn_id=txn_id,
+            )
+
+    async def link_device_to_txn(self, device_id: str, txn_id: str, fingerprint_hash: str | None = None):
+        if not device_id or device_id == "UNKNOWN_DEVICE":
+            return
+        props = {"fingerprint_hash": fingerprint_hash or device_id}
+        async with self._driver.session() as session:
+            await session.run(
+                """
+                MERGE (d:Device {device_id: $device_id})
+                SET d += $props
+                WITH d
+                MERGE (t:Transaction {txn_id: $txn_id})
+                MERGE (t)-[:USED]->(d)
+                """,
+                device_id=device_id,
+                props=props,
+                txn_id=txn_id,
+            )
+
+    async def link_p2p_transfer(self, from_user_id: str, to_user_id: str, txn_id: str):
+        async with self._driver.session() as session:
+            await session.run(
+                """
+                MERGE (u1:User {user_id: $from_user_id})
+                MERGE (u2:User {user_id: $to_user_id})
+                MERGE (t:Transaction {txn_id: $txn_id})
+                MERGE (u1)-[:TRANSFERRED_TO]->(t)
+                MERGE (t)-[:TRANSFERRED_TO]->(u2)
+                """,
+                from_user_id=from_user_id,
+                to_user_id=to_user_id,
+                txn_id=txn_id,
+            )
+
+    async def create_transaction(self, txn_id: str, user_id: str, merchant_id: str, amount: float, device_id: str | None = None):
+        await self.create_transaction_node(txn_id, amount)
+        await self.link_user_to_txn(user_id, txn_id)
+        await self.link_merchant_to_txn(merchant_id, txn_id)
+        if device_id:
+            await self.link_device_to_txn(device_id, txn_id)
 
     async def link_user_device(self, user_id: str, device_id: str):
         async with self._driver.session() as session:

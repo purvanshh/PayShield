@@ -19,6 +19,10 @@ class ScoreRequest(BaseModel):
     location: GeoPoint | None = None
     mcc_code: str = ""
     txn_type: Literal["P2P", "P2M", "COLLECT"] = "P2P"
+    counterparty_user_id: str | None = Field(
+        default=None,
+        description="Recipient user id for P2P transactions (wired into the graph)",
+    )
 
 
 class BatchScoreRequest(BaseModel):

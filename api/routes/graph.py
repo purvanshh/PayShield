@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from api.dependencies import verify_api_key
@@ -39,7 +39,11 @@ class EntityLinkRequest(BaseModel):
     features: dict[str, Any] | None = None
 
 
-def _get_graph_db():
+def _get_graph_db(request):
+    resources = getattr(request.app.state, "resources", {})
+    shared = resources.get("graph_db")
+    if shared is not None:
+        return shared, "networkx"
     try:
         from store.neo4j_client import Neo4jGraphDB
         return Neo4jGraphDB(), "neo4j"
@@ -52,9 +56,9 @@ def _get_graph_db():
 
 
 @router.post("/investigate", response_model=GraphInvestigationResponse)
-async def investigate_entity(req: GraphInvestigationRequest):
+async def investigate_entity(req: GraphInvestigationRequest, request: Request):
     try:
-        db, db_type = _get_graph_db()
+        db, db_type = _get_graph_db(request)
 
         network = db.get_network_score(req.entity_id) if hasattr(db, "get_network_score") else {"network_score": 0.0, "connected_entities": 0, "risk_clusters": 0}
         risk_paths = []
@@ -84,11 +88,12 @@ async def investigate_entity(req: GraphInvestigationRequest):
 @router.get("/network/{entity_id}")
 async def get_entity_network(
     entity_id: str,
+    request: Request,
     hops: int = Query(2, ge=1, le=5),
     entity_type: str = Query("user"),
 ):
     try:
-        db, db_type = _get_graph_db()
+        db, db_type = _get_graph_db(request)
 
         ego_graph = db.get_ego_graph(entity_id, hops=hops)
         nodes_list = []
@@ -122,9 +127,9 @@ async def get_entity_network(
 
 
 @router.post("/entity")
-async def create_entity(req: EntityCreateRequest):
+async def create_entity(req: EntityCreateRequest, request: Request):
     try:
-        db, db_type = _get_graph_db()
+        db, db_type = _get_graph_db(request)
         if hasattr(db, "create_entity"):
             db.create_entity(req.entity_id, req.entity_type, req.features)
         else:
@@ -135,9 +140,9 @@ async def create_entity(req: EntityCreateRequest):
 
 
 @router.post("/link")
-async def link_entities(req: EntityLinkRequest):
+async def link_entities(req: EntityLinkRequest, request: Request):
     try:
-        db, _ = _get_graph_db()
+        db, _ = _get_graph_db(request)
         if hasattr(db, "link_entities"):
             db.link_entities(req.source_id, req.target_id, req.relation_type, req.features)
         else:
@@ -149,12 +154,13 @@ async def link_entities(req: EntityLinkRequest):
 
 @router.get("/risk-paths")
 async def find_risk_paths(
+    request: Request,
     source_id: str = Query(...),
     target_id: str = Query(...),
     max_hops: int = Query(4, ge=1, le=6),
 ):
     try:
-        db, _ = _get_graph_db()
+        db, _ = _get_graph_db(request)
         paths = db.find_risk_paths(source_id, target_id, max_hops) if hasattr(db, "find_risk_paths") else []
         return {"source_id": source_id, "target_id": target_id, "max_hops": max_hops, "paths": paths}
     except Exception as e:
@@ -162,9 +168,9 @@ async def find_risk_paths(
 
 
 @router.get("/stats")
-async def graph_stats():
+async def graph_stats(request: Request):
     try:
-        db, db_type = _get_graph_db()
+        db, db_type = _get_graph_db(request)
         return {
             "backend": db_type,
             "node_count": db.node_count(),

@@ -151,6 +151,7 @@ async def score_transaction(
 
     try:
         velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+        await _write_to_graph_db(request, txn, velocity_features)
     except Exception as e:
         logger.warning(f"feature_build_failed: {e}")
         velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
@@ -306,6 +307,21 @@ async def batch_score(
     results = await asyncio.gather(*[score_single(t) for t in batch.transactions])
     batch_ms = (time.time() - start) * 1000
     return BatchScoreResponse(results=list(results), batch_latency_ms=round(batch_ms, 2))
+
+
+async def _write_to_graph_db(request: Request, txn: ScoreRequest, velocity_features: dict):
+    """Mirror the live transaction into Neo4j (when available) and the
+    in-memory NetworkX graph, plus the Redis device->users index."""
+    try:
+        resources = getattr(request.app.state, "resources", {})
+        writer = resources.get("graph_writer")
+        if writer is None:
+            return
+        txn_dict = txn.model_dump()
+        txn_dict["timestamp"] = txn.timestamp.timestamp()
+        await writer.write_transaction(txn_dict, velocity_features)
+    except Exception as e:
+        logger.debug(f"graph_write_failed: {e}")
 
 
 async def _broadcast_alert(request: Request, txn_id: str, result: dict):
