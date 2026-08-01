@@ -1,4 +1,3 @@
-import json
 import os
 import re
 
@@ -19,7 +18,18 @@ class LLMInvestigator:
 
     def investigate(self, evidence: dict) -> dict:
         alerts = self._build_alerts(evidence)
-        prompt = self.template.render(alerts=alerts)
+        gnn = evidence.get("gnn_explanation", {})
+        prompt = self.template.render(
+            evidence=[
+                {"type": "alert", "description": alert, "severity": "high"}
+                for alert in alerts
+            ],
+            shap_features=evidence.get("shap_features", []),
+            graph_nodes=[
+                {"type": "transaction", "id": node, "importance": 1.0}
+                for node in gnn.get("evidence_subgraph", [])
+            ],
+        )
 
         response = self.client.generate(
             model=self.model,

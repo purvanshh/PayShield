@@ -12,6 +12,7 @@ roles:
     - agent:manage
   system:
     - score:write
+    - score:read
     - investigation:read
     - feedback:write
     - metrics:read

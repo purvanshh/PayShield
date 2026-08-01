@@ -1,4 +1,5 @@
-import pytest
+# ruff: noqa: ARG002 -- test doubles mirror the client interface
+
 
 from store.feature_store import FeatureStore
 
@@ -19,7 +20,9 @@ class MockRedis:
         return True
 
     def delete(self, key):
-        return bool(self.data.pop(key, None))
+        popped = bool(self.data.pop(key, None))
+        self.hashes.pop(key, None)
+        return popped
 
     def exists(self, key):
         return key in self.data

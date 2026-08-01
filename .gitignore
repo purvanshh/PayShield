@@ -16,3 +16,7 @@ dashboard/dist/
 .mypy_cache/
 .ruff_cache/
 plan/
+models/production/explanations/
+store/audit_logs/
+.coverage
+htmlcov/

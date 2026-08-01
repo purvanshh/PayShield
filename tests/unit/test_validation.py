@@ -1,12 +1,15 @@
 import pandas as pd
-import pytest
 
-from data.validation.validator import DataValidator
 from data.validation.expectations import (
-    expect_unique, expect_positive, expect_in_range,
-    expect_not_null, expect_in_set, expect_reference_exists,
     expect_fraud_pattern_not_null,
+    expect_in_range,
+    expect_in_set,
+    expect_not_null,
+    expect_positive,
+    expect_reference_exists,
+    expect_unique,
 )
+from data.validation.validator import DataValidator
 
 
 class TestExpectations:

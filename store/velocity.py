@@ -2,7 +2,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class VelocityFeatures:
     distinct_countries_1h: int = 0
     burst_score: float = 0.0
     window_remaining_ttl: int = 0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class VelocityEngine:
@@ -41,8 +41,8 @@ class VelocityEngine:
         return window_sec * 2
 
     def _score_for_member(self, txn_id: str, amount: float = 0.0) -> float:
-        epoch = time.time()
-        return epoch + amount * 1e-6
+        epoch = math.floor(time.time())
+        return epoch + min(max(amount, 0.0), 999999.0) * 1e-6
 
     def _parse_score(self, score: float) -> tuple[float, float]:
         epoch = math.floor(score)
@@ -84,7 +84,7 @@ class VelocityEngine:
 
         for window_sec, label in zip(self.WINDOWS_SECONDS, self.WINDOW_LABELS):
             key = self._key(user_id, window_sec)
-            members = await self.redis.zrangebyscore(key, now - window_sec, now)
+            members = await self.redis.zrangebyscore(key, now - window_sec, now + 1)
             scores = []
 
             for member in members:
@@ -131,7 +131,7 @@ class VelocityEngine:
 
     async def _sum_amounts(self, user_id: str, window_sec: int) -> float:
         key = self._key(user_id, window_sec)
-        members = await self.redis.zrangebyscore(key, time.time() - window_sec, time.time())
+        members = await self.redis.zrangebyscore(key, time.time() - window_sec, time.time() + 1)
         total = 0.0
         for member in members:
             score = await self._get_score(key, member)

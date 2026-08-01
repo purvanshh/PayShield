@@ -22,14 +22,41 @@ class PayShieldGNN(torch.nn.Module):
             )
             self.convs.append(conv)
 
-        self.lin1 = torch.nn.Linear(hidden_channels, 32)
+        self.lin1 = torch.nn.Linear(hidden_channels * 2, 32)
         self.lin2 = torch.nn.Linear(32, 1)
+        self._projections: dict[str, torch.nn.Linear] = {}
+
+    def _project(self, key: str, x: torch.Tensor) -> torch.Tensor:
+        """Map raw node features to hidden dim for types never touched by a
+        conv (a node type only ever appears as a source in the edge set)."""
+        if x.size(-1) == self.lin1.in_features // 2:
+            return x
+        proj = self._projections.get(key)
+        if proj is None:
+            proj = torch.nn.Linear(x.size(-1), self.lin1.in_features // 2)
+            self._projections[key] = proj
+        return proj(x)
 
     def forward(self, x_dict, edge_index_dict, batch_dict=None):
+        x_dict = {key: x for key, x in x_dict.items() if x.size(0) > 0}
+        # Drop empty edge types: SAGEConv crashes on zero-edge tensors in
+        # newer torch_geometric releases, and no edges means no message pass.
+        # Also drop edges whose src/dst node type has no features in this
+        # graph — those types simply stay out of the pooling.
+        edge_index_dict = {
+            et: ei for et, ei in edge_index_dict.items()
+            if ei.numel() > 0 and et[0] in x_dict and et[2] in x_dict
+        }
         for conv in self.convs:
-            x_dict = conv(x_dict, edge_index_dict)
+            updated = conv(x_dict, edge_index_dict)
+            # HeteroConv only emits destination node types; carry the other
+            # types' features forward so every SAGEConv keeps valid inputs
+            # (a conv whose src node type was never updated would receive
+            # None features and crash).
+            x_dict = {key: (updated[key] if key in updated else x_dict[key]) for key in x_dict}
             x_dict = {key: F.relu(x) for key, x in x_dict.items()}
             x_dict = {key: F.dropout(x, p=self.dropout, training=self.training) for key, x in x_dict.items()}
+        x_dict = {key: self._project(key, x) for key, x in x_dict.items()}
 
         if "user" in x_dict and x_dict["user"].size(0) > 0:
             if batch_dict and "user" in batch_dict:
@@ -37,7 +64,7 @@ class PayShieldGNN(torch.nn.Module):
             else:
                 user_emb = x_dict["user"].mean(dim=0, keepdim=True)
         else:
-            user_emb = torch.zeros(1, self.lin1.in_features)
+            user_emb = torch.zeros(1, self.lin1.in_features // 2)
 
         if "transaction" in x_dict and x_dict["transaction"].size(0) > 0:
             if batch_dict and "transaction" in batch_dict:
@@ -45,7 +72,7 @@ class PayShieldGNN(torch.nn.Module):
             else:
                 txn_emb = x_dict["transaction"].mean(dim=0, keepdim=True)
         else:
-            txn_emb = torch.zeros(1, self.lin1.in_features)
+            txn_emb = torch.zeros(1, self.lin1.in_features // 2)
 
         if user_emb.size(0) == 1 and txn_emb.size(0) > 1:
             user_emb = user_emb.expand(txn_emb.size(0), -1)

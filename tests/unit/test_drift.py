@@ -1,7 +1,6 @@
 import numpy as np
-import pytest
 
-from observability.drift import population_stability_index, DriftDetector
+from observability.drift import DriftDetector, population_stability_index
 
 
 class TestPSI:

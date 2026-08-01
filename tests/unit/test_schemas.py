@@ -4,8 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from api.schemas import (
-    ScoreRequest, FraudScoreResponse, BatchScoreRequest,
-    InvestigationReportResponse, FeedbackRequest, GeoPoint,
+    BatchScoreRequest,
+    FeedbackRequest,
+    FraudScoreResponse,
+    GeoPoint,
+    InvestigationReportResponse,
+    ScoreRequest,
 )
 
 

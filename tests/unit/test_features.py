@@ -1,8 +1,13 @@
-import pytest
+# ruff: noqa: ARG002 -- test doubles mirror the client interface
 
+
+from data.features.benford import (
+    benford_chi2,
+    benford_expected_distribution,
+    first_digit_frequencies,
+)
+from data.features.geospatial import geo_velocity_kmh, haversine
 from data.features.velocity import VelocityComputer
-from data.features.benford import benford_expected_distribution, first_digit_frequencies, benford_chi2
-from data.features.geospatial import haversine, geo_velocity_kmh
 
 
 class MockFeatureStore:

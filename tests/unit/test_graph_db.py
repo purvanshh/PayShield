@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from data.graph_builder import HeterogeneousGraphBuilder
 from store.graph_db import GraphDB

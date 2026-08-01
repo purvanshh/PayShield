@@ -144,7 +144,7 @@ class SyntheticUPIGenerator:
                 is_emulator = self.rng.random() < 0.02
                 self.devices[did] = {
                     "device_id": did,
-                    "os_family": self.rng.choice(["android", "ios"], weights=[80, 20]),
+                    "os_family": self.rng.choices(["android", "ios"], weights=[80, 20])[0],
                     "app_version": f"{self.rng.randint(3, 8)}.{self.rng.randint(0, 9)}.{self.rng.randint(0, 9)}",
                     "is_emulator": is_emulator,
                     "first_seen_timestamp": datetime(2026, 1, 1) + timedelta(days=self.rng.randint(0, 180)),
@@ -252,18 +252,27 @@ class SyntheticUPIGenerator:
             df.at[idx, "is_fraud"] = True
             df.at[idx, "fraud_type"] = "MULE_RING"
 
+        # Burst windows overlap heavily; cap the total so the fraud ratio is
+        # honoured (mule + collusion + ato already reserve 3*quarter rows).
+        burst_budget = max(0, n_fraud - 3 * quarter)
         for idx in burst_indices:
+            if burst_budget <= 0:
+                break
             base_idx = idx // 20 * 20
             burst_user = self.rng.choice(list(self.users.keys()))
             base_t = df.iloc[base_idx]["timestamp"]
-            for offset in range(min(20, len(burst_indices) - burst_indices.tolist().index(idx))):
-                if base_idx + offset >= len(df):
+            for offset in range(20):
+                row = base_idx + offset
+                if row >= len(df) or burst_budget <= 0:
                     break
-                df.at[base_idx + offset, "user_id"] = burst_user
-                df.at[base_idx + offset, "amount"] = round(self.rng.uniform(500, 15000), 2)
-                df.at[base_idx + offset, "timestamp"] = base_t + timedelta(minutes=offset * 0.25)
-                df.at[base_idx + offset, "is_fraud"] = True
-                df.at[base_idx + offset, "fraud_type"] = "BURST_ATTACK"
+                if bool(df.at[row, "is_fraud"]):
+                    continue
+                df.at[row, "user_id"] = burst_user
+                df.at[row, "amount"] = round(self.rng.uniform(500, 15000), 2)
+                df.at[row, "timestamp"] = base_t + timedelta(minutes=offset * 0.25)
+                df.at[row, "is_fraud"] = True
+                df.at[row, "fraud_type"] = "BURST_ATTACK"
+                burst_budget -= 1
 
         shell_merchants = [f"M_shell_{i}" for i in range(3)]
         for i, sm in enumerate(shell_merchants):

@@ -1,4 +1,3 @@
-import pytest
 
 from data.synthetic_upi import SyntheticUPIGenerator
 

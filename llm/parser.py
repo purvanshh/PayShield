@@ -51,8 +51,8 @@ class NarrativeParser:
               expected_action: str | None = None) -> InvestigationReport:
         data = self._extract_json(raw_output)
         report = self._to_report(data, txn_id)
-        self._validate(report, expected_action)
-        report.quality_score = self.score_quality(report)
+        issues = self._validate(report, expected_action)
+        report.quality_score = self.score_quality(report, issues)
         if report.quality_score < 0.5:
             logger.warning(f"Quality score {report.quality_score:.2f} < 0.5 for {txn_id}")
         return report
@@ -97,6 +97,7 @@ class NarrativeParser:
             "fraud_type": "fraud_type",
             "fraud type": "fraud_type",
             "confidence": "confidence",
+            "recommended action": "recommended_action",
             "recommended_action": "recommended_action",
             "action": "recommended_action",
             "reasoning": "reasoning",
@@ -187,9 +188,9 @@ class NarrativeParser:
                 )
         if issues:
             logger.warning(f"Validation issues for {report.txn_id}: {'; '.join(issues)}")
-        return len(issues) == 0
+        return issues
 
-    def score_quality(self, report: InvestigationReport) -> float:
+    def score_quality(self, report: InvestigationReport, issues: list[str] | None = None) -> float:
         score = 0.0
         if 100 <= len(report.narrative) <= 500:
             score += 0.3
@@ -207,7 +208,12 @@ class NarrativeParser:
             score += 0.2
         elif len(report.reasoning) >= 20:
             score += 0.1
-        return round(min(1.0, score), 4)
+        for issue in issues or []:
+            if "less conservative" in issue:
+                score -= 0.5
+            else:
+                score -= 0.1
+        return round(max(0.0, min(1.0, score)), 4)
 
 
 class FallbackGenerator:

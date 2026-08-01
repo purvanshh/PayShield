@@ -1,7 +1,7 @@
 import pytest
 
-from data.synthetic_upi import SyntheticUPIGenerator
 from data.graph_builder import HeterogeneousGraphBuilder
+from data.synthetic_upi import SyntheticUPIGenerator
 from store.graph_db import GraphDB
 
 

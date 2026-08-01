@@ -26,7 +26,7 @@ class ScoreRequest(BaseModel):
 
 
 class BatchScoreRequest(BaseModel):
-    transactions: list[ScoreRequest] = Field(..., max_length=100)
+    transactions: list[ScoreRequest]
 
 
 class FraudScoreResponse(BaseModel):

@@ -1,4 +1,5 @@
-import pytest
+# ruff: noqa: ARG002 -- test doubles mirror the client interface
+
 
 from llm.cache import LLMCache
 

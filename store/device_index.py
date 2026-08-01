@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ class DeviceFingerprint:
     canvas_hash: str | None = None
     webgl_hash: str | None = None
     audio_hash: str | None = None
-    first_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_features(self) -> list[str]:
         features = []
@@ -77,7 +77,7 @@ class DeviceFeatures:
     new_device_flag: bool = True
     proxy_score: float = 0.0
     vpn_detected: bool = False
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class DeviceFingerprintIndex:
@@ -104,7 +104,7 @@ class DeviceFingerprintIndex:
         fingerprint: DeviceFingerprint,
     ):
         fingerprint.user_id = user_id
-        fingerprint.last_seen = datetime.now(timezone.utc)
+        fingerprint.last_seen = datetime.now(UTC)
         features = fingerprint.to_features()
         feature_set = set(features)
 
@@ -113,6 +113,7 @@ class DeviceFingerprintIndex:
 
         mapping = {
             "user_id": user_id,
+            "user_agent": fingerprint.user_agent or "",
             "features": json.dumps(list(feature_set)),
             "fingerprint_hash": fingerprint.fingerprint_hash(),
             "first_seen": fingerprint.first_seen.isoformat(),
@@ -141,6 +142,7 @@ class DeviceFingerprintIndex:
         features = json.loads(data.get("features", "[]"))
         fp = DeviceFingerprint(device_id=device_id)
         fp.user_id = data.get("user_id")
+        fp.user_agent = data.get("user_agent")
         for f in features:
             if f.startswith("ip:"):
                 fp.ip_address = f[3:]

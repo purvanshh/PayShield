@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import networkx as nx
 
@@ -18,7 +18,7 @@ class GraphSnapshotManager:
         os.makedirs(self.base_dir, exist_ok=True)
 
     async def create_snapshot(self, timestamp: datetime | None = None, label: str = "snapshot") -> str:
-        ts = timestamp or datetime.now(timezone.utc)
+        ts = timestamp or datetime.now(UTC)
         snapshot_id = f"{label}_{ts.strftime('%Y%m%d_%H%M%S')}"
         snapshot_dir = os.path.join(self.base_dir, snapshot_id)
         os.makedirs(snapshot_dir, exist_ok=True)
@@ -62,13 +62,13 @@ class GraphSnapshotManager:
             r = record.get("r", {})
             rel_type = record.get("rel_type", "RELATED")
             src = None
-            for field in ["user_id", "merchant_id", "device_id", "txn_id"]:
+            for field in ["user", "merchant", "device", "txn"]:
                 val = record.get(f"src_{field}")
                 if val:
                     src = str(val)
                     break
             dst = None
-            for field in ["user_id", "merchant_id", "device_id", "txn_id"]:
+            for field in ["user", "merchant", "device", "txn"]:
                 val = record.get(f"dst_{field}")
                 if val:
                     dst = str(val)
@@ -175,7 +175,7 @@ class TransactionLog:
 
         entry = {
             "timestamp": time.time(),
-            "datetime": datetime.now(timezone.utc).isoformat(),
+            "datetime": datetime.now(UTC).isoformat(),
             "operation": operation,
             "entity_type": entity_type,
             "entity_id": entity_id,

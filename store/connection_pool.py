@@ -1,11 +1,11 @@
 import logging
 import os
 import time
-from functools import wraps
 
 import redis.asyncio as aioredis
 
 from configs.config_loader import settings
+from store.exceptions import RedisUnavailableError
 
 logger = logging.getLogger(__name__)
 

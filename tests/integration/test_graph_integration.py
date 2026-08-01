@@ -1,9 +1,8 @@
-import pytest
 
-from data.synthetic_upi import SyntheticUPIGenerator
 from data.graph_builder import HeterogeneousGraphBuilder
-from engine.graph_model import PayShieldGNN
+from data.synthetic_upi import SyntheticUPIGenerator
 from engine.graph_feature_engine import GraphFeatureEngine
+from engine.graph_model import PayShieldGNN
 from store.graph_db import GraphDB
 
 
@@ -20,13 +19,14 @@ class TestEndToEndGraphPipeline:
 
         assert pyg_data["user"].x.shape[0] > 0
         assert pyg_data["merchant"].x.shape[0] > 0
-        assert pyg_data["transaction"].x.shape[0] > 0
+        assert pyg_data["device"].x.shape[0] > 0
+        assert len([et for et in pyg_data.edge_types if et[1] == "performed"]) > 0
 
         model = PayShieldGNN(hidden_channels=16, num_layers=2)
         x_dict = {nt: pyg_data[nt].x for nt in pyg_data.node_types}
         edge_index_dict = {et: pyg_data[et].edge_index for et in pyg_data.edge_types}
         out = model(x_dict, edge_index_dict)
-        assert out.shape[0] == pyg_data["transaction"].x.shape[0]
+        assert out.shape[0] == 1
 
     def test_ego_graph_extraction(self):
         gen = SyntheticUPIGenerator(n_users=100, n_merchants=50, n_transactions=500)

@@ -8,7 +8,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 try:
-    from torch_geometric.data import HeteroData, Batch
+    from torch_geometric.data import Batch, HeteroData
     _has_pyg = True
 except ImportError:
     HeteroData = None
@@ -146,6 +146,10 @@ class HeteroGraphConverter:
                     torch.tensor(edge_index, dtype=torch.long).t().contiguous()
                 )
             else:
+                data[(src_type, rel, dst_type)].edge_index = torch.zeros((2, 0), dtype=torch.long)
+
+        for src_type, rel, dst_type in EDGE_TYPES:
+            if (src_type, rel, dst_type) not in edge_dict:
                 data[(src_type, rel, dst_type)].edge_index = torch.zeros((2, 0), dtype=torch.long)
 
         if target_user_id and target_user_id in node_map.get("User", []):

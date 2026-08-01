@@ -1,10 +1,17 @@
-from datetime import datetime
 
-import pytest
 
 from engine.statistical_filter import (
-    StatisticalFilter, FilterResult, Layer1Result, VelocityFilter, GeoSpatialFilter, BenfordFilter,
-    GeoPoint, haversine, geo_velocity_kmh, first_digit, benford_chi2, BENFORD_EXPECTED,
+    BENFORD_EXPECTED,
+    FilterResult,
+    GeoPoint,
+    GeoSpatialFilter,
+    Layer1Result,
+    StatisticalFilter,
+    VelocityFilter,
+    benford_chi2,
+    first_digit,
+    geo_velocity_kmh,
+    haversine,
 )
 
 
@@ -52,41 +59,50 @@ class TestVelocityFilter:
     def setup_method(self):
         self.filter = VelocityFilter(redis_client=None, config={})
 
-    def test_allows_low_velocity(self):
+    async def test_allows_low_velocity(self):
         vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5, "amount_total_1h": 500.0}
-        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 999})
+        result = await self.filter.evaluate(vf, {"baseline_txn_count_24h": 999})
         assert result.action in ("ALLOW",)
 
-    def test_blocks_burst(self):
+    async def test_blocks_burst(self):
         vf = {"txn_count_5m": 20, "txn_count_1h": 50, "txn_count_24h": 100,
               "amount_total_1h": 5000.0, "device_txn_count_24h": 1, "distinct_users_last_24h": 1,
               "ip_txn_count_5m": 1, "distinct_merchants_1h": 1}
-        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 2})
+        result = await self.filter.evaluate(vf, {"baseline_txn_count_24h": 2})
         assert result.action == "BLOCK"
         assert "V-RULE-01" in result.triggered_rules
 
-    def test_escalates_zscore(self):
+    async def test_escalates_zscore(self):
+        vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5,
+              "amount_total_1h": 500.0, "device_txn_count_24h": 1, "distinct_users_last_24h": 1,
+              "ip_txn_count_5m": 1, "distinct_merchants_1h": 12}
+        result = await self.filter.evaluate(vf, {"amount_z_score": 5.0})
+        assert result.action == "ESCALATE"
+        assert "V-RULE-02" in result.triggered_rules
+        assert "V-RULE-06" in result.triggered_rules
+
+    async def test_single_low_severity_rule_stays_allow(self):
         vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5,
               "amount_total_1h": 500.0, "device_txn_count_24h": 1, "distinct_users_last_24h": 1,
               "ip_txn_count_5m": 1, "distinct_merchants_1h": 1}
-        result = self.filter.evaluate(vf, {"amount_z_score": 5.0})
-        assert result.action in ("ESCALATE",)
+        result = await self.filter.evaluate(vf, {"amount_z_score": 5.0})
         assert "V-RULE-02" in result.triggered_rules
+        assert result.action == "ALLOW"
 
 
 class TestGeoSpatialFilter:
     def setup_method(self):
         self.filter = GeoSpatialFilter(redis_client=None, config={})
 
-    def test_allows_same_location(self):
+    async def test_allows_same_location(self):
         loc = GeoPoint(lat=19.076, lon=72.877, timestamp=1000)
-        result = self.filter.evaluate(loc, None)
+        result = await self.filter.evaluate(loc, None)
         assert result.action == "ALLOW"
 
-    def test_blocks_impossible_travel(self):
+    async def test_blocks_impossible_travel(self):
         last = GeoPoint(lat=19.076, lon=72.877, timestamp=1000)
         current = GeoPoint(lat=28.704, lon=77.102, timestamp=1100)
-        result = self.filter.evaluate(current, last)
+        result = await self.filter.evaluate(current, last)
         assert result.action == "BLOCK"
         assert "G-RULE-01" in result.triggered_rules
 
@@ -95,18 +111,18 @@ class TestStatisticalFilter:
     def setup_method(self):
         self.filter = StatisticalFilter(config={})
 
-    def test_allows_normal_transaction(self):
+    async def test_allows_normal_transaction(self):
         vf = {"txn_count_5m": 1, "txn_count_1h": 2, "txn_count_24h": 5, "amount_total_1h": 500.0,
               "device_txn_count_24h": 1, "distinct_users_last_24h": 1, "ip_txn_count_5m": 1,
               "distinct_merchants_1h": 1}
-        result = self.filter.evaluate(vf, merchant_id="M00001", amount=500.0)
+        result = await self.filter.evaluate(vf, merchant_id="M00001", amount=500.0)
         assert result.decision in ("ALLOW",)
 
-    def test_blocks_high_velocity(self):
+    async def test_blocks_high_velocity(self):
         vf = {"txn_count_5m": 20, "txn_count_1h": 50, "txn_count_24h": 100, "amount_total_1h": 5000.0,
               "device_txn_count_24h": 1, "distinct_users_last_24h": 1, "ip_txn_count_5m": 1,
               "distinct_merchants_1h": 1}
-        result = self.filter.evaluate(vf, {"baseline_txn_count_24h": 2}, merchant_id="M00001", amount=500.0)
+        result = await self.filter.evaluate(vf, {"baseline_txn_count_24h": 2}, merchant_id="M00001", amount=500.0)
         assert result.decision in ("BLOCK", "ESCALATE")
 
 

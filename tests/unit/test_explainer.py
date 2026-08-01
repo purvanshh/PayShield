@@ -1,4 +1,3 @@
-import pytest
 import torch
 
 from engine.explainer import GNNExplainerWrapper, SHAPBridge

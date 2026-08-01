@@ -1,10 +1,9 @@
-import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from store.feature_registry import FeatureRegistry
+from store.feature_registry import FeatureLogEntry, FeatureRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ class FeatureVector:
     features: dict[str, float | str | bool | None] = field(default_factory=dict)
     meta: dict[str, str | int | float] = field(default_factory=dict)
     training_timestamp: datetime | None = None
-    serving_timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    serving_timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     version: int = 1
 
     def to_dict(self) -> dict:
@@ -55,11 +54,11 @@ class FeatureVectorBuilder:
         self,
         user_id: str,
         transaction_id: str | None = None,
-        velocity_features: dict | None = None,
-        device_features: dict | None = None,
-        baseline_features: dict | None = None,
-        graph_features: dict | None = None,
-        transaction_features: dict | None = None,
+        velocity_features: dict[str, float] | None = None,
+        device_features: dict[str, float] | None = None,
+        baseline_features: dict[str, float] | None = None,
+        graph_features: dict[str, float] | None = None,
+        transaction_features: dict[str, float] | None = None,
         point_in_time: datetime | None = None,
     ) -> FeatureVector:
         vector = FeatureVector(
@@ -68,7 +67,7 @@ class FeatureVectorBuilder:
             training_timestamp=point_in_time,
         )
 
-        all_features = {}
+        all_features: dict = {}
         all_features.update(velocity_features or {})
         all_features.update(device_features or {})
         all_features.update(baseline_features or {})
@@ -77,9 +76,7 @@ class FeatureVectorBuilder:
 
         for name, value in all_features.items():
             definition = self.registry.get_definition(name)
-            if definition and self.registry.validate_value(name, value):
-                vector.features[name] = value
-            elif definition is None:
+            if definition and self.registry.validate_value(name, value) or definition is None:
                 vector.features[name] = value
             else:
                 logger.warning(f"Feature '{name}' failed validation (value={value}), excluding")
@@ -91,22 +88,14 @@ class FeatureVectorBuilder:
             entry = self.registry.get_definition(name)
             version = entry.version if entry else 1
             await self.registry.log_feature(
-                type("FeatureLogEntry", (), {
-                    "feature_name": name,
-                    "value": value,
-                    "version": version,
-                    "timestamp": time.time(),
-                    "transaction_id": transaction_id,
-                    "user_id": user_id,
-                    "to_dict": lambda self=locals(): {
-                        "feature_name": self["name"],
-                        "value": self["value"],
-                        "version": self["version"],
-                        "timestamp": time.time(),
-                        "transaction_id": transaction_id,
-                        "user_id": user_id,
-                    },
-                })()
+                FeatureLogEntry(
+                    feature_name=name,
+                    value=value,
+                    version=version,
+                    timestamp=time.time(),
+                    transaction_id=transaction_id,
+                    user_id=user_id,
+                )
             )
 
         return vector
@@ -156,7 +145,7 @@ class PointInTimeFeatureExtractor:
 
         device_features = None
         if device_features_fn:
-            device_features = {"device_context": 1}
+            device_features = {"device_context": 1.0}
 
         baseline_features = None
         if baseline_features_fn:
@@ -174,10 +163,10 @@ class PointInTimeFeatureExtractor:
         self,
         user_id: str,
         transaction_id: str,
-        velocity_features: dict | None = None,
-        device_features: dict | None = None,
-        baseline_features: dict | None = None,
-        transaction_features: dict | None = None,
+        velocity_features: dict[str, float] | None = None,
+        device_features: dict[str, float] | None = None,
+        baseline_features: dict[str, float] | None = None,
+        transaction_features: dict[str, float] | None = None,
     ) -> FeatureVector:
         builder = FeatureVectorBuilder(self.registry)
         return await builder.build(
