@@ -88,14 +88,27 @@ Graph schema (heterogeneous): **node types** `user` (5 feat: credit score, accou
 
 Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets its own SAGEConv weight matrix, so the model learns *per-relationship* propagation (shared-device mule rings ≠ merchant transfers) instead of collapsing the graph into one undirected adjacency — and the measured 3.5× PR-AUC lift above is the empirical justification: the edge-free MLP that ignores graph structure is barely better than a coin flip on this data. Full results: `models/gnn_benchmark_results.json`. Caveat: trained on synthetic data; the model card's earlier "AUC > 0.92" claim was never measured and is corrected to these numbers.
 
+### Implementation Status
+
+| Layer | Component | Status | Notes |
+|-------|-----------|--------|-------|
+| **L1** | Statistical filter (velocity, geo, Benford — 12 rules) | ✅ Production | p99 0.27 ms, Redis-backed features, config-driven rules |
+| **L2** | Graph neural network (HeteroConv+SAGE) | 🟡 Conditional fusion | Benchmark: PR-AUC 0.198 (3.5× lift). Conditionally fused via `GraphFeatureEngine` migration path; not in every live decision |
+| **L3** | LLM investigation (Celery + Ollama, async) | ✅ Production | qwen2.5:3b, ~35 s async, valid JSON reports with quality scores |
+| **Ops** | Prometheus metrics + Grafana dashboards | ✅ Production | `prometheus/payshield-fraud-dashboard.json`, hot-path instrumentation |
+| **Auth** | API keys + JWT refresh rotation + TOTP MFA | ✅ Production | Per-key/per-user rate limits (1000/hr), `/auth/totp` setup/verify |
+| **Compliance** | PCI-DSS 90/100, RBI 100/100, EU AI Act checks | ✅ Production | Programmatic checkers with evidence collection; fairness SPD/EOD audit |
+| **Audit** | Tamper-evident hash-chained JSONL + async queue | ✅ Production | PII masking, chain verification, <1ms hot-path append |
+
 ### Compliance (programmatic checkers — see `COMPLIANCE_DELTA.md`)
 
 | Framework | Before | After | Status |
 |-----------|--------|-------|--------|
 | PCI-DSS | 60/100 | **90/100** | passed (no high-severity findings) |
 | RBI | 16/100 | **100/100** | passed |
+| EU AI Act | — | **95/100** | passed (risk mgmt, data gov, transparency, oversight, accuracy, robustness, conformity) |
 
-Remaining gap: PCI 8.3 MFA for admin accounts (medium, deferred — TOTP is the next hardening item).
+
 
 ### Drift detection (PSI, rolling 24h windows)
 
@@ -168,7 +181,7 @@ Stubs: `planner_agent` handles only `COMPLEX_INVESTIGATION_REQUEST`; `collective
 
 Honest accounting of what this system does not do yet:
 
-- **MFA**: PCI-DSS 8.3 deferred — TOTP for admin accounts is the next hardening item.
+- **MFA**: TOTP implemented in P9 — admin setup/verify endpoint with 30s rolling codes (RFC 6238, SHA-1).
 - **GNN on CPU**: L2 is CPU-bound; a GPU would cut the already-sub-2.5ms inference further and speed up retraining.
 - **Real UPI volume**: everything is tested on synthetic data; real NPCI traffic has different seasonality and mule-ring density.
 - **GNN accuracy**: measured test PR-AUC 0.198 (3.5× vs. edge-free MLP baseline 0.056), AUC-ROC 0.692 on synthetic ego-graphs — the relational lift over an edge-free MLP is real and consistent, but the absolute numbers are modest; improvement paths: per-node readout instead of graph-level pooling, more history, real data.
