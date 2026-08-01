@@ -93,7 +93,7 @@ Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets it
 | Layer | Component | Status | Notes |
 |-------|-----------|--------|-------|
 | **L1** | Statistical filter (velocity, geo, Benford — 12 rules) | ✅ Production | p99 0.27 ms, Redis-backed features, config-driven rules |
-| **L2** | Graph neural network (HeteroConv+SAGE) | 🟡 Conditional fusion | Benchmark: PR-AUC 0.198 (3.5× lift). Conditionally fused via `GraphFeatureEngine` migration path; not in every live decision |
+| **L2** | Graph neural network (HeteroConv+SAGE) | 🟡 Conditional fusion | Runs live for returning users (`SUCCESS`, prob > 0); skips gracefully for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`). 40 ms timeout guard with L1 fallback on `TIMEOUT` / `ERROR` / `MODEL_UNAVAILABLE`. Benchmarked PR-AUC 0.198 (3.5× lift vs. edge-free MLP) |
 | **L3** | LLM investigation (Celery + Ollama, async) | ✅ Production | qwen2.5:3b, ~35 s async, valid JSON reports with quality scores |
 | **Ops** | Prometheus metrics + Grafana dashboards | ✅ Production | `prometheus/payshield-fraud-dashboard.json`, hot-path instrumentation |
 | **Auth** | API keys + JWT refresh rotation + TOTP MFA | ✅ Production | Per-key/per-user rate limits (1000/hr), `/auth/totp` setup/verify |
@@ -106,7 +106,7 @@ Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets it
 |-----------|--------|-------|--------|
 | PCI-DSS | 60/100 | **90/100** | passed (no high-severity findings) |
 | RBI | 16/100 | **100/100** | passed |
-| EU AI Act | — | **95/100** | passed (risk mgmt, data gov, transparency, oversight, accuracy, robustness, conformity) |
+| EU AI Act | — | **100/100** | passed (risk mgmt, data gov, transparency, oversight, accuracy, robustness, conformity, post-market monitoring) |
 
 
 
@@ -187,7 +187,7 @@ Honest accounting of what this system does not do yet:
 - **GNN accuracy**: measured test PR-AUC 0.198 (3.5× vs. edge-free MLP baseline 0.056), AUC-ROC 0.692 on synthetic ego-graphs — the relational lift over an edge-free MLP is real and consistent, but the absolute numbers are modest; improvement paths: per-node readout instead of graph-level pooling, more history, real data.
 - **Model retraining**: auto-trigger exists (reflection task) but the manual approval gate for promotion is not wired — `POST /admin/models/promote` is the manual step.
 - **LLM on CPU**: ~35 s per investigation is fine async, but GPU (or an API fallback) would enable real-time investigation.
-- **L2 in the live path**: `/v1/score` currently routes through L1 rules + Redis features; the GNN runs as a benchmarked module and in `graph_model.py` paths, not yet fused into every live decision.
+- **L2 conditional fusion**: GNN runs live for returning users (`SUCCESS`, prob > 0) and skips gracefully for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`), with a 40 ms timeout guard. It is not a blocking hard gate — the ensemble falls back to L1-only fusion on `TIMEOUT`, `ERROR`, or `MODEL_UNAVAILABLE`. This is a deliberate architectural choice: unconditionally blocking the hot path on a synthetic-data-trained GNN would degrade availability for no fraud-detection gain on fresh users.
 
 ---
 
