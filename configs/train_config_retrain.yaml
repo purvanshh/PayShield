@@ -1,0 +1,41 @@
+# Retraining pipeline configuration (make retrain / .github/workflows/retrain.yml).
+#
+# Mirrors the winning v1.1.0 configuration (Phase 5 benchmark) so a retrain
+# reproduces the same protocol; only the random seed / synthetic data snapshot
+# may differ run to run. The improvement gate is the lead metric (test PR-AUC):
+# a candidate is only registered and promoted when it beats the currently
+# promoted model by at least `gate.epsilon` — otherwise production is left
+# untouched and the compare report is still saved.
+
+data:
+  source: "synthetic UPI generator (scripts/generate_synthetic_data.py)"
+  users: 12000
+  merchants: 1000
+  txns: 36000
+  fraud_ratio: 0.05
+  seed: 42
+
+model:
+  hidden_channels: 128
+  num_layers: 3
+  dropout: 0.3
+  pos_weight: 10
+  learning_rate: 0.0043
+
+training:
+  epochs: 100
+  batch_size: 16
+  sweep_trials: 8
+  sweep_epochs: 25
+  latency_runs: 300
+
+gate:
+  metric: auc_pr
+  epsilon: 0.005   # minimum delta vs currently promoted model to promote
+  baseline_source: "models/registry/latest"
+
+artifacts:
+  results: "models/gnn_benchmark_results.json"
+  checkpoint: "models/production/payshield_gnn_v1.pt"
+  registry_root: "models/registry"
+  decision_log: "models/retrain_decision.json"

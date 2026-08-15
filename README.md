@@ -523,6 +523,15 @@ make evaluate
 curl -X POST http://localhost:8000/admin/models/promote \
   -H "X-API-Key: payshield-dev-key-2026" \
   -d '{"version": "v1.1.0", "stage": "production"}'
+
+# Phase 10 — continuous improvement: benchmark a fresh candidate, gate it
+# against the currently promoted model (tests/PR-AUC, epsilon 0.005) and
+# auto-register+promote only when improved
+make retrain
+
+# Gate only (no registration): exit 0 if the candidate in
+# models/gnn_benchmark_results.json beats production
+make retrain-gate
 ```
 
 See `models/README.md` for artifact conventions.

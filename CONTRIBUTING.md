@@ -31,6 +31,11 @@ Before committing, ensure:
 - [ ] Compliance impact considered (PCI-DSS / RBI / EU AI Act)
 - [ ] Updated `TECHNICAL_DEBT_REGISTER.md` if introducing debt
 
+## Model Retraining
+- Use `make retrain` for the canonical benchmark-on-gate-on-promote flow (config in `configs/train_config_retrain.yaml`, gate epsilon 0.005 PR-AUC via `scripts/check_improvement.py`).
+- Candidates must beat the currently promoted registry model to be registered; use `make retrain-gate` to evaluate an existing benchmark JSON without promoting.
+- The weekly run is automated in `.github/workflows/retrain.yml`; never promote a model over a manual run without review.
+
 ## Code Review Process
 - All PRs require at least 1 approval
 - Security-sensitive changes require security team review

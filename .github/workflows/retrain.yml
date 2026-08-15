@@ -1,0 +1,73 @@
+# Weekly retraining + improvement gate (Phase 10).
+#
+# Benchmarks a fresh candidate on the canonical v1.1 protocol
+# (configs/train_config_retrain.yaml), gates it against the currently
+# promoted model, and registers + promotes only when test PR-AUC improves by
+# >= 0.005. When improved, a pull request carrying the new artifacts is opened
+# so the change is reviewed before merge (the repo's models are committed as
+# binaries by design).
+name: Weekly Retrain
+
+on:
+  schedule:
+    # Mondays 03:00 UTC — data-drift / feedback-driven retrain cadence.
+    - cron: "0 3 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Benchmark candidate (canonical protocol)
+        run: |
+          python scripts/benchmark_gnn.py --users 12000 --merchants 1000 --txns 36000 \
+            --epochs 100 --batch-size 16 --sweep-trials 8 --sweep-epochs 25 \
+            --latency-runs 300 --seed 42 --save-model
+
+      - name: Improvement gate vs production
+        id: gate
+        run: |
+          if python scripts/check_improvement.py --epsilon 0.005; then
+            echo "improved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "improved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Register and promote candidate
+        if: steps.gate.outputs.improved == 'true'
+        run: python scripts/check_improvement.py --epsilon 0.005 --register-if-better
+
+      - name: Refresh comparison report
+        run: |
+          python scripts/compare_benchmarks.py || true
+
+      - name: Open review PR with new artifacts
+        if: steps.gate.outputs.improved == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: retrain/candidate
+          title: "chore(retrain): improved model candidate from weekly retrain"
+          commit-message: "chore(retrain): promote improved model candidate"
+          delete-branch: true
+          body: |
+            Weekly retrain candidate cleared the improvement gate (>= 0.005
+            test PR-AUC vs the currently promoted model). This PR carries the
+            new benchmark results, comparison report, decision log, and
+            registered model artifacts. Review the numbers in
+            `models/gnn_benchmark_delta.md` before merging to production.

@@ -96,6 +96,15 @@ security-scan:
 trigger-retrain:
 	python -c "from ml.continuous_improvement import ContinuousImprovementLoop; loop = ContinuousImprovementLoop(); report = loop.check_retrain_trigger(); print(report); exit(0 if report['should_retrain'] else 1)" || echo "Retraining not needed"
 
+# Phase 10 — benchmark a retrained candidate, gate it against the currently
+# promoted model, and register+promote only when it improves by >= 0.005 PR-AUC.
+retrain:
+	python scripts/benchmark_gnn.py --users 12000 --merchants 1000 --txns 36000 --epochs 100 --batch-size 16 --sweep-trials 8 --sweep-epochs 25 --latency-runs 300 --seed 42 --save-model
+	python scripts/check_improvement.py --epsilon 0.005 --register-if-better
+
+retrain-gate:
+	python scripts/check_improvement.py --epsilon 0.005
+
 # Compliance
 compliance-check:
 	python -c "from compliance.pci_dss import PCIDSSComplianceChecker; c=PCIDSSComplianceChecker(); r=c.run(); print(f'PCI-DSS: score={r.score}, passed={r.passed}, findings={len(r.findings)}')"

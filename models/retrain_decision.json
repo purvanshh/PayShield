@@ -1,0 +1,10 @@
+{
+  "status": "NOT_IMPROVED",
+  "metric": "auc_pr",
+  "candidate_pr_auc": 0.4125,
+  "baseline_pr_auc": 0.4125,
+  "delta": 0.0,
+  "epsilon": 0.005,
+  "registered_version": null,
+  "checked_at": "2026-08-15T14:40:50.133383+00:00"
+}
