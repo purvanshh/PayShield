@@ -479,9 +479,9 @@ def hyperparameter_sweep(train_graphs, val_graphs, device, n_trials=8, sweep_epo
 
 def main():
     ap = argparse.ArgumentParser(description="Measure L2 GNN performance (synthetic data)")
-    ap.add_argument("--users", type=int, default=6000)
-    ap.add_argument("--merchants", type=int, default=500)
-    ap.add_argument("--txns", type=int, default=18000)
+    ap.add_argument("--users", type=int, default=12000)
+    ap.add_argument("--merchants", type=int, default=1000)
+    ap.add_argument("--txns", type=int, default=36000)
     ap.add_argument("--fraud-ratio", type=float, default=0.05)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--batch-size", type=int, default=8)
@@ -559,7 +559,7 @@ def main():
     best_val = train_loop(gnn, train_loader, val_loader, device, args.epochs,
                           pos_weight=pos_weight, lr=lr)
     train_secs = round(time.time() - t0, 1)
-    print(f"training done in {train_secs}s (best val AUC {best_val:.4f})")
+    print(f"training done in {train_secs}s (best val PR-AUC {best_val:.4f})")
     _, gnn_test = evaluate(gnn, test_loader, device)
     latency = benchmark_latency(gnn, test_loader, device, runs=args.latency_runs)
     print(f"test metrics: {json.dumps(gnn_test, indent=2)}")
@@ -657,11 +657,17 @@ def main():
         from pathlib import Path as _P
         registry = ModelRegistry()
         artifact = _P(registry.production_dir) / f"payshield_gnn_v1.pt"
-        torch.save({"state_dict": gnn.state_dict(),
-                    "hidden_channels": 64, "num_layers": 2, "dropout": 0.3,
-                    "edge_types": [list(et) for et in EDGE_TYPES],
-                    "metrics": {"auc_pr": gnn_test["auc_pr"], "auc_roc": gnn_test["auc_roc"]}},
-                   artifact)
+        torch.save({
+            "state_dict": gnn.state_dict(),
+            "hidden_channels": hidden,
+            "num_layers": num_layers,
+            "dropout": dropout,
+            "pos_weight": pos_weight,
+            "learning_rate": lr,
+            "batch_size": batch,
+            "edge_types": [list(et) for et in EDGE_TYPES],
+            "metrics": {"auc_pr": gnn_test["auc_pr"], "auc_roc": gnn_test["auc_roc"]},
+        }, artifact)
         symlink = _P(registry.production_dir) / "current.pt"
         if symlink.exists() or symlink.is_symlink():
             symlink.unlink()

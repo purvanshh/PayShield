@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-08-01T09:40:49Z",
+  "generated_at": "2026-08-15T14:22:10Z",
   "device": "cpu",
   "lead_metric": "PR-AUC \u2014 for imbalanced fraud, AUC-ROC is dominated by the legitimate majority; PR-AUC measures the minority (fraud) class directly",
   "data": {
     "source": "synthetic UPI generator (scripts/generate_synthetic_data.py)",
-    "users": 10000,
+    "users": 12000,
     "merchants": 1000,
-    "transactions": 30000,
+    "transactions": 36000,
     "fraud_ratio": 0.05,
     "seed": 42
   },
   "graph_schema": {
     "node_types": {
       "user": 5,
-      "merchant": 19,
+      "merchant": 21,
       "device": 4,
-      "transaction": 4
+      "transaction": 8
     },
     "edge_types": [
       [
@@ -46,58 +46,71 @@
     ]
   },
   "gnn": {
-    "architecture": "HeteroConv + SAGEConv (mean aggr), 2 layers, hidden 64, global mean pooling + MLP readout",
-    "parameters": 53826,
-    "train_epochs_effective": "early-stopped, max 60",
-    "train_seconds": 90.5,
+    "architecture": "HeteroConv + SAGEConv (mean aggr) + target-user readout with transaction attention, MLP head",
+    "hyperparameters": {
+      "hidden_channels": 128,
+      "num_layers": 3,
+      "dropout": 0.3,
+      "pos_weight": 10,
+      "learning_rate": 0.004329227527579916,
+      "batch_size": 16
+    },
+    "sweep": {
+      "trials": 8,
+      "epochs_per_trial": 25,
+      "metric": "val PR-AUC"
+    },
+    "parameters": 371843,
+    "train_epochs_effective": "early-stopped, max 100",
+    "train_seconds": 34.1,
     "test_split": {
-      "graphs": 557,
-      "positives": 44
+      "graphs": 669,
+      "positives": 60
     },
     "test_metrics": {
-      "auc_roc": 0.6666,
-      "auc_pr": 0.195,
-      "fpr_at_0.90_recall": 0.7135,
-      "threshold_at_0.90_recall": 0.0078,
-      "f1@0.3": 0.0,
-      "precision@0.3": 0.0,
-      "recall@0.3": 0.0,
-      "f1@0.5": 0.0,
-      "precision@0.5": 0.0,
-      "recall@0.5": 0.0,
-      "f1@0.7": 0.0,
-      "precision@0.7": 0.0,
-      "recall@0.7": 0.0
+      "auc_roc": 0.7668,
+      "auc_pr": 0.4125,
+      "fpr_at_0.90_recall": 0.4877,
+      "threshold_at_0.90_recall": 0.0569,
+      "f1@0.3": 0.3039,
+      "precision@0.3": 0.2153,
+      "recall@0.3": 0.5167,
+      "f1@0.5": 0.3303,
+      "precision@0.5": 0.3673,
+      "recall@0.5": 0.3,
+      "f1@0.7": 0.4,
+      "precision@0.7": 1.0,
+      "recall@0.7": 0.25
     },
     "inference_latency_ms_cpu": {
-      "mean_ms": 0.372,
-      "p50_ms": 0.368,
-      "p90_ms": 0.386,
-      "p95_ms": 0.39,
-      "p99_ms": 0.427,
-      "max_ms": 0.471,
+      "mean_ms": 0.6,
+      "p50_ms": 0.596,
+      "p90_ms": 0.622,
+      "p95_ms": 0.643,
+      "p99_ms": 0.702,
+      "max_ms": 0.791,
       "runs": 300,
       "graph_nodes_min": 19,
-      "graph_nodes_median": 48,
+      "graph_nodes_median": 50,
       "graph_nodes_max": 81,
-      "graph_edges_median": 14
+      "graph_edges_median": 15
     }
   },
   "baseline": {
     "architecture": "edge-free MLP (FraudClassifier) on 5 target-user features",
     "test_metrics": {
-      "auc_roc": 0.442,
-      "auc_pr": 0.0518,
-      "fpr_at_0.90_recall": 0.9581,
-      "f1@0.3": 0.1087,
+      "auc_roc": 0.5395,
+      "auc_pr": 0.1028,
+      "fpr_at_0.90_recall": 0.8196,
+      "f1@0.3": 0.1339,
       "f1@0.5": 0.0,
       "f1@0.7": 0.0
     },
-    "pr_auc_lift_vs_gnn": 3.8
+    "pr_auc_lift_vs_gnn": 4.0
   },
   "limitations": [
     "trained on synthetic data; real UPI traffic has different seasonality",
-    "graph-level readout mean-pools all users in the ego-graph",
-    "P2P recipients derived deterministically from merchant id (generator emits no recipient)"
+    "P2P recipients derived deterministically from merchant id (generator emits no recipient)",
+    "burst/ATO patterns carry no graph-representable signal in the base feature schema (velocity, location distance), bounding absolute PR-AUC"
   ]
 }

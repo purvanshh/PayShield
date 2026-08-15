@@ -139,8 +139,11 @@ class L2InferenceService:
             x_dict = {ntype: t for ntype, t in data.x_dict.items()}
             edge_index_dict = {k: v for k, v in data.edge_index_dict.items()}
 
+            target_user_idx, target_txn_starts, target_txn_n = self._target_indices(graph, user_id, data)
+
             prob, timed_out = await asyncio.to_thread(
-                self._model.predict_proba_safe, x_dict, edge_index_dict, self.timeout_ms
+                self._model.predict_proba_safe, x_dict, edge_index_dict, self.timeout_ms,
+                target_user_idx, target_txn_starts, target_txn_n,
             )
             if timed_out:
                 return {"status": L2Status.TIMEOUT.value,
@@ -159,3 +162,25 @@ class L2InferenceService:
                     "latency_ms": round((time.perf_counter() - start) * 1000, 3),
                     "nodes": graph.number_of_nodes() if graph is not None else 0,
                     "edges": graph.number_of_edges() if graph is not None else 0}
+
+    def _target_indices(self, graph, user_id: str, data):
+        """Global indices of the scored user / its transactions for the readout.
+
+        Mirrors the benchmark convention: the ego-graph's target user row and
+        its transaction rows feed the attention readout; falls back to None
+        (legacy graph-level pooling) when the ego graph does not contain the
+        user or transaction nodes.
+        """
+        try:
+            import torch
+            user_nodes = [n for n, a in graph.nodes(data=True)
+                          if str(a.get("node_type", "transaction")).lower().rstrip("s") == "user"]
+            if user_id not in user_nodes:
+                return None, None, None
+            user_idx = user_nodes.index(user_id)
+            txn_n = data["transaction"].x.size(0)
+            return (torch.tensor([user_idx], dtype=torch.long),
+                    torch.tensor([0], dtype=torch.long),
+                    torch.tensor([txn_n], dtype=torch.long))
+        except Exception:
+            return None, None, None
