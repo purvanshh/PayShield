@@ -104,7 +104,8 @@ def device_features(devices: dict, did: str) -> list[float]:
     ]
 
 
-def transaction_features(row, vel: tuple[float, int, int] | None = None) -> list[float]:
+def transaction_features(row, vel: tuple[float, int, int] | None = None,
+                         loc_dist_km: float | None = None) -> list[float]:
     ts = row["timestamp"]
     gap_min, c5m, c1h = vel if vel is not None else (1440.0, 0, 0)
     return [
@@ -115,7 +116,18 @@ def transaction_features(row, vel: tuple[float, int, int] | None = None) -> list
         min(gap_min / 480.0, 1.0),    # inter-arrival gap (8h cap)
         min(c5m / 10.0, 1.0),         # txns in trailing 5m window
         min(c1h / 30.0, 1.0),         # txns in trailing 1h window
+        min((loc_dist_km or 0.0) / 800.0, 1.0),  # distance from user's home centroid
     ]
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2.0) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2.0) ** 2
+    return 2.0 * r * math.asin(math.sqrt(a))
 
 
 class EgoGraphDataset:
@@ -136,9 +148,18 @@ class EgoGraphDataset:
         # counts) computed once from the full history — Phase 3 features.
         self._sorted_history: dict[str, list] = {}
         self._velocity: dict[tuple, tuple] = {}
+        self._loc_dist: dict[tuple, float] = {}
+
+        # User home centroid (median lat/lon over full history) for the
+        # geo-distance feature (Phase 4 — makes account takeover visible).
+        self._centroid: dict[str, tuple[float, float]] = {}
         for uid, rows in self.txn_by_user.items():
             ordered = sorted(rows, key=lambda e: e[1]["timestamp"])
             self._sorted_history[uid] = ordered
+            lats = [float(r["lat"]) for _, r in ordered if r.get("lat") is not None]
+            lons = [float(r["lon"]) for _, r in ordered if r.get("lon") is not None]
+            if lats and lons:
+                self._centroid[uid] = (statistics.median(lats), statistics.median(lons))
             for i, (idx, row) in enumerate(ordered):
                 cur = row["timestamp"].timestamp()
                 prev = ordered[i - 1][1]["timestamp"].timestamp() if i > 0 else cur
@@ -146,6 +167,11 @@ class EgoGraphDataset:
                 c5m = sum(1 for j in range(i) if cur - ordered[j][1]["timestamp"].timestamp() <= 300)
                 c1h = sum(1 for j in range(i) if cur - ordered[j][1]["timestamp"].timestamp() <= 3600)
                 self._velocity[(uid, idx)] = (gap, c5m, c1h)
+                centroid = self._centroid.get(uid)
+                if centroid is not None and row.get("lat") is not None:
+                    self._loc_dist[(uid, idx)] = haversine_km(
+                        centroid[0], centroid[1], float(row["lat"]), float(row["lon"]),
+                    )
 
         # Per-merchant round-amount share (fraction of txns with amount % 100 == 0).
         self._merchant_round: dict[str, float] = {}
@@ -235,7 +261,9 @@ class EgoGraphDataset:
             dtype=torch.float)
         data["device"].x = torch.tensor([device_features(self.devices, d) for d in node_ids["device"]], dtype=torch.float)
         data["transaction"].x = torch.tensor(
-            [transaction_features(r, self._velocity.get((r["user_id"], idx))) for idx, r in all_txns],
+            [transaction_features(r, self._velocity.get((r["user_id"], idx)),
+                                  self._loc_dist.get((r["user_id"], idx)))
+             for idx, r in all_txns],
             dtype=torch.float)
 
         for et in EDGE_TYPES:
