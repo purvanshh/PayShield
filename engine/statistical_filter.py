@@ -164,7 +164,9 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def geo_velocity_kmh(last_loc: GeoPoint, current_loc: GeoPoint) -> float:
     distance_km = haversine(last_loc.lat, last_loc.lon, current_loc.lat, current_loc.lon)
     hours = abs(current_loc.timestamp - last_loc.timestamp) / 3600.0
-    return distance_km / hours if hours > 0 else float("inf")
+    # Zero or negative elapsed time (same-second / out-of-order requests) proves
+    # nothing about travel speed — treat as no observable jump instead of inf.
+    return distance_km / hours if hours > 1e-9 else 0.0
 
 
 class GeoSpatialFilter:

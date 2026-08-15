@@ -1,4 +1,4 @@
-.PHONY: up down build test lint format typecheck pre-commit clean
+.PHONY: up down build test lint format typecheck pre-commit clean demo-stack demo-health demo-prewarm demo-normal demo-burst demo-geo demo-investigation demo-drift
 
 # Docker
 up:
@@ -9,6 +9,31 @@ down:
 
 build:
 	docker compose -f docker/docker-compose.yml build
+
+# Demo replay
+demo-stack:
+	bash scripts/demo_replay.sh stack
+
+demo-health:
+	bash scripts/demo_replay.sh health
+
+demo-prewarm:
+	bash scripts/demo_replay.sh prewarm $(if $(SUFFIX),$(SUFFIX),DEMO)
+
+demo-normal:
+	bash scripts/demo_replay.sh normal $(if $(SUFFIX),$(SUFFIX),DEMO)
+
+demo-burst:
+	bash scripts/demo_replay.sh burst $(if $(SUFFIX),$(SUFFIX),DEMO)
+
+demo-geo:
+	bash scripts/demo_replay.sh geo
+
+demo-investigation:
+	bash scripts/demo_replay.sh investigation $(if $(TXN_ID),$(TXN_ID),TXN_BURST_$(if $(SUFFIX),$(SUFFIX),DEMO)_14)
+
+demo-drift:
+	bash scripts/demo_replay.sh drift
 
 # Testing
 test:

@@ -10,6 +10,8 @@ roles:
     - rule:write
     - model:promote
     - agent:manage
+    - metrics:read
+    - health:read
   system:
     - score:write
     - score:read
