@@ -213,7 +213,39 @@ class EgoGraphDataset:
         data["user"].y = torch.tensor([1.0 if is_fraud else 0.0], dtype=torch.float)
         data.label = 1.0 if is_fraud else 0.0
         data.num_nodes_by_type = {t: len(v) for t, v in node_ids.items()}
+        # Readout metadata: the target user is always node 0 of its graph, and
+        # the target's own transactions are the first ``len(txns)`` transaction
+        # nodes (all_txns = target txns + neighbor txns). PyG batches preserve
+        # per-graph node order, so per-sample slices derive from the batch ptrs.
+        data.target_txn_n = len(txns)
         return data
+
+
+def target_readout_meta(data, device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None:
+    """Global (batched) indices of each sample's target user and its transactions.
+
+    Uses the PyG batch ``ptr`` when present (DataLoader output); for a bare
+    HeteroData the target user is node 0 and the target transactions start at 0.
+    Returns None when the metadata is unavailable (legacy mean-pool fallback).
+    """
+    u = data.get("user")
+    t = data.get("transaction")
+    if u is None or t is None or not hasattr(u, "x") or u.x.size(0) == 0:
+        return None
+    if "ptr" in u:
+        if "ptr" not in t or not hasattr(data, "target_txn_n"):
+            return None
+        txn_n = data.target_txn_n
+        if isinstance(txn_n, torch.Tensor) and txn_n.numel() == u.ptr[:-1].numel():
+            txn_n = txn_n.to(device)
+        else:
+            txn_n = torch.full((u.ptr[:-1].numel(),), int(txn_n), dtype=torch.long, device=device)
+        return u.ptr[:-1].to(device), t.ptr[:-1].to(device), txn_n
+    target_user_idx = torch.zeros(1, dtype=torch.long, device=device)
+    starts = torch.zeros(1, dtype=torch.long, device=device)
+    txn_n = torch.tensor([int(getattr(data, "target_txn_n", t.x.size(0)))],
+                         dtype=torch.long, device=device)
+    return target_user_idx, starts, txn_n
 
 
 def train_loop(model, train_loader, val_loader, device, epochs, pos_weight=10.0, patience=8):
@@ -228,7 +260,11 @@ def train_loop(model, train_loader, val_loader, device, epochs, pos_weight=10.0,
         for data in train_loader:
             data = data.to(device)
             opt.zero_grad()
-            out = model(data.x_dict, data.edge_index_dict)
+            meta = target_readout_meta(data, device)
+            if meta is not None:
+                out = model(data.x_dict, data.edge_index_dict, *meta)
+            else:
+                out = model(data.x_dict, data.edge_index_dict)
             y = data.label.unsqueeze(1).to(device)
             loss = criterion(out[:, :1], y)
             loss.backward()
@@ -261,7 +297,11 @@ def evaluate(model, loader, device):
     probs, labels = [], []
     for data in loader:
         data = data.to(device)
-        out = model(data.x_dict, data.edge_index_dict)
+        meta = target_readout_meta(data, device)
+        if meta is not None:
+            out = model(data.x_dict, data.edge_index_dict, *meta)
+        else:
+            out = model(data.x_dict, data.edge_index_dict)
         probs.extend(torch.sigmoid(out[:, 0]).cpu().tolist())
         labels.extend(data.label.tolist())
     if len(set(labels)) < 2:
@@ -290,14 +330,19 @@ def evaluate(model, loader, device):
 def benchmark_latency(model, loader, device, warmup=50, runs=300):
     model.eval()
     samples = [d.to(device) for d in loader.dataset]
+    metas = [target_readout_meta(d, device) for d in samples]
     for _ in range(warmup):
         for d in samples[:16]:
             model(d.x_dict, d.edge_index_dict)
     times = []
-    for _ in range(runs):
-        d = samples[_ % len(samples)]
+    for i in range(runs):
+        d = samples[i % len(samples)]
+        meta = metas[i % len(samples)]
         t0 = time.perf_counter()
-        model(d.x_dict, d.edge_index_dict)
+        if meta is not None:
+            model(d.x_dict, d.edge_index_dict, *meta)
+        else:
+            model(d.x_dict, d.edge_index_dict)
         times.append((time.perf_counter() - t0) * 1000.0)
     times.sort()
     n = len(times)

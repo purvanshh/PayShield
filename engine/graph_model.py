@@ -24,6 +24,10 @@ class PayShieldGNN(torch.nn.Module):
 
         self.lin1 = torch.nn.Linear(hidden_channels * 2, 32)
         self.lin2 = torch.nn.Linear(32, 1)
+        # Readout attention over the target user's transactions (mirrors
+        # ml/model.py — the trained artifact). Unused under the legacy
+        # graph-level pooling path.
+        self.txn_attn = torch.nn.Linear(hidden_channels, 1)
         self._projections: dict[str, torch.nn.Linear] = {}
 
     def _project(self, key: str, x: torch.Tensor) -> torch.Tensor:
@@ -37,7 +41,8 @@ class PayShieldGNN(torch.nn.Module):
             self._projections[key] = proj
         return proj(x)
 
-    def forward(self, x_dict, edge_index_dict, batch_dict=None):
+    def forward(self, x_dict, edge_index_dict, batch_dict=None,
+                target_user_idx=None, target_txn_starts=None, target_txn_n=None):
         x_dict = {key: x for key, x in x_dict.items() if x.size(0) > 0}
         # Drop empty edge types: SAGEConv crashes on zero-edge tensors in
         # newer torch_geometric releases, and no edges means no message pass.
@@ -58,32 +63,51 @@ class PayShieldGNN(torch.nn.Module):
             x_dict = {key: F.dropout(x, p=self.dropout, training=self.training) for key, x in x_dict.items()}
         x_dict = {key: self._project(key, x) for key, x in x_dict.items()}
 
-        if "user" in x_dict and x_dict["user"].size(0) > 0:
-            if batch_dict and "user" in batch_dict:
-                user_emb = global_mean_pool(x_dict["user"], batch_dict["user"])
+        if (target_user_idx is not None and target_user_idx.numel() > 0
+                and "user" in x_dict and x_dict["user"].size(0) > 0):
+            batch_size = target_user_idx.numel()
+            device = x_dict["user"].device
+            user_emb = x_dict["user"][target_user_idx]  # [B, H]
+            if ("transaction" in x_dict and x_dict["transaction"].size(0) > 0
+                    and target_txn_starts is not None and target_txn_n is not None):
+                txn_reps = []
+                for b in range(batch_size):
+                    sl = x_dict["transaction"][
+                        target_txn_starts[b]: target_txn_starts[b] + target_txn_n[b]
+                    ]
+                    if sl.size(0) == 0:
+                        txn_reps.append(torch.zeros(self.lin1.in_features // 2, device=device))
+                        continue
+                    scores = self.txn_attn(sl)
+                    weights = torch.softmax(scores, dim=0)
+                    txn_reps.append((weights * sl).sum(dim=0))
+                txn_emb = torch.stack(txn_reps, dim=0)  # [B, H]
             else:
-                user_emb = x_dict["user"].mean(dim=0, keepdim=True)
+                txn_fallback = self._pool_txn(x_dict, batch_dict)
+                txn_emb = txn_fallback.expand(batch_size, -1)
         else:
-            user_emb = torch.zeros(1, self.lin1.in_features // 2)
-
-        if "transaction" in x_dict and x_dict["transaction"].size(0) > 0:
-            if batch_dict and "transaction" in batch_dict:
-                txn_emb = global_mean_pool(x_dict["transaction"], batch_dict["transaction"])
-            else:
-                txn_emb = x_dict["transaction"].mean(dim=0, keepdim=True)
-        else:
-            txn_emb = torch.zeros(1, self.lin1.in_features // 2)
-
-        if user_emb.size(0) == 1 and txn_emb.size(0) > 1:
-            user_emb = user_emb.expand(txn_emb.size(0), -1)
-        elif txn_emb.size(0) == 1 and user_emb.size(0) > 1:
-            txn_emb = txn_emb.expand(user_emb.size(0), -1)
+            user_emb = self._pool_user(x_dict, batch_dict)
+            txn_emb = self._pool_txn(x_dict, batch_dict)
 
         h = torch.cat([user_emb, txn_emb], dim=-1)
         h = F.relu(self.lin1(h))
         h = F.dropout(h, p=self.dropout, training=self.training)
         out = self.lin2(h)
         return torch.sigmoid(out).squeeze(-1)
+
+    def _pool_user(self, x_dict, batch_dict) -> torch.Tensor:
+        if "user" in x_dict and x_dict["user"].size(0) > 0:
+            if batch_dict and "user" in batch_dict:
+                return global_mean_pool(x_dict["user"], batch_dict["user"])
+            return x_dict["user"].mean(dim=0, keepdim=True)
+        return torch.zeros(1, self.lin1.in_features // 2)
+
+    def _pool_txn(self, x_dict, batch_dict) -> torch.Tensor:
+        if "transaction" in x_dict and x_dict["transaction"].size(0) > 0:
+            if batch_dict and "transaction" in batch_dict:
+                return global_mean_pool(x_dict["transaction"], batch_dict["transaction"])
+            return x_dict["transaction"].mean(dim=0, keepdim=True)
+        return torch.zeros(1, self.lin1.in_features // 2)
 
     @torch.no_grad()
     def predict_proba(self, x_dict, edge_index_dict, batch_dict=None) -> torch.Tensor:

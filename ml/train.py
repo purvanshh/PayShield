@@ -84,18 +84,49 @@ class GNNTrainer:
     def create_dataloader(self, dataset, shuffle: bool = True) -> DataLoader:
         return DataLoader(dataset, batch_size=self.batch_size, shuffle=shuffle)
 
+    def _target_metadata(self, data):
+        """Global (batched) target-user / target-txn indices for the readout.
+
+        Convention (shared with scripts/benchmark_gnn.py): inside each ego-graph
+        the target user is node 0 of the "user" type and its own transactions
+        are the first ``data.target_txn_n`` nodes of the "transaction" type.
+        Returns None when the metadata is absent → legacy mean-pool readout.
+        """
+        try:
+            u = data.get("user")
+            t = data.get("transaction")
+            if u is None or t is None or not hasattr(u, "x") or u.x.size(0) == 0:
+                return None
+            if "ptr" in u:
+                if "ptr" not in t or not hasattr(data, "target_txn_n"):
+                    return None
+                txn_n = data.target_txn_n
+                if isinstance(txn_n, torch.Tensor) and txn_n.numel() == u.ptr[:-1].numel():
+                    txn_n = txn_n
+                else:
+                    txn_n = torch.full((u.ptr[:-1].numel(),), int(txn_n), dtype=torch.long)
+                return u.ptr[:-1], t.ptr[:-1], txn_n
+            txn_n = torch.tensor([int(getattr(data, "target_txn_n", t.x.size(0)))], dtype=torch.long)
+            return torch.zeros(1, dtype=torch.long), torch.zeros(1, dtype=torch.long), txn_n
+        except (AttributeError, KeyError):
+            return None
+
     def train_epoch(self, dataloader) -> float:
         self.model.train()
         total_loss = 0.0
         for data in dataloader:
             data = data.to(self.device)
             self.optimizer.zero_grad()
-            out = self.model(data.x_dict, data.edge_index_dict)
+            meta = self._target_metadata(data)
+            if meta is not None:
+                out = self.model(data.x_dict, data.edge_index_dict, *meta)
+            else:
+                out = self.model(data.x_dict, data.edge_index_dict)
             y = data["user"].y if "user" in data.metadata() and hasattr(data["user"], "y") else None
             if y is None:
                 continue
             y = y.view(-1, 1).float()
-            loss = self.criterion(out, y)
+            loss = self.criterion(out[:, :1], y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
@@ -111,15 +142,19 @@ class GNNTrainer:
 
         for data in dataloader:
             data = data.to(self.device)
-            out = self.model(data.x_dict, data.edge_index_dict)
+            meta = self._target_metadata(data)
+            if meta is not None:
+                out = self.model(data.x_dict, data.edge_index_dict, *meta)
+            else:
+                out = self.model(data.x_dict, data.edge_index_dict)
             y = data["user"].y if "user" in data.metadata() and hasattr(data["user"], "y") else None
             if y is None:
                 continue
             y = y.view(-1, 1).float()
-            loss = self.criterion(out, y)
+            loss = self.criterion(out[:, :1], y)
             total_loss += loss.item()
 
-            probs = torch.sigmoid(out)
+            probs = torch.sigmoid(out[:, :1])
             all_preds.extend(probs.cpu().numpy())
             all_labels.extend(y.cpu().numpy())
 

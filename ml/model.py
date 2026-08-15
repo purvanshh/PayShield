@@ -45,6 +45,11 @@ class PayShieldGNN(torch.nn.Module):
             torch.nn.Linear(hidden_channels, out_channels),
         )
 
+        # Readout attention: weights each of the target user's transactions
+        # when aggregating them into the graph representation (instead of an
+        # unweighted mean over all transactions in the ego-graph).
+        self.txn_attn = torch.nn.Linear(hidden_channels, 1)
+
         self._init_weights()
 
     def _init_weights(self):
@@ -55,7 +60,18 @@ class PayShieldGNN(torch.nn.Module):
                     torch.nn.init.zeros_(module.bias)
 
     def forward(self, x_dict: dict[str, torch.Tensor],
-                edge_index_dict: dict[tuple[str, str, str], torch.Tensor]) -> torch.Tensor:
+                edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
+                target_user_idx: torch.Tensor | None = None,
+                target_txn_starts: torch.Tensor | None = None,
+                target_txn_n: torch.Tensor | None = None) -> torch.Tensor:
+        """Propagate messages, then pool into a graph representation.
+
+        When ``target_user_idx`` (with per-sample transaction slices) is
+        provided, the readout uses the target user's own embedding and an
+        attention-weighted sum of the target user's transactions instead of
+        mean-pooling every node in the ego-graph. Falls back to the legacy
+        graph-level mean pooling when the metadata is absent.
+        """
         x_dict_out = x_dict
 
         for i, conv in enumerate(self.convs):
@@ -63,20 +79,51 @@ class PayShieldGNN(torch.nn.Module):
             x_dict_out = {key: F.relu(x) for key, x in x_dict_out.items()}
             x_dict_out = {key: F.dropout(x, p=self.dropout, training=self.training) for key, x in x_dict_out.items()}
 
-        user_emb = x_dict_out.get("user", torch.zeros((1, self.hidden_channels)))
-        txn_emb = x_dict_out.get("transaction", torch.zeros((1, self.hidden_channels)))
+        user_emb = x_dict_out.get("user")
+        txn_emb = x_dict_out.get("transaction")
+        device = next(iter(x_dict_out.values())).device if x_dict_out else torch.device("cpu")
 
-        if user_emb.dim() == 2 and user_emb.size(0) > 1:
-            user_emb = user_emb.mean(dim=0, keepdim=True)
-        if txn_emb.dim() == 2 and txn_emb.size(0) > 1:
-            txn_emb = txn_emb.mean(dim=0, keepdim=True)
+        if (user_emb is not None and user_emb.dim() == 2 and user_emb.size(0) > 0
+                and target_user_idx is not None and target_user_idx.numel() > 0):
+            batch_size = target_user_idx.numel()
+            user_rep = user_emb[target_user_idx]  # [B, H]
+            if (txn_emb is not None and txn_emb.dim() == 2 and txn_emb.size(0) > 0
+                    and target_txn_starts is not None and target_txn_n is not None):
+                txn_reps = []
+                for b in range(batch_size):
+                    sl = txn_emb[
+                        target_txn_starts[b]: target_txn_starts[b] + target_txn_n[b]
+                    ]
+                    if sl.size(0) == 0:
+                        txn_reps.append(torch.zeros(self.hidden_channels, device=device))
+                        continue
+                    scores = self.txn_attn(sl)  # [K, 1]
+                    weights = torch.softmax(scores, dim=0)
+                    txn_reps.append((weights * sl).sum(dim=0))
+                txn_rep = torch.stack(txn_reps, dim=0)  # [B, H]
+            else:
+                txn_fallback = (txn_emb.mean(dim=0, keepdim=True)
+                                if txn_emb is not None and txn_emb.size(0) > 0
+                                else torch.zeros(1, self.hidden_channels, device=device))
+                txn_rep = txn_fallback.expand(batch_size, -1)
+        else:
+            batch_size = 1
+            user_rep = (user_emb.mean(dim=0, keepdim=True)
+                        if user_emb is not None and user_emb.dim() == 2 and user_emb.size(0) > 0
+                        else torch.zeros(1, self.hidden_channels, device=device))
+            txn_rep = (txn_emb.mean(dim=0, keepdim=True)
+                       if txn_emb is not None and txn_emb.dim() == 2 and txn_emb.size(0) > 0
+                       else torch.zeros(1, self.hidden_channels, device=device))
 
-        graph_emb = torch.cat([user_emb, txn_emb], dim=-1)
+        graph_emb = torch.cat([user_rep, txn_rep], dim=-1)
         return self.classifier(graph_emb)
 
     @torch.no_grad()
     def predict_proba(self, x_dict: dict[str, torch.Tensor],
-                      edge_index_dict: dict[tuple[str, str, str], torch.Tensor]) -> torch.Tensor:
+                      edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
+                      target_user_idx: torch.Tensor | None = None,
+                      target_txn_starts: torch.Tensor | None = None,
+                      target_txn_n: torch.Tensor | None = None) -> torch.Tensor:
         """Return P(fraud) = sigmoid of the trained fraud logit (column 0).
 
         The model is trained with BCEWithLogitsLoss on ``out[:, :1]`` only,
@@ -84,13 +131,17 @@ class PayShieldGNN(torch.nn.Module):
         would corrupt the probability. Output shape is (batch, 1).
         """
         self.eval()
-        logits = self.forward(x_dict, edge_index_dict)
+        logits = self.forward(x_dict, edge_index_dict, target_user_idx,
+                              target_txn_starts, target_txn_n)
         return torch.sigmoid(logits[:, 0:1])
 
     @torch.no_grad()
     def predict_proba_safe(self, x_dict: dict[str, torch.Tensor],
                            edge_index_dict: dict[tuple[str, str, str], torch.Tensor],
-                           timeout_ms: float = 20.0) -> tuple[float, bool]:
+                           timeout_ms: float = 20.0,
+                           target_user_idx: torch.Tensor | None = None,
+                           target_txn_starts: torch.Tensor | None = None,
+                           target_txn_n: torch.Tensor | None = None) -> tuple[float, bool]:
         """CPU inference guarded by an in-process timeout.
 
         Returns (fraud_probability, timed_out). Inference runs in a worker
@@ -105,7 +156,8 @@ class PayShieldGNN(torch.nn.Module):
 
         def _run():
             try:
-                probs = self.predict_proba(x_dict, edge_index_dict)
+                probs = self.predict_proba(x_dict, edge_index_dict, target_user_idx,
+                                           target_txn_starts, target_txn_n)
                 result["prob"] = float(probs[0, 0])
             except Exception as e:  # pragma: no cover - defensive
                 error.append(e)
