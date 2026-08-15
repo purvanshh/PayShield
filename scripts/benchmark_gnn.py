@@ -228,9 +228,9 @@ def target_readout_meta(data, device) -> tuple[torch.Tensor, torch.Tensor, torch
     HeteroData the target user is node 0 and the target transactions start at 0.
     Returns None when the metadata is unavailable (legacy mean-pool fallback).
     """
-    u = data.get("user")
-    t = data.get("transaction")
-    if u is None or t is None or not hasattr(u, "x") or u.x.size(0) == 0:
+    u = data["user"] if "user" in data.node_types else None
+    t = data["transaction"] if "transaction" in data.node_types else None
+    if u is None or t is None or u.x.size(0) == 0:
         return None
     if "ptr" in u:
         if "ptr" not in t or not hasattr(data, "target_txn_n"):
@@ -248,11 +248,18 @@ def target_readout_meta(data, device) -> tuple[torch.Tensor, torch.Tensor, torch
     return target_user_idx, starts, txn_n
 
 
-def train_loop(model, train_loader, val_loader, device, epochs, pos_weight=10.0, patience=8):
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-4)
-    sched = CosineAnnealingLR(opt, T_max=epochs)
+def train_loop(model, train_loader, val_loader, device, epochs, pos_weight=10.0, patience=8,
+               lr=1e-3):
+    """Train with early stopping + checkpoint selection on val PR-AUC.
+
+    PR-AUC is the lead metric for imbalanced fraud: AUC-ROC peaks on models
+    that rank the legitimate majority well, whose checkpoints are not the
+    best fraud-finders. Returns the best val PR-AUC achieved.
+    """
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+    sched = CosineAnnealingLR(opt, T_max=max(epochs, 1))
     criterion = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([pos_weight], device=device))
-    best_val_auc, best_state, no_improve = 0.0, None, 0
+    best_val_pr, best_state, no_improve = 0.0, None, 0
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -273,22 +280,23 @@ def train_loop(model, train_loader, val_loader, device, epochs, pos_weight=10.0,
             total_loss += loss.item()
         sched.step()
 
-        val_auc, _ = evaluate(model, val_loader, device)
-        if val_auc > best_val_auc:
-            best_val_auc = val_auc
+        _, val_metrics = evaluate(model, val_loader, device)
+        val_pr = val_metrics["auc_pr"]
+        if val_pr > best_val_pr + 1e-4:
+            best_val_pr = val_pr
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             no_improve = 0
         else:
             no_improve += 1
         if epoch % 10 == 0 or epoch == 1:
-            print(f"  epoch {epoch:3d}/{epochs}  loss {total_loss / max(len(train_loader), 1):.4f}  val_auc {val_auc:.4f}")
+            print(f"  epoch {epoch:3d}/{epochs}  loss {total_loss / max(len(train_loader), 1):.4f}  val_pr_auc {val_pr:.4f}")
         if no_improve >= patience:
             print(f"  early stop at epoch {epoch}")
             break
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    return best_val_auc
+    return best_val_pr
 
 
 @torch.no_grad()
@@ -363,6 +371,46 @@ def benchmark_latency(model, loader, device, warmup=50, runs=300):
     }
 
 
+def hyperparameter_sweep(train_graphs, val_graphs, device, n_trials=8, sweep_epochs=25, seed=42):
+    """Optuna sweep maximizing val PR-AUC (the lead fraud metric).
+
+    Search space: hidden 32/64/128, layers 2/3, dropout 0.0/0.3/0.5,
+    pos_weight 5/10/20, learning rate 1e-3..1e-2, batch size 4/8/16.
+    Returns the best trial's params.
+    """
+    try:
+        import optuna
+    except ImportError:
+        print("optuna not installed; skipping sweep")
+        return {}
+
+    def objective(trial):
+        hp = {
+            "hidden": trial.suggest_categorical("hidden", [32, 64, 128]),
+            "layers": trial.suggest_categorical("layers", [2, 3]),
+            "dropout": trial.suggest_categorical("dropout", [0.0, 0.3, 0.5]),
+            "pos_weight": trial.suggest_categorical("pos_weight", [5, 10, 20]),
+            "lr": trial.suggest_float("lr", 1e-3, 1e-2, log=True),
+            "batch": trial.suggest_categorical("batch", [4, 8, 16]),
+        }
+        model = PayShieldGNN(edge_types=EDGE_TYPES, hidden_channels=hp["hidden"],
+                             num_layers=hp["layers"], dropout=hp["dropout"])
+        model.to(device)
+        with torch.no_grad():
+            warm = train_graphs[0].to(device)
+            model(warm.x_dict, warm.edge_index_dict)
+        train_loader = DataLoader(train_graphs, batch_size=hp["batch"], shuffle=True)
+        val_loader = DataLoader(val_graphs, batch_size=hp["batch"], shuffle=False)
+        return train_loop(model, train_loader, val_loader, device, epochs=sweep_epochs,
+                          pos_weight=hp["pos_weight"], patience=6, lr=hp["lr"])
+
+    sampler = optuna.samplers.TPESampler(seed=seed)
+    study = optuna.create_study(direction="maximize", sampler=sampler)
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+    print(f"sweep best trial: {study.best_trial.params} (val PR-AUC {study.best_value:.4f})")
+    return study.best_trial.params
+
+
 def main():
     ap = argparse.ArgumentParser(description="Measure L2 GNN performance (synthetic data)")
     ap.add_argument("--users", type=int, default=6000)
@@ -370,6 +418,11 @@ def main():
     ap.add_argument("--txns", type=int, default=18000)
     ap.add_argument("--fraud-ratio", type=float, default=0.05)
     ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--sweep-trials", type=int, default=0,
+                    help="run an optuna PR-AUC hyperparameter sweep with this many trials")
+    ap.add_argument("--sweep-epochs", type=int, default=25,
+                    help="epochs per optuna trial")
     ap.add_argument("--latency-runs", type=int, default=300)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--output", type=str, default="models/gnn_benchmark_results.json")
@@ -408,20 +461,37 @@ def main():
           f"(positives: {sum(g.label for g in test)} test)")
     assert sum(1 for g in test if g.label) >= 10, "too few test positives — increase data size"
 
-    batch = 1  # model pools the whole input graph → one graph per training step
+    batch = args.batch_size
+    hp = {}
+    if args.sweep_trials > 0:
+        print(f"\n=== Optuna sweep ({args.sweep_trials} trials, {args.sweep_epochs} epochs, metric=val PR-AUC) ===")
+        hp = hyperparameter_sweep(train, val, device, n_trials=args.sweep_trials,
+                                  sweep_epochs=args.sweep_epochs, seed=args.seed)
+
+    batch = hp.get("batch", batch)
+    hidden = hp.get("hidden", 64)
+    num_layers = hp.get("layers", 2)
+    dropout = hp.get("dropout", 0.3)
+    pos_weight = hp.get("pos_weight", 10.0)
+    lr = hp.get("lr", 1e-3)
+    print(f"final config: hidden={hidden} layers={num_layers} dropout={dropout} "
+          f"pos_weight={pos_weight} lr={lr} batch_size={batch} epochs={args.epochs}")
+
     train_loader = DataLoader(train, batch_size=batch, shuffle=True)
     val_loader = DataLoader(val, batch_size=batch, shuffle=False)
     test_loader = DataLoader(test, batch_size=batch, shuffle=False)
 
-    print(f"\n=== L2 GNN (HeteroConv + SAGEConv, hidden=64, layers=2) ===")
-    gnn = PayShieldGNN(edge_types=EDGE_TYPES, hidden_channels=64, num_layers=2, dropout=0.3)
+    print(f"\n=== L2 GNN (HeteroConv + SAGEConv, hidden={hidden}, layers={num_layers}) ===")
+    gnn = PayShieldGNN(edge_types=EDGE_TYPES, hidden_channels=hidden, num_layers=num_layers,
+                       dropout=dropout)
     gnn.to(device)
     with torch.no_grad():
         warm = train[0].to(device)
         gnn(warm.x_dict, warm.edge_index_dict)  # initializes lazy SAGEConv params
     print(f"parameters: {gnn.count_parameters():,}")
     t0 = time.time()
-    best_val = train_loop(gnn, train_loader, val_loader, device, args.epochs)
+    best_val = train_loop(gnn, train_loader, val_loader, device, args.epochs,
+                          pos_weight=pos_weight, lr=lr)
     train_secs = round(time.time() - t0, 1)
     print(f"training done in {train_secs}s (best val AUC {best_val:.4f})")
     _, gnn_test = evaluate(gnn, test_loader, device)
@@ -487,8 +557,13 @@ def main():
             "node_types": {"user": 5, "merchant": 19, "device": 4, "transaction": 4},
             "edge_types": [list(et) for et in EDGE_TYPES],
         },
-        "gnn": {"architecture": "HeteroConv + SAGEConv (mean aggr), 2 layers, hidden 64, "
-                                "global mean pooling + MLP readout",
+        "gnn": {"architecture": "HeteroConv + SAGEConv (mean aggr) + target-user readout "
+                                "with transaction attention, MLP head",
+                "hyperparameters": {"hidden_channels": hidden, "num_layers": num_layers,
+                                    "dropout": dropout, "pos_weight": pos_weight,
+                                    "learning_rate": lr, "batch_size": batch},
+                "sweep": {"trials": args.sweep_trials, "epochs_per_trial": args.sweep_epochs,
+                          "metric": "val PR-AUC"},
                 "parameters": gnn.count_parameters(),
                 "train_epochs_effective": "early-stopped, max " + str(args.epochs),
                 "train_seconds": train_secs,
@@ -500,8 +575,9 @@ def main():
                      "pr_auc_lift_vs_gnn": round(gnn_test["auc_pr"] / max(mlp_test["auc_pr"], 1e-9), 1)},
         "limitations": [
             "trained on synthetic data; real UPI traffic has different seasonality",
-            "graph-level readout mean-pools all users in the ego-graph",
             "P2P recipients derived deterministically from merchant id (generator emits no recipient)",
+            "burst/ATO patterns carry no graph-representable signal in the base feature schema "
+            "(velocity, location distance), bounding absolute PR-AUC",
         ],
     }
 

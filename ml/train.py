@@ -29,7 +29,7 @@ MODELS_DIR = Path("models")
 
 
 class EarlyStopping:
-    def __init__(self, patience: int = 10, min_delta: float = 0.001, monitor: str = "val_auc"):
+    def __init__(self, patience: int = 10, min_delta: float = 0.001, monitor: str = "val_pr_auc"):
         self.patience = patience
         self.min_delta = min_delta
         self.monitor = monitor
@@ -61,7 +61,7 @@ class GNNTrainer:
         self.batch_size = self.config.get("batch_size", 32)
         self.patience = self.config.get("early_stop_patience", 10)
 
-        self.optimizer = torch.optim.Adam(
+        self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
@@ -93,8 +93,8 @@ class GNNTrainer:
         Returns None when the metadata is absent → legacy mean-pool readout.
         """
         try:
-            u = data.get("user")
-            t = data.get("transaction")
+            u = data["user"] if "user" in data.node_types else None
+            t = data["transaction"] if "transaction" in data.node_types else None
             if u is None or t is None or not hasattr(u, "x") or u.x.size(0) == 0:
                 return None
             if "ptr" in u:
@@ -179,28 +179,28 @@ class GNNTrainer:
 
     def train(self, train_loader, val_loader, epochs: int = 100) -> dict:
         best_metrics = {}
-        best_val_auc = 0.0
+        best_val_pr = 0.0
 
         for epoch in range(1, epochs + 1):
             train_loss = self.train_epoch(train_loader)
             val_metrics = self.evaluate(val_loader)
             self.scheduler.step()
 
-            val_auc = val_metrics.get("auc", 0.0)
-            if val_auc > best_val_auc:
-                best_val_auc = val_auc
+            val_pr = val_metrics.get("auc_pr", 0.0)
+            if val_pr > best_val_pr:
+                best_val_pr = val_pr
                 best_metrics = {"epoch": epoch, "train_loss": round(train_loss, 4), **val_metrics}
                 self._save_checkpoint(self.model, "best_model.pt", val_metrics)
 
             if epoch % 10 == 0 or epoch == 1:
                 logger.info(f"Epoch {epoch:3d}/{epochs} | Train loss: {train_loss:.4f} | "
-                           f"Val AUC: {val_auc:.4f} | LR: {self.scheduler.get_last_lr()[0]:.6f}")
+                           f"Val PR-AUC: {val_pr:.4f} | LR: {self.scheduler.get_last_lr()[0]:.6f}")
 
-            if self.early_stopping.step(val_auc):
+            if self.early_stopping.step(val_pr):
                 logger.info(f"Early stopping triggered at epoch {epoch}")
                 break
 
-        logger.info(f"Training complete. Best val AUC: {best_val_auc:.4f}")
+        logger.info(f"Training complete. Best val PR-AUC: {best_val_pr:.4f}")
         return best_metrics
 
     def tune(self, train_loader, val_loader, n_trials: int = 20) -> dict:
@@ -213,10 +213,11 @@ class GNNTrainer:
         def objective(trial):
             hp = {
                 "hidden_channels": trial.suggest_categorical("hidden_channels", [32, 64, 128]),
-                "num_layers": trial.suggest_int("num_layers", 1, 3),
-                "dropout": trial.suggest_float("dropout", 0.1, 0.5),
-                "learning_rate": trial.suggest_float("learning_rate", 1e-4, 1e-3, log=True),
-                "pos_weight": trial.suggest_float("pos_weight", 5.0, 20.0),
+                "num_layers": trial.suggest_categorical("num_layers", [2, 3]),
+                "dropout": trial.suggest_categorical("dropout", [0.0, 0.3, 0.5]),
+                "learning_rate": trial.suggest_float("learning_rate", 1e-3, 1e-2, log=True),
+                "pos_weight": trial.suggest_categorical("pos_weight", [5.0, 10.0, 20.0]),
+                "batch_size": trial.suggest_categorical("batch_size", [4, 8, 16]),
             }
             from ml.model import PayShieldGNN
             model = PayShieldGNN(
@@ -234,7 +235,7 @@ class GNNTrainer:
             trainer = GNNTrainer(model, {**self.config, **hp})
             trainer.model.to(self.device)
             metrics = trainer.train(train_loader, val_loader, epochs=30)
-            return metrics.get("auc", 0.0)
+            return metrics.get("auc_pr", 0.0)
 
         study = optuna.create_study(direction="maximize")
         study.optimize(objective, n_trials=n_trials)
