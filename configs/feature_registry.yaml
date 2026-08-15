@@ -15,6 +15,8 @@ features:
     description: "Transaction count in last 5 minutes"
     nullable: false
     min_val: 0
+    production: true
+    monitoring: true
 
   - name: txn_count_15m
     type: numeric
@@ -31,6 +33,8 @@ features:
     description: "Transaction count in last 1 hour"
     nullable: false
     min_val: 0
+    production: true
+    monitoring: true
 
   - name: txn_count_24h
     type: numeric
@@ -179,6 +183,51 @@ features:
     nullable: false
     min_val: 0
     max_val: 1
+
+  - name: is_shell
+    type: numeric
+    source: graph
+    version: 1
+    description: "Merchant is flagged as a shell company (0/1)"
+    nullable: false
+    min_val: 0
+    max_val: 1
+    production: true
+    monitoring: true
+
+  - name: round_amount_share
+    type: numeric
+    source: graph
+    version: 1
+    description: "Share of merchant transactions with round amounts (1.0 = all round)"
+    nullable: false
+    min_val: 0
+    max_val: 1
+    production: true
+    monitoring: true
+    drift_key: merchant_round_share
+
+  - name: inter_arrival_gap
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Minutes since the user's previous transaction"
+    nullable: false
+    min_val: 0
+    production: true
+    monitoring: true
+    drift_key: inter_arrival_gap_min
+
+  - name: location_distance
+    type: numeric
+    source: velocity
+    version: 1
+    description: "Distance (km) from the user's last known location"
+    nullable: false
+    min_val: 0
+    production: true
+    monitoring: true
+    drift_key: loc_dist_km
 
 skew_detection:
   psi_threshold: 0.25

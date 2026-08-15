@@ -2,10 +2,13 @@
 
 Usage:
     python scripts/run_drift_report.py [--redis-host HOST] [--redis-port PORT]
+                                       [--config CONFIG]
 
 Reads `drift:feat:*` zsets written by the scoring route, computes PSI per
 feature between rolling 24h windows, prints a report, and writes
-`observability/reports/drift_YYYYMMDD.json`.
+`observability/reports/drift_YYYYMMDD.json`. The set of monitored features
+and the skew thresholds come from the global feature registry config
+(`configs/feature_registry.yaml`, features with `monitoring: true`).
 """
 
 import argparse
@@ -25,6 +28,11 @@ def main():
     parser = argparse.ArgumentParser(description="PSI drift report (yesterday vs today)")
     parser.add_argument("--redis-host", default=os.getenv("REDIS_HOST", "localhost"))
     parser.add_argument("--redis-port", type=int, default=int(os.getenv("REDIS_PORT", "6379")))
+    parser.add_argument(
+        "--config",
+        default="configs/feature_registry.yaml",
+        help="feature registry YAML (features with monitoring: true are reported)",
+    )
     args = parser.parse_args()
 
     redis = SyncRedisClient(host=args.redis_host, port=args.redis_port, db=0)
@@ -32,12 +40,13 @@ def main():
         print("ERROR: cannot reach Redis", file=sys.stderr)
         sys.exit(1)
 
-    report = asyncio.run(compute_psi_report(redis))
+    report = asyncio.run(compute_psi_report(redis, config_path=args.config))
 
     print("=" * 60)
     print("PSI DRIFT REPORT — yesterday vs today")
     print(f"generated_at: {report['generated_at']}")
     print(f"method: {report['method']} | thresholds: {report['threshold']}")
+    print(f"feature_registry: {report['feature_registry']}")
     print("=" * 60)
     for name, f in report["features"].items():
         psi = f"{f['psi']:.4f}" if f.get("psi") is not None else "n/a"

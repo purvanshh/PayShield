@@ -49,8 +49,8 @@ class TestComputePsiReport:
         now = time.time()
         old_ts = now - 1.5 * WINDOW_SECONDS
         new_ts = now - 0.5 * WINDOW_SECONDS
-        await self._seed(redis, "txn_count_5m", [5.0] * 20, [old_ts] * 20)
-        await self._seed(redis, "txn_count_5m", [5.0] * 20, [new_ts] * 20, offset=20)
+        await self._seed(redis, "txn_count_5m", [5.0] * 120, [old_ts] * 120)
+        await self._seed(redis, "txn_count_5m", [5.0] * 120, [new_ts] * 120, offset=120)
         report = await compute_psi_report(redis)
         entry = report["features"]["txn_count_5m"]
         assert entry["status"] == "STABLE"
@@ -60,8 +60,8 @@ class TestComputePsiReport:
         now = time.time()
         old_ts = now - 1.5 * WINDOW_SECONDS
         new_ts = now - 0.5 * WINDOW_SECONDS
-        await self._seed(redis, "amount_total_1h", [10 + i % 25 for i in range(25)], [old_ts] * 25)
-        await self._seed(redis, "amount_total_1h", [970 + i % 25 for i in range(25)], [new_ts] * 25, offset=25)
+        await self._seed(redis, "amount_total_1h", [10 + i % 25 for i in range(125)], [old_ts] * 125)
+        await self._seed(redis, "amount_total_1h", [970 + i % 25 for i in range(125)], [new_ts] * 125, offset=125)
         report = await compute_psi_report(redis)
         entry = report["features"]["amount_total_1h"]
         assert entry["psi"] is not None
@@ -73,10 +73,32 @@ class TestComputePsiReport:
         now = time.time()
         old_ts = now - 1.5 * WINDOW_SECONDS
         new_ts = now - 0.5 * WINDOW_SECONDS
-        await self._seed(redis, "txn_count_1h", [3.0] * 20, [old_ts] * 20)
-        await self._seed(redis, "txn_count_1h", [3.0] * 20, [new_ts] * 20, offset=20)
+        await self._seed(redis, "txn_count_1h", [3.0] * 120, [old_ts] * 120)
+        await self._seed(redis, "txn_count_1h", [3.0] * 120, [new_ts] * 120, offset=120)
         entry = (await compute_psi_report(redis))["features"]["txn_count_1h"]
         assert entry["status"] == "STABLE"
+
+    async def test_binary_feature_drift_detected(self, redis):
+        now = time.time()
+        old_ts = now - 1.5 * WINDOW_SECONDS
+        new_ts = now - 0.5 * WINDOW_SECONDS
+        await self._seed(redis, "is_shell", [0.0] * 120, [old_ts] * 120)
+        await self._seed(redis, "is_shell", [1.0] * 120, [new_ts] * 120, offset=120)
+        report = await compute_psi_report(redis)
+        entry = report["features"]["is_shell"]
+        assert entry["status"] == "DRIFT"
+        assert entry["psi"] > 0.25
+
+    async def test_registry_drift_key_alias_monitored(self, redis):
+        now = time.time()
+        old_ts = now - 1.5 * WINDOW_SECONDS
+        new_ts = now - 0.5 * WINDOW_SECONDS
+        await self._seed(redis, "merchant_round_share", [0.02] * 120, [old_ts] * 120)
+        await self._seed(redis, "merchant_round_share", [0.9] * 120, [new_ts] * 120, offset=120)
+        report = await compute_psi_report(redis)
+        assert "merchant_round_share" in report["features"]
+        assert report["features"]["merchant_round_share"]["status"] == "DRIFT"
+        assert report["feature_registry"].endswith("feature_registry.yaml")
 
     async def test_malformed_members_skipped(self, redis):
         now = time.time()

@@ -42,6 +42,9 @@ class FeatureDefinition:
     min_val: float | None = None
     max_val: float | None = None
     categories: list[str] | None = None
+    production: bool = True
+    monitoring: bool = False
+    drift_key: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
@@ -55,6 +58,9 @@ class FeatureDefinition:
             "min_val": self.min_val,
             "max_val": self.max_val,
             "categories": self.categories,
+            "production": self.production,
+            "monitoring": self.monitoring,
+            "drift_key": self.drift_key,
         }
 
 
@@ -106,6 +112,9 @@ class FeatureRegistry:
                 min_val=entry.get("min_val"),
                 max_val=entry.get("max_val"),
                 categories=entry.get("categories"),
+                production=entry.get("production", True),
+                monitoring=entry.get("monitoring", False),
+                drift_key=entry.get("drift_key"),
             )
             self._definitions[definition.name] = definition
 
