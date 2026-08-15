@@ -1,0 +1,37 @@
+{
+  "features": [
+    "has_emulator_device",
+    "has_shell_merchant",
+    "num_neighbor_fraud_flags",
+    "txn_velocity_5m",
+    "txn_velocity_1h",
+    "round_amount_share",
+    "min_merchant_age",
+    "max_merchant_age",
+    "mean_amount_10",
+    "amount_std_10",
+    "credit_score",
+    "account_age_days",
+    "kyc_tier",
+    "avg_monthly_txn_count",
+    "device_count"
+  ],
+  "rf": {
+    "pr_auc": 0.9328,
+    "roc_auc": 0.9513
+  },
+  "lr": {
+    "pr_auc": 0.9341,
+    "roc_auc": 0.9479
+  },
+  "generated_at": "2026-08-15T13:35:21.168944+00:00",
+  "data": {
+    "users": 10000,
+    "merchants": 1000,
+    "transactions": 30000,
+    "fraud_ratio": 0.05,
+    "seed": 42
+  },
+  "label": "user has any fraud txn in last 10 (same as benchmark_gnn.py)",
+  "ceiling_reading": "signal present (probe PR-AUC > 0.4): GNN is under-extracting; architectural fixes will pay"
+}
