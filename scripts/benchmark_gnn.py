@@ -80,7 +80,7 @@ def user_features(users: dict, uid: str) -> list[float]:
     ]
 
 
-def merchant_features(merchants: dict, mid: str) -> list[float]:
+def merchant_features(merchants: dict, mid: str, round_share: float | None = None) -> list[float]:
     m = merchants[mid]
     one_hot = [1.0 if c == m["mcc_code"] else 0.0 for c in MCC_ORDER]
     return one_hot + [
@@ -88,6 +88,8 @@ def merchant_features(merchants: dict, mid: str) -> list[float]:
         m["refund_rate"],
         min(m["account_age_days"] / 1500.0, 1.0),
         m["city_tier"] / 4.0,
+        1.0 if m.get("is_shell", False) else 0.0,
+        min(round_share or 0.0, 1.0),
     ]
 
 
@@ -102,13 +104,17 @@ def device_features(devices: dict, did: str) -> list[float]:
     ]
 
 
-def transaction_features(row) -> list[float]:
+def transaction_features(row, vel: tuple[float, int, int] | None = None) -> list[float]:
     ts = row["timestamp"]
+    gap_min, c5m, c1h = vel if vel is not None else (1440.0, 0, 0)
     return [
         min(row["amount"] / 20000.0, 1.0),
         ts.hour / 24.0,
         1.0 if ts.weekday() >= 5 else 0.0,
         1.0 if ts.day <= 2 else 0.0,  # salary-day proxy
+        min(gap_min / 480.0, 1.0),    # inter-arrival gap (8h cap)
+        min(c5m / 10.0, 1.0),         # txns in trailing 5m window
+        min(c1h / 30.0, 1.0),         # txns in trailing 1h window
     ]
 
 
@@ -118,13 +124,39 @@ class EgoGraphDataset:
     def __init__(self, df, users, merchants, devices,
                  min_history: int = 3, max_txns: int = 10, max_neighbors: int = 5):
         self.txn_by_user = defaultdict(list)
-        for _, row in df.iterrows():
-            self.txn_by_user[row["user_id"]].append(row)
+        for idx, row in df.iterrows():
+            self.txn_by_user[row["user_id"]].append((idx, row))
         self.users, self.merchants, self.devices = users, merchants, devices
         self.min_history, self.max_txns, self.max_neighbors = min_history, max_txns, max_neighbors
         self.n_users = len(users)
         self._recipient_cache = {}
         self._device_owner = {dev["device_id"]: dev["user_id"] for dev in devices.values()}
+
+        # Per-user sorted history + per-transaction velocity stats (gap, 5m/1h
+        # counts) computed once from the full history — Phase 3 features.
+        self._sorted_history: dict[str, list] = {}
+        self._velocity: dict[tuple, tuple] = {}
+        for uid, rows in self.txn_by_user.items():
+            ordered = sorted(rows, key=lambda e: e[1]["timestamp"])
+            self._sorted_history[uid] = ordered
+            for i, (idx, row) in enumerate(ordered):
+                cur = row["timestamp"].timestamp()
+                prev = ordered[i - 1][1]["timestamp"].timestamp() if i > 0 else cur
+                gap = (cur - prev) / 60.0 if i > 0 else 1440.0
+                c5m = sum(1 for j in range(i) if cur - ordered[j][1]["timestamp"].timestamp() <= 300)
+                c1h = sum(1 for j in range(i) if cur - ordered[j][1]["timestamp"].timestamp() <= 3600)
+                self._velocity[(uid, idx)] = (gap, c5m, c1h)
+
+        # Per-merchant round-amount share (fraction of txns with amount % 100 == 0).
+        self._merchant_round: dict[str, float] = {}
+        merchant_amounts: dict[str, list[float]] = defaultdict(list)
+        for idx, row in df.iterrows():
+            merchant_amounts[row["merchant_id"]].append(float(row["amount"]))
+        for mid, amounts in merchant_amounts.items():
+            if amounts:
+                self._merchant_round[mid] = sum(1 for a in amounts if a % 100 == 0.0) / len(amounts)
+            else:
+                self._merchant_round[mid] = 0.0
 
     def recipient_for(self, mid: str) -> str:
         if mid not in self._recipient_cache:
@@ -133,17 +165,18 @@ class EgoGraphDataset:
         return self._recipient_cache[mid]
 
     def build(self, target: str) -> HeteroData | None:
-        txns = sorted(self.txn_by_user.get(target, []), key=lambda r: r["timestamp"])
-        if len(txns) < self.min_history:
+        rows = sorted(self.txn_by_user.get(target, []), key=lambda e: e[1]["timestamp"])
+        if len(rows) < self.min_history:
             return None
 
-        txns = txns[-self.max_txns:]
+        txns = rows[-self.max_txns:]  # list of (df_index, row)
 
         neighbors = set()
-        for r in txns:
+        for _, r in txns:
             if r["txn_type"] == "P2P":
                 neighbors.add(self.recipient_for(r["merchant_id"]))
-        for d in {r["device_fingerprint"] for r in txns}:
+        for _, r in txns:
+            d = r["device_fingerprint"]
             owner = self._device_owner.get(d)
             if owner is not None and owner != target:
                 neighbors.add(owner)
@@ -151,13 +184,14 @@ class EgoGraphDataset:
 
         neighbor_txns: dict[str, list] = {}
         for uid in neighbors:
-            nt = sorted(self.txn_by_user.get(uid, []), key=lambda r: r["timestamp"])
+            nt = self._sorted_history.get(uid, [])
             if nt:
                 neighbor_txns[uid] = nt[-3:]
-        all_txns = txns + [r for lst in neighbor_txns.values() for r in lst]
+        all_txns = txns + [row for lst in neighbor_txns.values() for row in lst]
 
-        merchant_ids = {r["merchant_id"] for r in all_txns}
-        device_ids = {r["device_fingerprint"] for r in all_txns}
+        txns_rows = [r for _, r in all_txns]
+        merchant_ids = {r["merchant_id"] for r in txns_rows}
+        device_ids = {r["device_fingerprint"] for r in txns_rows}
 
         node_ids: dict[str, list[str]] = {t: [] for t in ["user", "merchant", "device", "transaction"]}
         index: dict[tuple[str, str], int] = {}
@@ -177,7 +211,7 @@ class EgoGraphDataset:
             add("device", did)
 
         edges = defaultdict(list)
-        for r in all_txns:
+        for idx, r in all_txns:
             ti = add("transaction", r["txn_id"])
             ui = index[("user", r["user_id"])]
             mi = index[("merchant", r["merchant_id"])]
@@ -196,9 +230,13 @@ class EgoGraphDataset:
 
         data = HeteroData()
         data["user"].x = torch.tensor([user_features(self.users, u) for u in node_ids["user"]], dtype=torch.float)
-        data["merchant"].x = torch.tensor([merchant_features(self.merchants, m) for m in node_ids["merchant"]], dtype=torch.float)
+        data["merchant"].x = torch.tensor(
+            [merchant_features(self.merchants, m, self._merchant_round.get(m)) for m in node_ids["merchant"]],
+            dtype=torch.float)
         data["device"].x = torch.tensor([device_features(self.devices, d) for d in node_ids["device"]], dtype=torch.float)
-        data["transaction"].x = torch.tensor([transaction_features(r) for r in all_txns], dtype=torch.float)
+        data["transaction"].x = torch.tensor(
+            [transaction_features(r, self._velocity.get((r["user_id"], idx))) for idx, r in all_txns],
+            dtype=torch.float)
 
         for et in EDGE_TYPES:
             src_type, _, dst_type = et
@@ -209,7 +247,7 @@ class EgoGraphDataset:
             else:
                 data[et].edge_index = torch.zeros((2, 0), dtype=torch.long)
 
-        is_fraud = any(bool(r["is_fraud"]) for r in txns)
+        is_fraud = any(bool(r["is_fraud"]) for _, r in txns)
         data["user"].y = torch.tensor([1.0 if is_fraud else 0.0], dtype=torch.float)
         data.label = 1.0 if is_fraud else 0.0
         data.num_nodes_by_type = {t: len(v) for t, v in node_ids.items()}
@@ -554,7 +592,7 @@ def main():
                  "users": args.users, "merchants": args.merchants,
                  "transactions": args.txns, "fraud_ratio": args.fraud_ratio, "seed": args.seed},
         "graph_schema": {
-            "node_types": {"user": 5, "merchant": 19, "device": 4, "transaction": 4},
+            "node_types": {t: int(test[0][t].x.size(1)) for t in ["user", "merchant", "device", "transaction"]},
             "edge_types": [list(et) for et in EDGE_TYPES],
         },
         "gnn": {"architecture": "HeteroConv + SAGEConv (mean aggr) + target-user readout "

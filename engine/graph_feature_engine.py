@@ -45,6 +45,8 @@ def _merchant_features(attr: dict) -> list[float]:
         min(_f(attr, "refund_rate", 0.0), 1.0),
         min(_f(attr, "account_age_days", 0.0) / 1500.0, 1.0),
         _f(attr, "city_tier", 0.0) / 4.0,
+        1.0 if attr.get("is_shell") else 0.0,
+        min(_f(attr, "round_amount_share", 0.0), 1.0),
     ]
 
 
@@ -63,6 +65,10 @@ def _device_features(attr: dict) -> list[float]:
 
 def _transaction_features(attr: dict) -> list[float]:
     amount = _f(attr, "amount", 0.0)
+    gap = min(_f(attr, "inter_arrival_gap_min", 1440.0) / 480.0, 1.0)
+    c5m = min(_f(attr, "txn_count_5m", 0.0) / 10.0, 1.0)
+    c1h = min(_f(attr, "txn_count_1h", 0.0) / 30.0, 1.0)
+    dist = min(_f(attr, "loc_dist_km", 0.0) / 800.0, 1.0)
     ts = attr.get("timestamp", 0.0)
     if isinstance(ts, (int, float)):
         import datetime as _dt
@@ -78,12 +84,17 @@ def _transaction_features(attr: dict) -> list[float]:
         else:
             ts = None
     if ts is None or not hasattr(ts, "hour"):
-        return [min(amount / 20000.0, 1.0), 0.0, 0.0, 0.0]
+        # No temporal context → neutral zeros for every derived feature
+        return [min(amount / 20000.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     return [
         min(amount / 20000.0, 1.0),
         ts.hour / 24.0,
         1.0 if ts.weekday() >= 5 else 0.0,
         1.0 if ts.day <= 2 else 0.0,
+        gap,
+        c5m,
+        c1h,
+        dist,
     ]
 
 
@@ -120,9 +131,9 @@ class GraphFeatureEngine:
                 node_types[ntype].append(n)
 
         data["user"].x = self._build_node_tensor(subgraph, node_types["user"], _user_features, width=5)
-        data["merchant"].x = self._build_node_tensor(subgraph, node_types["merchant"], _merchant_features, width=len(MCC_ORDER) + 4)
+        data["merchant"].x = self._build_node_tensor(subgraph, node_types["merchant"], _merchant_features, width=len(MCC_ORDER) + 6)
         data["device"].x = self._build_node_tensor(subgraph, node_types["device"], _device_features, width=4)
-        data["transaction"].x = self._build_node_tensor(subgraph, node_types["transaction"], _transaction_features, width=4)
+        data["transaction"].x = self._build_node_tensor(subgraph, node_types["transaction"], _transaction_features, width=8)
 
         edge_defs = {
             ("user", "performed", "transaction"): [],

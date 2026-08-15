@@ -127,9 +127,36 @@ class TestFeatureHelpers:
         feats = _transaction_features({"amount": 500.0, "timestamp": "2026-08-02 09:00:00"})
         assert feats[1] == pytest.approx(9 / 24.0)
         feats = _transaction_features({"amount": 500.0, "timestamp": "not-a-date"})
-        assert feats[1:] == [0.0, 0.0, 0.0]
+        assert feats[1:] == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         feats = _transaction_features({"amount": 500.0, "timestamp": 1760000000.0})
         assert feats[0] == pytest.approx(500.0 / 20000.0)
+
+    def test_transaction_features_velocity_and_geo_defaults(self):
+        from engine.graph_feature_engine import _transaction_features
+        feats = _transaction_features({"amount": 500.0})
+        assert feats[4] == 1.0                  # no gap attr → 1440 min default, capped
+        assert feats[5] == 0.0                  # no 5m velocity context
+        assert feats[6] == 0.0                  # no 1h velocity context
+        assert feats[7] == 0.0                  # no geo distance available
+        feats = _transaction_features({"amount": 500.0, "timestamp": "2026-08-01T12:30:00Z",
+                                       "inter_arrival_gap_min": 60.0,
+                                       "txn_count_5m": 4.0, "txn_count_1h": 12.0,
+                                       "loc_dist_km": 400.0})
+        assert feats[1] == pytest.approx(12 / 24.0)
+        assert feats[4] == pytest.approx(60.0 / 480.0)
+        assert feats[5] == pytest.approx(4.0 / 10.0)
+        assert feats[6] == pytest.approx(12.0 / 30.0)
+        assert feats[7] == pytest.approx(400.0 / 800.0)
+
+    def test_merchant_features_shell_and_round_share(self):
+        from engine.graph_feature_engine import _merchant_features
+        feats = _merchant_features({"category_code": "food"})
+        assert feats[-2] == 0.0                 # not a shell merchant by default
+        assert feats[-1] == 0.0                 # no round-amount share
+        feats = _merchant_features({"category_code": "food", "is_shell": True,
+                                    "round_amount_share": 0.8})
+        assert feats[-2] == 1.0
+        assert feats[-1] == pytest.approx(0.8)
 
 
 class TestGraphFeatureHydration:
