@@ -1,0 +1,103 @@
+{
+  "version": "original",
+  "archive_note": "Pre-improvement baseline (global mean-pool readout, ROC-AUC objective, 19d merchant / 4d transaction features). Extracted verbatim from git history (commit 39ab911) for the Phase 6 delta report.",
+  "generated_at": "2026-07-31T17:09:39Z",
+  "device": "cpu",
+  "data": {
+    "source": "synthetic UPI generator (scripts/generate_synthetic_data.py)",
+    "users": 10000,
+    "merchants": 1000,
+    "transactions": 30000,
+    "fraud_ratio": 0.05,
+    "seed": 42
+  },
+  "graph_schema": {
+    "node_types": {
+      "user": 5,
+      "merchant": 19,
+      "device": 4,
+      "transaction": 4
+    },
+    "edge_types": [
+      [
+        "user",
+        "performed",
+        "transaction"
+      ],
+      [
+        "transaction",
+        "to",
+        "merchant"
+      ],
+      [
+        "user",
+        "used",
+        "device"
+      ],
+      [
+        "user",
+        "transferred_to",
+        "user"
+      ],
+      [
+        "device",
+        "shared_by",
+        "user"
+      ]
+    ]
+  },
+  "gnn": {
+    "architecture": "HeteroConv + SAGEConv (mean aggr), 2 layers, hidden 64, global mean pooling + MLP readout",
+    "parameters": 53826,
+    "train_epochs_effective": "early-stopped, max 60",
+    "train_seconds": 331.6,
+    "test_split": {
+      "graphs": 557,
+      "positives": 44
+    },
+    "test_metrics": {
+      "auc_roc": 0.6918,
+      "auc_pr": 0.198,
+      "fpr_at_0.90_recall": 0.7115,
+      "threshold_at_0.90_recall": 0.0175,
+      "f1@0.3": 0.0,
+      "precision@0.3": 0.0,
+      "recall@0.3": 0.0,
+      "f1@0.5": 0.0,
+      "precision@0.5": 0.0,
+      "recall@0.5": 0.0,
+      "f1@0.7": 0.0,
+      "precision@0.7": 0.0,
+      "recall@0.7": 0.0
+    },
+    "inference_latency_ms_cpu": {
+      "mean_ms": 0.998,
+      "p50_ms": 0.995,
+      "p90_ms": 1.458,
+      "p95_ms": 1.631,
+      "p99_ms": 2.497,
+      "max_ms": 3.083,
+      "runs": 300,
+      "graph_nodes_min": 19,
+      "graph_nodes_median": 48,
+      "graph_nodes_max": 75,
+      "graph_edges_median": 15
+    }
+  },
+  "baseline": {
+    "architecture": "edge-free MLP (FraudClassifier) on 5 target-user features",
+    "test_metrics": {
+      "auc_roc": 0.4805,
+      "auc_pr": 0.056,
+      "fpr_at_0.90_recall": 0.9143,
+      "f1@0.3": 0.1087,
+      "f1@0.5": 0.0,
+      "f1@0.7": 0.0
+    }
+  },
+  "limitations": [
+    "trained on synthetic data; real UPI traffic has different seasonality",
+    "graph-level readout mean-pools all users in the ego-graph",
+    "P2P recipients derived deterministically from merchant id (generator emits no recipient)"
+  ]
+}
