@@ -25,8 +25,10 @@ MIN_GRAPH_NODES = 2
 try:
     import torch
     from torch_geometric.data import HeteroData
-    from ml.model import PayShieldGNN
+
     from engine.graph_feature_engine import GraphFeatureEngine, extract_ego_graph_live
+    from ml.model import PayShieldGNN
+
     _deps_ready = True
 except ImportError:
     torch = None
@@ -48,8 +50,14 @@ _LOAD_LOCK = threading.Lock()
 
 
 class L2InferenceService:
-    def __init__(self, model_path: Path | None = None, hidden_channels: int = 64,
-                 num_layers: int = 2, dropout: float = 0.3, timeout_ms: float = L2_TIMEOUT_MS):
+    def __init__(
+        self,
+        model_path: Path | None = None,
+        hidden_channels: int = 64,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+        timeout_ms: float = L2_TIMEOUT_MS,
+    ):
         self.model_path = model_path
         self.hidden_channels = hidden_channels
         self.num_layers = num_layers
@@ -76,6 +84,7 @@ class L2InferenceService:
         if self.model_path is None or not Path(self.model_path).exists():
             try:
                 from ml.registry import ModelRegistry
+
                 resolved = ModelRegistry().get_production_model()
                 if resolved is not None and resolved.exists():
                     self.model_path = resolved
@@ -92,28 +101,34 @@ class L2InferenceService:
                 return
             try:
                 import torch
+
                 if not torch.cuda.is_available():
                     torch.set_num_threads(1)
+                state = torch.load(self.model_path, map_location="cpu", weights_only=False)
+                meta = state if isinstance(state, dict) and "state_dict" in state else {}
+                state_dict = meta.get("state_dict", state) if meta else state
                 model = PayShieldGNN(
                     edge_types=EDGE_TYPES,
-                    hidden_channels=self.hidden_channels,
-                    num_layers=self.num_layers,
-                    dropout=self.dropout,
+                    hidden_channels=meta.get("hidden_channels", self.hidden_channels),
+                    num_layers=meta.get("num_layers", self.num_layers),
+                    dropout=meta.get("dropout", self.dropout),
                 )
-                state = torch.load(self.model_path, map_location="cpu")
-                if isinstance(state, dict) and "state_dict" in state:
-                    state = state["state_dict"]
-                model.load_state_dict(state)
+                model.load_state_dict(state_dict)
                 model.eval()
                 self._model = model
                 self._load_error = None
-                logger.info(f"L2 GNN loaded from {self.model_path}")
+                logger.info(
+                    f"L2 GNN loaded from {self.model_path} "
+                    f"(hidden={model.hidden_channels} layers={model.num_layers} "
+                    f"dropout={model.dropout})"
+                )
             except Exception as e:
                 self._load_error = f"load failed: {e}"
                 logger.error(self._load_error)
 
-    async def predict(self, graph, user_id: str, merchant_id: str,
-                      device_id: str | None = None) -> dict:
+    async def predict(
+        self, graph, user_id: str, merchant_id: str, device_id: str | None = None
+    ) -> dict:
         """Run the full L2 pipeline against a live ego graph.
 
         Returns a dict: {status, fraud_probability, latency_ms, nodes, edges}
@@ -122,65 +137,96 @@ class L2InferenceService:
         if self._model is None:
             self.load_model()
             if self._model is None:
-                return {"status": L2Status.MODEL_UNAVAILABLE.value,
-                        "fraud_probability": 0.0,
-                        "latency_ms": round((time.perf_counter() - start) * 1000, 3),
-                        "nodes": 0, "edges": 0}
-
-        if graph is None or graph.number_of_nodes() < MIN_GRAPH_NODES:
-            return {"status": L2Status.SKIPPED_NO_GRAPH.value,
+                return {
+                    "status": L2Status.MODEL_UNAVAILABLE.value,
                     "fraud_probability": 0.0,
                     "latency_ms": round((time.perf_counter() - start) * 1000, 3),
-                    "nodes": graph.number_of_nodes() if graph is not None else 0,
-                    "edges": graph.number_of_edges() if graph is not None else 0}
+                    "nodes": 0,
+                    "edges": 0,
+                }
+
+        if graph is None or graph.number_of_nodes() < MIN_GRAPH_NODES:
+            return {
+                "status": L2Status.SKIPPED_NO_GRAPH.value,
+                "fraud_probability": 0.0,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 3),
+                "nodes": graph.number_of_nodes() if graph is not None else 0,
+                "edges": graph.number_of_edges() if graph is not None else 0,
+            }
 
         try:
-            data = self._feature_engine.hydrate_features(graph, feature_store=None)
+            data = self._feature_engine.hydrate_features(
+                graph, feature_store=None, target_user_id=user_id
+            )
             x_dict = {ntype: t for ntype, t in data.x_dict.items()}
             edge_index_dict = {k: v for k, v in data.edge_index_dict.items()}
 
-            target_user_idx, target_txn_starts, target_txn_n = self._target_indices(graph, user_id, data)
+            target_user_idx, target_txn_starts, target_txn_n = self._target_indices(
+                graph, user_id, data
+            )
 
             prob, timed_out = await asyncio.to_thread(
-                self._model.predict_proba_safe, x_dict, edge_index_dict, self.timeout_ms,
-                target_user_idx, target_txn_starts, target_txn_n,
+                self._model.predict_proba_safe,
+                x_dict,
+                edge_index_dict,
+                self.timeout_ms,
+                target_user_idx,
+                target_txn_starts,
+                target_txn_n,
             )
             if timed_out:
-                return {"status": L2Status.TIMEOUT.value,
-                        "fraud_probability": 0.0,
-                        "latency_ms": round((time.perf_counter() - start) * 1000, 3),
-                        "nodes": graph.number_of_nodes(), "edges": graph.number_of_edges()}
-
-            return {"status": L2Status.SUCCESS.value,
-                    "fraud_probability": round(prob, 6),
-                    "latency_ms": round((time.perf_counter() - start) * 1000, 3),
-                    "nodes": graph.number_of_nodes(), "edges": graph.number_of_edges()}
-        except Exception as e:
-            logger.error(f"L2 inference failed: {e}")
-            return {"status": L2Status.ERROR.value,
+                return {
+                    "status": L2Status.TIMEOUT.value,
                     "fraud_probability": 0.0,
                     "latency_ms": round((time.perf_counter() - start) * 1000, 3),
-                    "nodes": graph.number_of_nodes() if graph is not None else 0,
-                    "edges": graph.number_of_edges() if graph is not None else 0}
+                    "nodes": graph.number_of_nodes(),
+                    "edges": graph.number_of_edges(),
+                }
 
-    def _target_indices(self, graph, user_id: str, data):
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            if elapsed_ms > self.timeout_ms * 0.5:
+                logger.warning(
+                    f"L2 inference close to the {self.timeout_ms:.0f}ms timeout guard: "
+                    f"{elapsed_ms:.1f}ms (nodes={graph.number_of_nodes()})"
+                )
+
+            return {
+                "status": L2Status.SUCCESS.value,
+                "fraud_probability": round(prob, 6),
+                "latency_ms": round(elapsed_ms, 3),
+                "nodes": graph.number_of_nodes(),
+                "edges": graph.number_of_edges(),
+            }
+        except Exception as e:
+            logger.error(f"L2 inference failed: {e}")
+            return {
+                "status": L2Status.ERROR.value,
+                "fraud_probability": 0.0,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 3),
+                "nodes": graph.number_of_nodes() if graph is not None else 0,
+                "edges": graph.number_of_edges() if graph is not None else 0,
+            }
+
+    def _target_indices(self, _graph, _user_id: str, data):
         """Global indices of the scored user / its transactions for the readout.
 
-        Mirrors the benchmark convention: the ego-graph's target user row and
-        its transaction rows feed the attention readout; falls back to None
-        (legacy graph-level pooling) when the ego graph does not contain the
-        user or transaction nodes.
+        ``hydrate_features(..., target_user_id=user_id)`` orders the target
+        user at row 0 and its own transactions as the leading transaction
+        rows, storing the count in ``data.target_txn_n`` — the same convention
+        the benchmark trains with, so the attention readout covers exactly the
+        scored user's transactions. Falls back to None (legacy graph-level
+        pooling) when the ordering is unavailable.
         """
         try:
             import torch
-            user_nodes = [n for n, a in graph.nodes(data=True)
-                          if str(a.get("node_type", "transaction")).lower().rstrip("s") == "user"]
-            if user_id not in user_nodes:
+
+            if not hasattr(data, "target_txn_n") or data["user"].x.size(0) == 0:
                 return None, None, None
-            user_idx = user_nodes.index(user_id)
-            txn_n = data["transaction"].x.size(0)
-            return (torch.tensor([user_idx], dtype=torch.long),
-                    torch.tensor([0], dtype=torch.long),
-                    torch.tensor([txn_n], dtype=torch.long))
+            n = int(data.target_txn_n)
+            return (
+                torch.tensor([0], dtype=torch.long),
+                torch.tensor([0], dtype=torch.long),
+                torch.tensor([max(n, 0)], dtype=torch.long),
+            )
         except Exception:
             return None, None, None

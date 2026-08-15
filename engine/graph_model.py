@@ -6,17 +6,27 @@ from torch_geometric.nn import HeteroConv, SAGEConv, global_mean_pool
 class PayShieldGNN(torch.nn.Module):
     def __init__(self, hidden_channels: int = 64, num_layers: int = 2, dropout: float = 0.3):
         super().__init__()
+        self.hidden_channels = hidden_channels
+        self.num_layers = num_layers
         self.dropout = dropout
         self.convs = torch.nn.ModuleList()
 
         for _ in range(num_layers):
             conv = HeteroConv(
                 {
-                    ("user", "performed", "transaction"): SAGEConv((-1, -1), hidden_channels, aggr="mean"),
-                    ("transaction", "to", "merchant"): SAGEConv((-1, -1), hidden_channels, aggr="mean"),
+                    ("user", "performed", "transaction"): SAGEConv(
+                        (-1, -1), hidden_channels, aggr="mean"
+                    ),
+                    ("transaction", "to", "merchant"): SAGEConv(
+                        (-1, -1), hidden_channels, aggr="mean"
+                    ),
                     ("user", "used", "device"): SAGEConv((-1, -1), hidden_channels, aggr="mean"),
-                    ("user", "transfer", "user"): SAGEConv((-1, -1), hidden_channels, aggr="mean"),
-                    ("device", "shared_by", "user"): SAGEConv((-1, -1), hidden_channels, aggr="mean"),
+                    ("user", "transferred_to", "user"): SAGEConv(
+                        (-1, -1), hidden_channels, aggr="mean"
+                    ),
+                    ("device", "shared_by", "user"): SAGEConv(
+                        (-1, -1), hidden_channels, aggr="mean"
+                    ),
                 },
                 aggr="mean",
             )
@@ -41,15 +51,23 @@ class PayShieldGNN(torch.nn.Module):
             self._projections[key] = proj
         return proj(x)
 
-    def forward(self, x_dict, edge_index_dict, batch_dict=None,
-                target_user_idx=None, target_txn_starts=None, target_txn_n=None):
+    def forward(
+        self,
+        x_dict,
+        edge_index_dict,
+        batch_dict=None,
+        target_user_idx=None,
+        target_txn_starts=None,
+        target_txn_n=None,
+    ):
         x_dict = {key: x for key, x in x_dict.items() if x.size(0) > 0}
         # Drop empty edge types: SAGEConv crashes on zero-edge tensors in
         # newer torch_geometric releases, and no edges means no message pass.
         # Also drop edges whose src/dst node type has no features in this
         # graph — those types simply stay out of the pooling.
         edge_index_dict = {
-            et: ei for et, ei in edge_index_dict.items()
+            et: ei
+            for et, ei in edge_index_dict.items()
             if ei.numel() > 0 and et[0] in x_dict and et[2] in x_dict
         }
         for conv in self.convs:
@@ -60,20 +78,31 @@ class PayShieldGNN(torch.nn.Module):
             # None features and crash).
             x_dict = {key: (updated[key] if key in updated else x_dict[key]) for key in x_dict}
             x_dict = {key: F.relu(x) for key, x in x_dict.items()}
-            x_dict = {key: F.dropout(x, p=self.dropout, training=self.training) for key, x in x_dict.items()}
+            x_dict = {
+                key: F.dropout(x, p=self.dropout, training=self.training)
+                for key, x in x_dict.items()
+            }
         x_dict = {key: self._project(key, x) for key, x in x_dict.items()}
 
-        if (target_user_idx is not None and target_user_idx.numel() > 0
-                and "user" in x_dict and x_dict["user"].size(0) > 0):
+        if (
+            target_user_idx is not None
+            and target_user_idx.numel() > 0
+            and "user" in x_dict
+            and x_dict["user"].size(0) > 0
+        ):
             batch_size = target_user_idx.numel()
             device = x_dict["user"].device
             user_emb = x_dict["user"][target_user_idx]  # [B, H]
-            if ("transaction" in x_dict and x_dict["transaction"].size(0) > 0
-                    and target_txn_starts is not None and target_txn_n is not None):
+            if (
+                "transaction" in x_dict
+                and x_dict["transaction"].size(0) > 0
+                and target_txn_starts is not None
+                and target_txn_n is not None
+            ):
                 txn_reps = []
                 for b in range(batch_size):
                     sl = x_dict["transaction"][
-                        target_txn_starts[b]: target_txn_starts[b] + target_txn_n[b]
+                        target_txn_starts[b] : target_txn_starts[b] + target_txn_n[b]
                     ]
                     if sl.size(0) == 0:
                         txn_reps.append(torch.zeros(self.lin1.in_features // 2, device=device))
@@ -113,3 +142,31 @@ class PayShieldGNN(torch.nn.Module):
     def predict_proba(self, x_dict, edge_index_dict, batch_dict=None) -> torch.Tensor:
         self.eval()
         return self.forward(x_dict, edge_index_dict, batch_dict)
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        path,
+        fallback_hidden: int = 64,
+        fallback_layers: int = 2,
+        fallback_dropout: float = 0.3,
+    ) -> "PayShieldGNN":
+        """Construct the serving model from a benchmark/training artifact.
+
+        The checkpoint metadata (saved by scripts/benchmark_gnn.py --save-model)
+        carries the hyperparameters the model was trained with; reading them
+        here keeps serving dimensions in lockstep with the trained artifact
+        instead of relying on caller-supplied defaults.
+        """
+        state = torch.load(path, map_location="cpu", weights_only=False)
+        if not isinstance(state, dict) or "state_dict" not in state:
+            raise ValueError(f"unexpected checkpoint layout in {path}")
+        meta = state
+        model = cls(
+            hidden_channels=meta.get("hidden_channels", fallback_hidden),
+            num_layers=meta.get("num_layers", fallback_layers),
+            dropout=meta.get("dropout", fallback_dropout),
+        )
+        model.load_state_dict(meta["state_dict"])
+        model.eval()
+        return model

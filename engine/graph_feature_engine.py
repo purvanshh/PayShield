@@ -7,10 +7,29 @@ from torch_geometric.data import HeteroData
 # was fit on exactly these vectors, so live hydration must reproduce them
 # dimension-for-dimension. Missing attributes fall back to zeros.
 MCC_ORDER = [
-    "food", "travel", "utilities", "fashion", "groceries",
-    "entertainment", "health", "education", "transport", "rent",
-    "recharge", "insurance", "investment", "cashback", "other",
+    "food",
+    "travel",
+    "utilities",
+    "fashion",
+    "groceries",
+    "entertainment",
+    "health",
+    "education",
+    "transport",
+    "rent",
+    "recharge",
+    "insurance",
+    "investment",
+    "cashback",
+    "other",
 ]
+
+USER_FEAT_DIM = 5
+MERCHANT_FEAT_DIM = (
+    len(MCC_ORDER) + 6
+)  # 15 MCC one-hot + amount/refund/age/city + is_shell + round-amount share
+DEVICE_FEAT_DIM = 4
+TRANSACTION_FEAT_DIM = 8  # amount/hour/weekend/salary-day + gap/5m/1h velocity + location distance
 
 
 def _f(attr: dict, key: str, default: float = 0.0) -> float:
@@ -26,6 +45,22 @@ def _f(attr: dict, key: str, default: float = 0.0) -> float:
         return float(val)
     except (TypeError, ValueError):
         return default
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two (lat, lon) points.
+
+    Mirrors scripts/benchmark_gnn.py so training and live hydration agree on
+    the location-distance feature (capped at 800 km in the feature itself).
+    """
+    import math
+
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2.0) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2.0) ** 2
+    return 2.0 * r * math.asin(math.sqrt(a))
 
 
 def _user_features(attr: dict) -> list[float]:
@@ -72,9 +107,11 @@ def _transaction_features(attr: dict) -> list[float]:
     ts = attr.get("timestamp", 0.0)
     if isinstance(ts, (int, float)):
         import datetime as _dt
+
         ts = _dt.datetime.fromtimestamp(ts / 1000.0 if ts > 1e12 else ts)
     elif isinstance(ts, str):
         from datetime import datetime as _dt2
+
         for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S"):
             try:
                 ts = _dt2.strptime(ts, fmt)
@@ -102,7 +139,9 @@ class GraphFeatureEngine:
     def __init__(self, graph_db):
         self.graph_db = graph_db
 
-    def extract_ego_graph(self, user_id: str, merchant_id: str, hops: int = 2, device_id: str | None = None):
+    def extract_ego_graph(
+        self, user_id: str, merchant_id: str, hops: int = 2, device_id: str | None = None
+    ):
         seeds = [s for s in (user_id, merchant_id, device_id) if s and s != "UNKNOWN_DEVICE"]
         subgraph_nodes = set()
         for node_id in seeds:
@@ -113,7 +152,9 @@ class GraphFeatureEngine:
             for _ in range(hops):
                 next_hop = set()
                 for n in current_hop:
-                    neighbors = set(self.graph_db.graph.predecessors(n)) | set(self.graph_db.graph.successors(n))
+                    neighbors = set(self.graph_db.graph.predecessors(n)) | set(
+                        self.graph_db.graph.successors(n)
+                    )
                     next_hop.update(neighbors)
                 subgraph_nodes.update(next_hop)
                 current_hop = next_hop
@@ -121,7 +162,18 @@ class GraphFeatureEngine:
         subgraph = self.graph_db.graph.subgraph(subgraph_nodes).copy()
         return subgraph
 
-    def hydrate_features(self, subgraph: nx.MultiDiGraph, feature_store) -> HeteroData:
+    def hydrate_features(
+        self, subgraph: nx.MultiDiGraph, feature_store, target_user_id: str | None = None
+    ) -> HeteroData:
+        """Build the HeteroData tensor dict for a live ego-graph.
+
+        When ``target_user_id`` is given, node rows are ordered to match the
+        training convention so the target-user readout can use fixed indices:
+        the target user is row 0 of the user tensor and its own performed
+        transactions (ascending timestamp) are the leading rows of the
+        transaction tensor. The count of target transactions is stored as
+        ``data.target_txn_n`` (mirrors the benchmark's ``target_txn_n``).
+        """
         data = HeteroData()
 
         node_types = {"user": [], "merchant": [], "device": [], "transaction": []}
@@ -130,10 +182,27 @@ class GraphFeatureEngine:
             if ntype in node_types:
                 node_types[ntype].append(n)
 
-        data["user"].x = self._build_node_tensor(subgraph, node_types["user"], _user_features, width=5)
-        data["merchant"].x = self._build_node_tensor(subgraph, node_types["merchant"], _merchant_features, width=len(MCC_ORDER) + 6)
-        data["device"].x = self._build_node_tensor(subgraph, node_types["device"], _device_features, width=4)
-        data["transaction"].x = self._build_node_tensor(subgraph, node_types["transaction"], _transaction_features, width=8)
+        if target_user_id is not None and target_user_id in node_types["user"]:
+            users = node_types["user"]
+            node_types["user"] = [target_user_id] + [u for u in users if u != target_user_id]
+            target_txns = self._performed_txns(subgraph, target_user_id)
+            if target_txns:
+                remaining = [t for t in node_types["transaction"] if t not in set(target_txns)]
+                node_types["transaction"] = target_txns + remaining
+            data.target_txn_n = len(target_txns)
+
+        data["user"].x = self._build_node_tensor(
+            subgraph, node_types["user"], _user_features, width=USER_FEAT_DIM
+        )
+        data["merchant"].x = self._build_node_tensor(
+            subgraph, node_types["merchant"], _merchant_features, width=MERCHANT_FEAT_DIM
+        )
+        data["device"].x = self._build_node_tensor(
+            subgraph, node_types["device"], _device_features, width=DEVICE_FEAT_DIM
+        )
+        data["transaction"].x = self._build_node_tensor(
+            subgraph, node_types["transaction"], _transaction_features, width=TRANSACTION_FEAT_DIM
+        )
 
         edge_defs = {
             ("user", "performed", "transaction"): [],
@@ -194,7 +263,9 @@ class GraphFeatureEngine:
                 if u in src_map and v in dst_map:
                     edge_index.append([src_map[u], dst_map[v]])
             if edge_index:
-                data[(src, rel, dst)].edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+                data[(src, rel, dst)].edge_index = (
+                    torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+                )
 
         return data
 
@@ -204,9 +275,51 @@ class GraphFeatureEngine:
         feats = [feat_fn(subgraph.nodes[n]) for n in nodes]
         return torch.tensor(np.array(feats, dtype=np.float32)).reshape(len(nodes), width)
 
+    def _performed_txns(self, subgraph, user_id: str) -> list[str]:
+        """Transaction ids linked to ``user_id`` via a ``performed`` edge.
 
-def extract_ego_graph_live(graph, user_id: str, merchant_id: str, device_id: str | None = None,
-                           hops: int = 2, max_txns: int = 10):
+        Sorted by node timestamp ascending so the leading rows of the
+        transaction tensor are the target's own history (matches training).
+        """
+
+        def _ts(nid: str) -> float:
+            try:
+                return float(subgraph.nodes[nid].get("timestamp", 0.0))
+            except (TypeError, ValueError):
+                return 0.0
+
+        txns = []
+        for u, v, a in subgraph.edges(data=True):
+            if a.get("edge_type") != "performed":
+                continue
+            u_is_user = (
+                str(subgraph.nodes[u].get("node_type", "transaction")).lower().rstrip("s") == "user"
+            )
+            v_is_txn = (
+                str(subgraph.nodes[v].get("node_type", "transaction")).lower().rstrip("s")
+                == "transaction"
+            )
+            if u_is_user and v_is_txn and u == user_id:
+                txns.append(v)
+            elif (
+                str(subgraph.nodes[v].get("node_type", "transaction")).lower().rstrip("s") == "user"
+                and str(subgraph.nodes[u].get("node_type", "transaction")).lower().rstrip("s")
+                == "transaction"
+                and v == user_id
+            ):
+                # tolerate undirected live graphs where the edge appears reversed
+                txns.append(u)
+        return sorted(set(txns), key=_ts)
+
+
+def extract_ego_graph_live(
+    graph,
+    user_id: str,
+    merchant_id: str,
+    device_id: str | None = None,
+    hops: int = 2,
+    max_txns: int = 10,
+):
     """Extract the ego graph around user/merchant/device from a live graph.
 
     Works with any graph exposing ``nodes(data=True)`` / ``edges(data=True)``
@@ -234,8 +347,10 @@ def extract_ego_graph_live(graph, user_id: str, merchant_id: str, device_id: str
 
     if user_id in subgraph_nodes and max_txns > 0:
         txns = [
-            n for n in graph.neighbors(user_id)
-            if str(graph.nodes[n].get("node_type", "transaction")).lower().rstrip("s") == "transaction"
+            n
+            for n in graph.neighbors(user_id)
+            if str(graph.nodes[n].get("node_type", "transaction")).lower().rstrip("s")
+            == "transaction"
         ]
         if len(txns) > max_txns:
             txns.sort(key=lambda n: graph.nodes[n].get("timestamp", 0), reverse=True)

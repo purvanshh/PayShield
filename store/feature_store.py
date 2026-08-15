@@ -34,7 +34,10 @@ class FeatureStore:
         raw = self.redis.hgetall(key)
         if not raw:
             return None
-        return {k: float(v) if v.replace(".", "", 1).replace("-", "", 1).isdigit() else v for k, v in raw.items()}
+        return {
+            k: float(v) if v.replace(".", "", 1).replace("-", "", 1).isdigit() else v
+            for k, v in raw.items()
+        }
 
     def set_device_fingerprint(self, device_id: str, user_id: str):
         key = f"device:{device_id}"
@@ -67,3 +70,77 @@ class FeatureStore:
         self.redis.delete(f"velocity:{user_id}")
         self.redis.delete(f"baseline:{user_id}")
         self.redis.delete(f"geo:{user_id}")
+
+
+class FeatureCache:
+    """Redis-backed caches for GNN features that are expensive to recompute.
+
+    - **Merchant round-amount share**: rolling HINCRBY counters (total txn
+      count, round-amount count) refreshed on every scored transaction.
+    - **User location centroid**: last known location, stored under the same
+      ``velocity:loc:{user}`` key the scoring hot path maintains — the GNN's
+      location-distance feature is measured against it.
+
+    Every method is best-effort: cache failures return neutral defaults
+    (0.0 / None) and must never block or fail a payment.
+    """
+
+    MERCHANT_STATS_KEY = "merchant:round_stats:{merchant_id}"
+    CENTROID_KEY = "velocity:loc:{user_id}"
+    TTL_SECONDS = 7 * 86400
+
+    def __init__(self, redis_client):
+        self.redis = redis_client
+
+    async def record_merchant_amount(self, merchant_id: str, amount: float):
+        try:
+            key = self.MERCHANT_STATS_KEY.format(merchant_id=merchant_id)
+            pipe = await self.redis.pipeline()
+            pipe.hincrby(key, "total", 1)
+            pipe.hincrby(key, "round", 1 if float(amount) % 100 == 0 else 0)
+            pipe.expire(key, self.TTL_SECONDS)
+            await pipe.execute()
+        except Exception:
+            pass
+
+    async def merchant_round_share(self, merchant_id: str) -> float:
+        try:
+            key = self.MERCHANT_STATS_KEY.format(merchant_id=merchant_id)
+            raw = await self.redis.hgetall(key)
+            total = int(raw.get("total", 0))
+            if total <= 0:
+                return 0.0
+            return round(int(raw.get("round", 0)) / total, 4)
+        except Exception:
+            return 0.0
+
+    async def get_user_centroid(self, user_id: str) -> tuple[float, float] | None:
+        try:
+            raw = await self.redis.get(self.CENTROID_KEY.format(user_id=user_id))
+            if not raw:
+                return None
+            data = json.loads(raw)
+            return float(data["lat"]), float(data["lon"])
+        except Exception:
+            return None
+
+    async def set_user_centroid(
+        self, user_id: str, lat: float, lon: float, timestamp: float | None = None
+    ):
+        try:
+            import time as _time
+
+            key = self.CENTROID_KEY.format(user_id=user_id)
+            await self.redis.set(
+                key,
+                json.dumps(
+                    {
+                        "lat": float(lat),
+                        "lon": float(lon),
+                        "ts": timestamp if timestamp is not None else _time.time(),
+                    }
+                ),
+                ttl=self.TTL_SECONDS,
+            )
+        except Exception:
+            pass

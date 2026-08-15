@@ -3,11 +3,11 @@ import hashlib
 import json
 import logging
 import os
-import time
 import statistics
+import time
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from api.dependencies import get_ensemble, get_redis, get_statistical_filter, verify_api_key
 from api.exceptions import BatchSizeExceededError
@@ -19,15 +19,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 try:
-    from engine.statistical_filter import StatisticalFilter, GeoPoint, Layer1Result
-    from engine.ensemble import EnsembleFusionEngine, EnsembleResult, Layer2Result
     from engine.constants import L2Status
+    from engine.ensemble import EnsembleFusionEngine, EnsembleResult, Layer2Result
+    from engine.statistical_filter import GeoPoint, Layer1Result, StatisticalFilter
+
     _engines_available = True
 except ImportError:
     _engines_available = False
 
 try:
     from tasks.investigation_task import generate_investigation
+
     _celery_available = True
 except ImportError:
     _celery_available = False
@@ -41,6 +43,7 @@ try:
         llm_queue_depth,
         redis_hit_rate,
     )
+
     _metrics_available = True
 except ImportError:
     _metrics_available = False
@@ -57,7 +60,9 @@ def _observe_l1_block(result: dict, l1_ms: float):
         logger.debug(f"metrics_record_failed: {e}")
 
 
-def _observe_ensemble(result: dict, l1_ms: float, l2_ms: float, ensemble_ms: float, l2_escalated: bool):
+def _observe_ensemble(
+    result: dict, l1_ms: float, l2_ms: float, ensemble_ms: float, l2_escalated: bool
+):
     if not _metrics_available:
         return
     try:
@@ -71,7 +76,9 @@ def _observe_ensemble(result: dict, l1_ms: float, l2_ms: float, ensemble_ms: flo
         logger.debug(f"metrics_record_failed: {e}")
 
 
-async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, dict, GeoPoint | None, dict | None]:
+async def _record_and_build_features(
+    redis, txn: ScoreRequest
+) -> tuple[dict, dict, GeoPoint | None, dict | None]:
     """Record the transaction in Redis and derive velocity/geo features from real history."""
     now = txn.timestamp.timestamp()
     user_id = txn.user_id
@@ -83,7 +90,9 @@ async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, di
     dev_key = f"velocity:dev:{device}"
     loc_key = f"velocity:loc:{user_id}"
 
-    entry = json.dumps({"ts": now, "amount": amount, "merchant": merchant, "user": user_id, "device": device})
+    entry = json.dumps(
+        {"ts": now, "amount": amount, "merchant": merchant, "user": user_id, "device": device}
+    )
 
     try:
         pipe = await redis.pipeline()
@@ -118,7 +127,11 @@ async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, di
 
     if txn.location:
         try:
-            await redis.set(loc_key, json.dumps({"lat": txn.location.lat, "lon": txn.location.lon, "ts": now}), ttl=7 * 86400)
+            await redis.set(
+                loc_key,
+                json.dumps({"lat": txn.location.lat, "lon": txn.location.lon, "ts": now}),
+                ttl=7 * 86400,
+            )
         except Exception:
             pass
 
@@ -132,6 +145,33 @@ async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, di
     window_5m = [e for e in past if e["ts"] >= now - 300]
     window_1h = [e for e in past if e["ts"] >= now - 3600]
     window_24h = [e for e in past if e["ts"] >= now - 86400]
+
+    gap_min = 1440.0
+    if past:
+        gap_min = (now - max(e["ts"] for e in past)) / 60.0
+    loc_dist_km = 0.0
+    if txn.location and last_loc is not None:
+        try:
+            from engine.graph_feature_engine import haversine_km
+
+            loc_dist_km = haversine_km(
+                last_loc.lat,
+                last_loc.lon,
+                txn.location.lat,
+                txn.location.lon,
+            )
+        except Exception:
+            loc_dist_km = 0.0
+
+    merchant_round_share = 0.0
+    try:
+        from store.feature_store import FeatureCache
+
+        cache = FeatureCache(redis)
+        await cache.record_merchant_amount(merchant, amount)
+        merchant_round_share = await cache.merchant_round_share(merchant)
+    except Exception:
+        pass
 
     amounts = [e["amount"] for e in past]
     median_amount = statistics.median(amounts) if amounts else 500.0
@@ -149,6 +189,9 @@ async def _record_and_build_features(redis, txn: ScoreRequest) -> tuple[dict, di
         "distinct_users_last_24h": distinct_users_dev,
         "ip_txn_count_5m": 0,
         "distinct_merchants_1h": len({e["merchant"] for e in window_1h}),
+        "inter_arrival_gap_min": round(gap_min, 2),
+        "loc_dist_km": round(loc_dist_km, 2),
+        "merchant_round_share": merchant_round_share,
     }
     deviation_features = {
         "baseline_txn_count_24h": len(window_24h),
@@ -189,7 +232,12 @@ async def score_transaction(
     txn_dict["timestamp"] = txn.timestamp.timestamp()
 
     try:
-        velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+        (
+            velocity_features,
+            deviation_features,
+            last_loc,
+            baseline,
+        ) = await _record_and_build_features(redis, txn)
         await _write_to_graph_db(request, txn, velocity_features)
     except Exception as e:
         logger.warning(f"feature_build_failed: {e}")
@@ -203,7 +251,11 @@ async def score_transaction(
             layer1_result = await stat_filter.evaluate(
                 velocity_features,
                 deviation_features,
-                current_loc=GeoPoint(lat=txn.location.lat, lon=txn.location.lon, timestamp=txn.timestamp.timestamp()) if txn.location else None,
+                current_loc=GeoPoint(
+                    lat=txn.location.lat, lon=txn.location.lon, timestamp=txn.timestamp.timestamp()
+                )
+                if txn.location
+                else None,
                 last_loc=last_loc,
                 baseline=baseline,
                 account_age_days=365.0,
@@ -270,7 +322,10 @@ async def score_transaction(
             "l2_status": l2_status,
             "l2_probability": l2_prob,
             "l2_latency_ms": getattr(l2_result, "latency_ms", 0.0),
-            "latency_breakdown": {"l1_rules_ms": round(l1_ms, 2), "ensemble_ms": round(ensemble_ms, 2)},
+            "latency_breakdown": {
+                "l1_rules_ms": round(l1_ms, 2),
+                "ensemble_ms": round(ensemble_ms, 2),
+            },
         },
         "latency_ms": 0.0,
         "model_version": "1.0.0",
@@ -293,7 +348,9 @@ async def score_transaction(
     )
 
     if response_data["decision"] in ("BLOCK", "REVIEW"):
-        _persist_explanation(txn, layer1_result, velocity_features, deviation_features, response_data)
+        _persist_explanation(
+            txn, layer1_result, velocity_features, deviation_features, response_data
+        )
         _enqueue_investigation(txn.txn_id, response_data)
         await _broadcast_alert(request, txn.txn_id, response_data)
 
@@ -325,7 +382,12 @@ async def batch_score(
         async with sem:
             try:
                 try:
-                    velocity_features, deviation_features, last_loc, baseline = await _record_and_build_features(redis, txn)
+                    (
+                        velocity_features,
+                        deviation_features,
+                        last_loc,
+                        baseline,
+                    ) = await _record_and_build_features(redis, txn)
                     await _record_drift_samples(redis, velocity_features)
                 except Exception:
                     velocity_features, deviation_features, last_loc, baseline = {}, None, None, None
@@ -333,7 +395,13 @@ async def batch_score(
                     layer1_result = await stat_filter.evaluate(
                         velocity_features,
                         deviation_features,
-                        current_loc=GeoPoint(lat=txn.location.lat, lon=txn.location.lon, timestamp=txn.timestamp.timestamp()) if txn.location else None,
+                        current_loc=GeoPoint(
+                            lat=txn.location.lat,
+                            lon=txn.location.lon,
+                            timestamp=txn.timestamp.timestamp(),
+                        )
+                        if txn.location
+                        else None,
                         last_loc=last_loc,
                         baseline=baseline,
                         merchant_id=txn.merchant_id,
@@ -414,7 +482,11 @@ async def _run_l2_inference(request: Request, txn: ScoreRequest) -> Layer2Result
 
 async def _write_to_graph_db(request: Request, txn: ScoreRequest, velocity_features: dict):
     """Mirror the live transaction into Neo4j (when available) and the
-    in-memory NetworkX graph, plus the Redis device->users index."""
+    in-memory NetworkX graph, plus the Redis device->users index.
+
+    Transaction and merchant nodes carry the velocity/geo/round-share
+    attributes the GNN feature engine reads back at scoring time.
+    """
     try:
         resources = getattr(request.app.state, "resources", {})
         writer = resources.get("graph_writer")
@@ -422,6 +494,13 @@ async def _write_to_graph_db(request: Request, txn: ScoreRequest, velocity_featu
             return
         txn_dict = txn.model_dump()
         txn_dict["timestamp"] = txn.timestamp.timestamp()
+        if txn.location:
+            txn_dict["lat"], txn_dict["lon"] = txn.location.lat, txn.location.lon
+        for key in ("inter_arrival_gap_min", "txn_count_5m", "txn_count_1h", "loc_dist_km"):
+            if key in velocity_features:
+                txn_dict[key] = velocity_features[key]
+        if "merchant_round_share" in velocity_features:
+            txn_dict["round_amount_share"] = velocity_features["merchant_round_share"]
         await writer.write_transaction(txn_dict, velocity_features)
     except Exception as e:
         logger.debug(f"graph_write_failed: {e}")
@@ -430,14 +509,17 @@ async def _write_to_graph_db(request: Request, txn: ScoreRequest, velocity_featu
 async def _broadcast_alert(request: Request, txn_id: str, result: dict):
     try:
         from api.websocket import manager
-        await manager.broadcast({
-            "type": "fraud_alert",
-            "txn_id": txn_id,
-            "decision": result["decision"],
-            "fraud_probability": result["fraud_probability"],
-            "layer_triggered": result.get("layer_triggered", ""),
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+
+        await manager.broadcast(
+            {
+                "type": "fraud_alert",
+                "txn_id": txn_id,
+                "decision": result["decision"],
+                "fraud_probability": result["fraud_probability"],
+                "layer_triggered": result.get("layer_triggered", ""),
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
     except Exception as e:
         logger.debug(f"Alert broadcast skipped: {e}")
 
@@ -466,6 +548,7 @@ async def _record_drift_samples(redis, velocity_features: dict):
     """
     try:
         import time as _time
+
         now = _time.time()
         pipe = await redis.pipeline()
         for name, value in velocity_features.items():
@@ -477,7 +560,9 @@ async def _record_drift_samples(redis, velocity_features: dict):
         logger.debug(f"drift_sample_record_failed: {e}")
 
 
-def _persist_explanation(txn, layer1_result, velocity_features: dict, deviation_features: dict, result: dict):
+def _persist_explanation(
+    txn, layer1_result, velocity_features: dict, deviation_features: dict, result: dict
+):
     """Persist explanation artifacts for BLOCK/REVIEW decisions (RBI AI-1 / PCI 10.x)."""
     try:
         explanation_dir = "models/production/explanations"
@@ -516,6 +601,7 @@ def _append_audit_entry(txn, result: dict, redis=None):
     }
     try:
         from store.audit_log import AuditLogWriter, async_audit_logger
+
         async_audit_logger.append(
             event_type="SCORE_DECISION",
             actor=txn.user_id,

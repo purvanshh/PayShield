@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import networkx as nx
 
@@ -65,7 +65,12 @@ class NetworkXGraphDB:
     def get_network_score(self, entity_id: str) -> dict[str, Any]:
         ego = self.get_ego_graph(entity_id, hops=2)
         if ego.number_of_nodes() == 0:
-            return {"entity_id": entity_id, "network_score": 0.0, "connected_entities": 0, "risk_clusters": 0}
+            return {
+                "entity_id": entity_id,
+                "network_score": 0.0,
+                "connected_entities": 0,
+                "risk_clusters": 0,
+            }
 
         risk_score = 0.0
         for node in ego.nodes():
@@ -85,8 +90,12 @@ class NetworkXGraphDB:
             "risk_clusters": len([n for n in ego.nodes() if ego.nodes[n].get("is_fraud", False)]),
         }
 
-    def create_transaction_node(self, txn_id: str, amount: float, timestamp: str | None = None):
-        self.add_node(txn_id, "Transaction", {"amount": amount, "timestamp": timestamp or ""})
+    def create_transaction_node(
+        self, txn_id: str, amount: float, timestamp: str | None = None, **attrs
+    ):
+        self.add_node(
+            txn_id, "Transaction", {"amount": amount, "timestamp": timestamp or "", **attrs}
+        )
 
     def link_user_to_txn(self, user_id: str, txn_id: str):
         if not self.graph.has_node(user_id):
@@ -125,7 +134,9 @@ class NetworkXGraphDB:
         self.add_node(entity_id, entity_type, features)
         logger.info(f"Entity created: {entity_id} ({entity_type})")
 
-    def link_entities(self, source_id: str, target_id: str, relation_type: str, features: dict | None = None):
+    def link_entities(
+        self, source_id: str, target_id: str, relation_type: str, features: dict | None = None
+    ):
         self.add_edge(source_id, target_id, relation_type, **(features or {}))
         logger.info(f"Entities linked: {source_id} -[{relation_type}]-> {target_id}")
 

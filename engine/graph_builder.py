@@ -1,14 +1,23 @@
 import hashlib
 import json
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 import networkx as nx
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Input widths of the trained GNN — kept in lockstep with
+# engine/graph_feature_engine and the checkpoint (merchant 21d, txn 8d).
+USER_FEAT_DIM = 5
+MERCHANT_FEAT_DIM = 21
+DEVICE_FEAT_DIM = 4
+TRANSACTION_FEAT_DIM = 8
+
+# Extra transaction attributes that the feature engine maps into velocity /
+# geo features; the writer stores these on the transaction node at write time.
+LIVE_TXN_ATTRS = ("inter_arrival_gap_min", "txn_count_5m", "txn_count_1h", "loc_dist_km")
 
 
 @dataclass
@@ -40,7 +49,9 @@ class GraphFeatures:
         }
 
 
-def build_from_live_transaction(graph: nx.Graph, txn: dict, features: dict | None = None) -> nx.Graph:
+def build_from_live_transaction(
+    graph: nx.Graph, txn: dict, features: dict | None = None
+) -> nx.Graph:
     """Incrementally add a live transaction to an in-memory NetworkX graph.
 
     Mirrors the Neo4j write primitives so both backends converge on the same
@@ -55,11 +66,25 @@ def build_from_live_transaction(graph: nx.Graph, txn: dict, features: dict | Non
     timestamp = txn.get("timestamp")
 
     if not graph.has_node(txn_id):
-        graph.add_node(txn_id, node_type="Transaction", amount=amount, timestamp=str(timestamp or ""))
+        txn_attrs = {k: txn[k] for k in LIVE_TXN_ATTRS if k in txn}
+        if "lat" in txn and "lon" in txn:
+            txn_attrs["lat"], txn_attrs["lon"] = txn["lat"], txn["lon"]
+        graph.add_node(
+            txn_id,
+            node_type="Transaction",
+            amount=amount,
+            timestamp=str(timestamp or ""),
+            **txn_attrs,
+        )
     if user_id and not graph.has_node(user_id):
         graph.add_node(user_id, node_type="User", user_id=user_id)
     if merchant_id and not graph.has_node(merchant_id):
-        graph.add_node(merchant_id, node_type="Merchant", merchant_id=merchant_id)
+        merchant_attrs = {"merchant_id": merchant_id}
+        if "round_amount_share" in txn:
+            merchant_attrs["round_amount_share"] = txn["round_amount_share"]
+        graph.add_node(merchant_id, node_type="Merchant", **merchant_attrs)
+    elif merchant_id and "round_amount_share" in txn:
+        graph.nodes[merchant_id]["round_amount_share"] = txn["round_amount_share"]
     if device_id != "UNKNOWN_DEVICE" and not graph.has_node(device_id):
         graph.add_node(device_id, node_type="Device", device_id=device_id)
 
@@ -183,15 +208,23 @@ class EgoGraphExtractor:
                 properties(n) AS props
             LIMIT 500
             """
-            m_nodes = await self.neo4j.run_query(merchant_cypher, {"merchant_id": merchant_id, "hops": hops})
+            m_nodes = await self.neo4j.run_query(
+                merchant_cypher, {"merchant_id": merchant_id, "hops": hops}
+            )
             for record in m_nodes:
                 nid = str(record.get("node_id", ""))
                 if nid and not graph.has_node(nid):
-                    graph.add_node(nid, node_type=record.get("node_type", "Transaction"), **record.get("props", {}))
+                    graph.add_node(
+                        nid,
+                        node_type=record.get("node_type", "Transaction"),
+                        **record.get("props", {}),
+                    )
 
         data = self._serialize_graph(graph)
         await self.redis.set(cache_key, data, ttl=self.CACHE_TTL)
-        logger.info(f"Ego-graph cached for {user_id}/{merchant_id} ({graph.number_of_nodes()} nodes)")
+        logger.info(
+            f"Ego-graph cached for {user_id}/{merchant_id} ({graph.number_of_nodes()} nodes)"
+        )
 
         return graph
 
@@ -210,8 +243,11 @@ class EgoGraphExtractor:
     def _serialize_graph(self, graph: nx.Graph) -> str:
         data = {
             "nodes": [
-                {"id": n, "node_type": d.get("node_type", "unknown"),
-                 **{k: v for k, v in d.items() if k != "node_type"}}
+                {
+                    "id": n,
+                    "node_type": d.get("node_type", "unknown"),
+                    **{k: v for k, v in d.items() if k != "node_type"},
+                }
                 for n, d in graph.nodes(data=True)
             ],
             "edges": [
@@ -245,7 +281,12 @@ class GraphFeatureExtractor:
         if graph.has_node(user_id):
             features.degree_centrality = round(nx.degree_centrality(graph).get(user_id, 0.0), 6)
             features.pagerank = round(nx.pagerank(graph, alpha=0.85).get(user_id, 0.0), 6)
-            features.betweenness_centrality = round(nx.betweenness_centrality(graph, k=min(50, graph.number_of_nodes())).get(user_id, 0.0), 6)
+            features.betweenness_centrality = round(
+                nx.betweenness_centrality(graph, k=min(50, graph.number_of_nodes())).get(
+                    user_id, 0.0
+                ),
+                6,
+            )
 
         subgraph = graph.subgraph(list(graph.nodes())[:500])
         features.clustering_coefficient = round(nx.average_clustering(subgraph), 6)
@@ -283,9 +324,18 @@ class GraphNormalizer:
 
     def normalize(self, features: GraphFeatures) -> GraphFeatures:
         normalized = GraphFeatures(user_id=features.user_id)
-        for field_name in ["degree_centrality", "clustering_coefficient", "pagerank",
-                           "triangle_count", "betweenness_centrality", "eccentricity",
-                           "community_count", "avg_neighbor_degree", "node_count", "edge_count"]:
+        for field_name in [
+            "degree_centrality",
+            "clustering_coefficient",
+            "pagerank",
+            "triangle_count",
+            "betweenness_centrality",
+            "eccentricity",
+            "community_count",
+            "avg_neighbor_degree",
+            "node_count",
+            "edge_count",
+        ]:
             raw = getattr(features, field_name)
             rmin, rmax = self.feature_ranges.get(field_name, (0.0, 1.0))
             if rmax > rmin:
@@ -364,8 +414,7 @@ class FraudGraphFeatureExtractor:
 
             if ntype == "Device" and depth > 0:
                 device_users = [
-                    n for n in graph.neighbors(current)
-                    if graph.nodes[n].get("node_type") == "User"
+                    n for n in graph.neighbors(current) if graph.nodes[n].get("node_type") == "User"
                 ]
                 if len(device_users) > 1:
                     max_depth = max(max_depth, depth)

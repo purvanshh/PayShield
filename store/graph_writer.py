@@ -44,6 +44,22 @@ class GraphDBWriter:
         txn_type = txn.get("txn_type", "P2M")
         counterparty = txn.get("counterparty_user_id")
 
+        # Velocity/geo context that the GNN feature engine reads off the
+        # transaction node ("inter_arrival_gap_min", "txn_count_5m",
+        # "txn_count_1h", "loc_dist_km", "lat", "lon") plus the merchant's
+        # rolling round-amount share. Best-effort: a missing value simply
+        # falls back to the feature engine's neutral default.
+        txn_attrs = {
+            k: txn[k]
+            for k in ("inter_arrival_gap_min", "txn_count_5m", "txn_count_1h", "loc_dist_km")
+            if k in txn
+        }
+        if "lat" in txn and "lon" in txn:
+            txn_attrs["lat"], txn_attrs["lon"] = txn["lat"], txn["lon"]
+        merchant_attrs = {}
+        if "round_amount_share" in txn:
+            merchant_attrs["round_amount_share"] = txn["round_amount_share"]
+
         written = []
         try:
             if self.neo4j is not None and getattr(self.neo4j, "_driver", None) is not None:
@@ -59,9 +75,12 @@ class GraphDBWriter:
 
         try:
             if self.networkx_db is not None:
-                self.networkx_db.create_transaction_node(txn_id, amount, timestamp)
+                self.networkx_db.create_transaction_node(txn_id, amount, timestamp, **txn_attrs)
                 self.networkx_db.link_user_to_txn(user_id, txn_id)
                 self.networkx_db.link_merchant_to_txn(merchant_id, txn_id)
+                if merchant_attrs:
+                    for key, value in merchant_attrs.items():
+                        self.networkx_db.graph.nodes[merchant_id][key] = value
                 self.networkx_db.link_device_to_txn(device_id, txn_id)
                 if txn_type == "P2P" and counterparty:
                     self.networkx_db.link_p2p_transfer(user_id, counterparty, txn_id)
