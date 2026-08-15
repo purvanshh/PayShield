@@ -54,6 +54,45 @@ async def promote_model(
         raise HTTPException(status_code=500, detail=f"Model promotion failed: {e}")
 
 
+@router.get("/models/current")
+async def current_model(
+    _=Depends(require_permission("model", "read")),
+):
+    """Return metadata of the currently promoted model version.
+
+    Reads ``models/registry/latest/metadata.json`` (written at registration)
+    and falls back to the auto-generated ``manifest.json`` / ``model_card.md``
+    for older versions that predate the metadata convention.
+    """
+    from pathlib import Path
+    try:
+        latest = Path("models/registry/latest")
+        if not latest.exists() or not latest.is_symlink():
+            return {"status": "no_registered_version"}
+        version_dir = latest.resolve()
+        metadata_path = version_dir / "metadata.json"
+        if metadata_path.exists():
+            with open(metadata_path) as f:
+                metadata = json.load(f)
+        else:
+            manifest_path = version_dir / "manifest.json"
+            if manifest_path.exists():
+                with open(manifest_path) as f:
+                    metadata = json.load(f)
+            else:
+                return {"status": "no_metadata", "version": version_dir.name}
+        metadata["_registry_path"] = str(version_dir)
+        try:
+            from ml.registry import ModelRegistry
+            prod = ModelRegistry().get_production_model()
+            metadata["_production_model"] = str(prod) if prod is not None else None
+        except Exception:
+            metadata["_production_model"] = None
+        return metadata
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read current model: {e}")
+
+
 @router.get("/agents/health")
 async def agent_health(
     _=Depends(require_permission("agent", "manage")),

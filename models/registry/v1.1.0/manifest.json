@@ -1,0 +1,24 @@
+{
+  "version": "v1.1.0",
+  "created_at": "2026-08-15T14:35:15.247079+00:00",
+  "metrics": {
+    "auc_pr": 0.4125,
+    "auc_roc": 0.7668,
+    "fpr_at_0.90_recall": 0.4877,
+    "mlp_auc_pr": 0.1028,
+    "lift": 4.01,
+    "parameters": 371843,
+    "inference_p99_ms": 0.702
+  },
+  "hyperparameters": {
+    "hidden_channels": 128,
+    "num_layers": 3,
+    "dropout": 0.3,
+    "pos_weight": 10,
+    "learning_rate": 0.004329227527579916,
+    "batch_size": 16,
+    "epochs": 100
+  },
+  "dataset_version": "synthetic-12000u-36000t-seed42",
+  "model_filename": "model.pt"
+}
