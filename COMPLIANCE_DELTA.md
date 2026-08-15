@@ -39,7 +39,7 @@ All five findings fixed:
 | AI-1 | No explanation artifacts for production decisions | `api/routes/score.py:_persist_explanation` writes `models/production/explanations/{txn_id}.json` (rules + velocity/geo features) for every BLOCK/REVIEW | checker finds non-empty dir (14 artifacts) |
 | AI-1 (low) | LLM narratives disabled | `ENABLE_LLM_INVESTIGATOR=true`; async LLM investigation pipeline live (qwen2.5:3b, served from Redis) | checker reads env |
 | AI-2 | Analyst feedback dir missing — human oversight loop inactive | `api/routes/feedback.py` persists every analyst decision to `store/feedback/{feedback_id}.json`; loop exercised with 12 submissions | checker counts ≥ 10 entries |
-| AI-3 | Model registry has no versioned models | `models/registry/v1.0.0/model_card.json` (statistical filter, production) + `models/registry/v0.1.0/model_card.json` (GNN, experimental) | checker finds `v*` dirs |
+| AI-3 | Model registry has no versioned models | `models/registry/v1.1.0/` (GNN, production — `latest` symlink, `metadata.json`, model card) + `models/registry/v1.0.0/model_card.json` (statistical filter) + `models/registry/v0.1.0/model_card.json` (GNN, legacy) | checker finds `v*` dirs |
 
 ## Supporting changes
 

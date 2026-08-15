@@ -132,7 +132,7 @@ arch-review:
 	@echo "  - [ ] REVIEW PERFORMANCE_OPTIMIZATION_LOG.md"
 	@echo "  - [ ] UPDATE TECHNICAL_DEBT_REGISTER.md"
 	@echo "  - [ ] CHECK MAINTENANCE_ROADMAP.md"
-	@echo "  - [ ] SIGN OFF IN SIGN_OFF.md"
+	@echo "  - [ ] VERIFY CURRENT METRICS IN models/gnn_benchmark_results.json"
 
 experiment-list:
 	python -c "from ml.ab_testing import ABTestFramework; f = ABTestFramework(); [print(e.name, e.status, e.traffic_split) for e in f.list_experiments()]"

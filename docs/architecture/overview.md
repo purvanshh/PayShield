@@ -94,11 +94,13 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 
 ### Layer 2 — Heterogeneous GNN
 
-- **Architecture**: 2-layer HeteroConv + SAGEConv (mean aggregation), hidden 64, global mean pooling readout + MLP, 53,826 params
-- **Graph schema**: node types `user` (5) / `merchant` (19) / `device` (4) / `transaction` (4); edge types `performed`, `to`, `used`, `shared_by`, `transferred_to` (P2P)
-- **Measured (synthetic, 2026-07-31)**: test PR-AUC 0.198 — the lead metric for imbalanced fraud (3.5× the edge-free MLP baseline 0.056); AUC-ROC 0.692, FPR 0.71 @ 90% recall; per-ego-graph inference p50 1.0 ms / p99 2.5 ms on CPU
-- **vs. edge-free MLP baseline**: PR-AUC 0.056, AUC 0.48 — the per-relationship propagation of HeteroConv is worth the ~3.5× PR-AUC lift over ignoring graph structure
-- **Provenance**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`; model card `models/payshield_gnn_v1_card.md`
+- **Architecture**: 3-layer HeteroConv + SAGEConv (mean aggregation), hidden 128, dropout 0.3, target-user readout with transaction attention + MLP head, 371,843 params
+- **Graph schema**: node types `user` (5) / `merchant` (21) / `device` (4) / `transaction` (8); edge types `performed`, `to`, `used`, `shared_by`, `transferred_to` (P2P)
+- **Measured (synthetic, 2026-08-15, model v1.1.0)**: test PR-AUC 0.4125 — the lead metric for imbalanced fraud (4.0× the edge-free MLP baseline 0.1028, +108% vs v1.0.0's 0.198); AUC-ROC 0.7668, FPR 0.49 @ 90% recall; per-ego-graph inference p50 0.60 ms / p99 0.70 ms on CPU
+- **vs. edge-free MLP baseline**: PR-AUC 0.1028, AUC-ROC 0.5395 — the per-relationship propagation of HeteroConv is worth the ~4.0× PR-AUC lift over ignoring graph structure
+- **Live features**: velocity (inter-arrival gap, txn counts 5m/1h), geo (haversine distance from the user's last known location), and merchant round-amount share are computed on the scoring path, cached in Redis (`FeatureCache`), and written onto graph nodes by `GraphDBWriter` so the feature engine reads them back at inference
+- **Checkpoint-driven serving**: `ml/inference.py` reconstructs the model from the checkpoint's own `hidden_channels`/`num_layers`/`dropout` metadata (no hardcoded architecture); target-user index read from `data.target_txn_n`
+- **Provenance**: `scripts/benchmark_gnn.py` → `models/gnn_benchmark_results.json`; delta vs. archived original: `models/gnn_benchmark_delta.md`; model card `models/payshield_gnn_v1_card.md`, versioned under `models/registry/v1.1.0/` (`models/registry/latest` → v1.1.0)
 - ✅ Conditionally fused — runs live for returning users (`SUCCESS`, prob > 0); skips for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`). 40 ms timeout guard with L1 fallback on TIMEOUT / ERROR / MODEL_UNAVAILABLE.
 
 ### Ensemble Fusion Engine
@@ -165,7 +167,7 @@ Stubs: `planner_agent` (only `COMPLEX_INVESTIGATION_REQUEST`), `collective_agent
 - **Tracing**: Correlation IDs via `CorrelationIdMiddleware` (logged on every request)
 - **Alerts**: `prometheus/alerts.yml` (5 rules)
 - **Dashboards**: Grafana — `payshield-fraud-dashboard.json` (4 panels)
-- **Drift**: PSI monitoring per feature (`drift:feat:*` zsets, rolling 24h windows; `GET /admin/drift/psi`) — robust estimator: shared quantile bins, bin-count scaling, Laplace smoothing
+- **Drift**: PSI monitoring per feature (`drift:feat:*` zsets, rolling 24h windows; `GET /admin/drift/psi`) — robust estimator: shared quantile bins, bin-count scaling, Laplace smoothing, exact-value binning for binary/categorical features. The monitored feature set is driven by the global feature registry (`configs/feature_registry.yaml`, entries with `monitoring: true`, `drift_key` aliases to the recorded zset); `skew_detection` sets the PSI threshold and `min_samples` floor
 
 ## Compliance
 

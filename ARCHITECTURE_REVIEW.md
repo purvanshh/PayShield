@@ -52,9 +52,9 @@ L1 statistical filter (sub-millisecond rule evaluation), L2 graph neural network
 | p90 latency | 15.0 ms | < 100 ms | PASS |
 | p99 latency | 63.3 ms | < 200 ms | PASS |
 | L1 rule evaluation (p99) | 0.27 ms | < 1 ms | PASS |
-| GNN inference (CPU, per ego-graph) | p99 2.5 ms | < 5 ms | PASS |
-| PR-AUC (lead metric) | 0.198 (3.5× baseline) | > 2× prevalence | PASS |
-| AUC-ROC | 0.692 | > 0.65 | PASS |
+| GNN inference (CPU, per ego-graph, v1.1.0) | p99 0.70 ms | < 5 ms | PASS |
+| PR-AUC (lead metric) | 0.4125 (4.0× baseline) | > 2× prevalence | PASS |
+| AUC-ROC | 0.7668 | > 0.65 | PASS |
 | Test coverage | 74% | > 70% | PASS |
 | Tests | 392 passed | > 300 | PASS |
 

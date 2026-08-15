@@ -167,7 +167,7 @@ PSI, and use that number in the caption. (Rehearsal runs 2026-08-01: **3.70** an
 ```bash
 head -30 TECHNICAL_DEBT_REGISTER.md
 ```
-**Caption:** *"18 bugs fixed. 12 debt items tracked. RBI 100/100. This is how I ship."*
+**Caption:** *"19 bugs fixed. 12 debt items tracked. RBI 100/100. This is how I ship."*
 
 ---
 
@@ -183,6 +183,6 @@ head -30 TECHNICAL_DEBT_REGISTER.md
 - [ ] Upload to Loom / YouTube Unlisted
 - [ ] Paste in Razorpay form:
 
-> *PayShield demo (2 min): real-time UPI fraud detection with sub-10ms rules, async LLM investigation, drift monitoring, and RBI-compliant audit logs. 18 production bugs fixed. [LINK]*
+> *PayShield demo (2 min): real-time UPI fraud detection with sub-10ms rules, async LLM investigation, drift monitoring, and RBI-compliant audit logs. 19 production bugs fixed. [LINK]*
 
 **Hit record. Don't overthink it.**

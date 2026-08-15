@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-15 — GNN v1.1.0: Improved Model, Live Serving & Continuous Improvement
+
+- **GNN v1.1.0 registered** (`models/registry/v1.1.0`, `latest` → v1.1.0): test PR-AUC **0.4125** (+108% vs v1.0.0's 0.198, 4.0× the edge-free MLP baseline 0.1028), AUC-ROC 0.7668, FPR@90% recall 0.4877, p99 0.70 ms CPU — winner picked by an 8-trial Optuna sweep (hidden 128, 3 layers, dropout 0.3, pos_weight 10, lr 4.3e-3, batch 16; 371,843 params)
+- **Benchmark validation**: original v1.0 results archived (`models/gnn_benchmark_results_original.json`), delta report `models/gnn_benchmark_delta.md`, gate script `scripts/compare_benchmarks.py`
+- **Architecture**: target-user readout with transaction attention (replaces global mean pooling); merchant dims 19 → 21 (shell flag, round-amount share), transaction dims 4 → 8 (inter-arrival gap, txn counts 5m/1h, distance from home centroid)
+- **Live features**: `api/routes/score.py` computes inter-arrival gap + haversine location distance, maintains a Redis `FeatureCache` for merchant round-amount share; `GraphDBWriter` persists velocity/geo/round-share attrs onto graph nodes; the feature engine hydrates the target user first with `data.target_txn_n` bookkeeping
+- **Checkpoint-driven serving**: `engine/graph_model.py.from_checkpoint()` + `ml/inference.py` rebuild the model from the artifact's own hyperparameters (weights_only=False for lazy params); fixed the P2P edge-type state-dict key (`transferred_to`)
+- **Model registry**: `models/registry/v1.1.0/{model.pt, payshield_gnn_v1.pt, manifest.json, metadata.json, model_card.md}`; `models/registry/latest` symlink; `GET /admin/models/current` returns the promoted version's metadata
+- **Drift monitoring from the feature registry**: six model features registered with `monitoring: true` (`configs/feature_registry.yaml`, `drift_key` aliases to the recorded zsets); `observability/drift.py` adds exact-value binning for binary/categorical features; `drift_report.py` reads thresholds + `min_samples` from `skew_detection`; `--config` flag on `scripts/run_drift_report.py`
+- **Continuous improvement**: `make retrain` = full benchmark → `scripts/check_improvement.py` gate (epsilon 0.005 PR-AUC) → register + promote only on improvement; `configs/train_config_retrain.yaml`; `.github/workflows/retrain.yml` (weekly Monday 03:00 UTC + manual dispatch) opens a review PR for improved candidates
+- 412 tests (344 unit + 68 integration)
+
 ## 2026-08-01 — Phase 10: Documentation & Compliance
 
 - **EU AI Act: 100/100** (13 controls) — conformity assessment, post-market monitoring, human oversight logging, technical documentation

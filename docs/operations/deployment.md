@@ -66,7 +66,7 @@ Artifacts survive container recreations via named volumes:
 ```bash
 # Trigger deployment via GitHub Actions
 git push origin main  # → auto-deploys to staging
-git tag v1.0.0        # → auto-deploys to production
+git tag v1.1.0        # → auto-deploys to production
 ```
 
 ### Manual (Hotfix)

@@ -53,31 +53,41 @@ python models/fairness_audit.py
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | Architecture | HeteroConv + SAGEConv (mean aggr) | Per-edge-type weight matrices |
-| Layers | 2 | Hidden dimension 64 |
-| Readout | Global mean pool + MLP | Graph-level classification |
-| Parameters | 53,826 | — |
+| Layers | 3 | Hidden dimension 128, dropout 0.3 |
+| Readout | Target-user readout + transaction attention + MLP | Per-sample target classification |
+| Parameters | 371,843 | — |
 | Train/Val/Test | 80/10/10 | User-disjoint split |
-| Early stopping | 10 epochs | On validation PR-AUC |
-| Optimizer | Adam | lr 0.001, weight decay 1e-5 |
+| Early stopping | 8 epochs | On validation PR-AUC |
+| Optimizer | Adam | lr 4.3e-3 (Optuna-selected), weight decay 5e-4 |
 | Schedule | Cosine annealing | — |
-| Training time | ~90 s | Synthetic data, CPU |
+| Hyper-opt | 8-trial Optuna sweep `--sweep-trials 8` | Metric: val PR-AUC; hidden 32/64/128, layers 2/3, dropout 0/0.3/0.5, pos_weight 5/10/20, lr 1e-3..1e-2, batch 4/8/16 |
 
 ### Model Deployment
 
 ```bash
-# 1. Promote a model version
-POST /admin/models/promote  { "version": "v0.2.0" }
+# 1. Retrain + gate against the currently promoted model (auto-registers only
+#    when PR-AUC improves by >= 0.005)
+make retrain
 
-# 2. The API picks up the new model on restart
-#    (hot-reload not implemented — requires restart)
+# 2. Or run the canonical benchmark and check the gate manually
+make retrain-gate           # exit 0 = candidate beats production
 
-# 3. Verify L2 status distribution in Prometheus
+# 3. Promote a model version (manual path, or via the retrain gate)
+POST /admin/models/promote  { "version": "v1.1.0", "stage": "production" }
+
+# 4. Inspect the currently promoted version
+GET /admin/models/current   # → models/registry/latest metadata
+
+# 5. The API picks up the new model on restart
+#    (checkpoint metadata drives hidden/layers/dropout — no rebuild needed)
+
+# 6. Verify L2 status distribution in Prometheus
 layer2_escalation_total{status="SUCCESS"}  # should be > 0 after promotion
 ```
 
 ### Model Monitoring
 
-- **PSI drift**: `GET /admin/drift/psi` — daily comparison of feature distributions
+- **PSI drift**: `GET /admin/drift/psi` — daily comparison of feature distributions; monitored set comes from `configs/feature_registry.yaml` (`monitoring: true`, `drift_key` aliases) with `skew_detection.min_samples = 100`; binary features use exact-value binning
 - **L2 status**: Prometheus `layer2_escalation_total` by status (SUCCESS/SKIPPED/TIMEOUT/ERROR/MODEL_UNAVAILABLE)
 - **Calibration**: ECE tracked; re-fit if ECE > 0.02
 - **Fairness**: Re-run `models/fairness_audit.py` after retraining; check SPD/EOD thresholds (< 0.15)
@@ -88,19 +98,20 @@ layer2_escalation_total{status="SUCCESS"}  # should be > 0 after promotion
 
 | Category | Features | Source |
 |----------|----------|--------|
-| Velocity | Txn count (5 min, 1 hr, 24 hr), amount total | Redis `velocity:user:*`, `velocity:dev:*` |
-| Geo | Haversine distance, geo-velocity, device consistency | Redis `velocity:loc:*` |
+| Velocity | Txn count (5 min, 1 hr, 24 hr), amount total, inter-arrival gap | Redis `velocity:user:*`, `velocity:dev:*` |
+| Geo | Haversine distance from last-known location, geo-velocity | Redis `velocity:loc:*` |
+| Merchant | Shell-company flag, round-amount share | Redis `FeatureCache` counters (`round_stats`, `merchant:{id}:round`) |
 | Benford | Chi-squared on first digit, digit pair distribution | In-memory |
 | Graph (L2) | Ego-graph node count, edge count, neighbor risk scores | `engine/graph_feature_engine.py` |
 
 ## Model Performance
 
-| Metric | GNN | Edge-free MLP | Lift |
-|--------|-----|---------------|------|
-| PR-AUC | 0.195 | 0.052 | 3.8× |
-| AUC-ROC | 0.667 | 0.442 | +0.225 |
-| FPR @ 90% recall | 0.714 | 0.958 | −0.244 |
-| Inference (CPU) | p99 0.43 ms | — | — |
-| Graph schema | 4 node types, 5 edge types | — | — |
+| Metric | GNN v1.1.0 | GNN v1.0.0 | Edge-free MLP | Lift vs MLP |
+|--------|-----------|-----------|---------------|-------------|
+| PR-AUC | 0.4125 | 0.198 | 0.1028 | 4.0× |
+| AUC-ROC | 0.7668 | 0.692 | 0.5395 | +0.23 |
+| FPR @ 90% recall | 0.4877 | 0.71 | 0.8196 | −0.33 |
+| Inference (CPU) | p50 0.60 ms / p99 0.70 ms | p99 2.5 ms | — | — |
+| Graph schema | 4 node types, 5 edge types | — | — | — |
 
 Source: `models/gnn_benchmark_results.json`

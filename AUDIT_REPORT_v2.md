@@ -106,7 +106,7 @@ All findings from the original audit have been triaged as **FIXED** (resolved du
 |---|-------|-------------|
 | 1 | "Multi-layer fraud scoring" | FIXED — README now clarifies L2 is "conditionally fused" |
 | 2 | "Graph-powered investigation" | FIXED — graph layer is available via `/v1/graph/*` routes |
-| 3 | AUC > 0.92 claim | FIXED — corrected to measured numbers (PR-AUC 0.198, AUC-ROC 0.692) |
+| 3 | AUC > 0.92 claim | FIXED — corrected to the measured numbers of the day (PR-AUC 0.198, AUC-ROC 0.692); since superseded by GNN v1.1.0 (2026-08-15): test PR-AUC 0.4125, AUC-ROC 0.7668 |
 | 4 | "Production-ready ops" | FIXED — P6 metrics+dashboards, P9 rate limits/MFA/CORS |
 | 5 | WebSocket push for alerts > 0.85 | FIXED — `/v1/stream` WebSocket + SSE endpoints operational |
 

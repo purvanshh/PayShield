@@ -72,28 +72,28 @@ Everything below is measured against the live stack (`docker compose`), not simu
 
 ### Layer 2 — Heterogeneous GNN (measured, `scripts/benchmark_gnn.py`)
 
-Measured on 30k synthetic transactions (10k users, 1k merchants, 5% fraud, seed 42), user-disjoint 80/10/10 split, early-stopped training:
+Measured on 36k synthetic transactions (12k users, 1k merchants, 5% fraud, seed 42), user-disjoint 80/10/10 split, early-stopped training. Model **v1.1.0** (2026-08-15) — 3-layer HeteroConv + GraphSAGE with target-user readout, hidden 128, dropout 0.3:
 
-| Metric (test set) | GNN (HeteroConv+GraphSAGE) | Edge-free MLP baseline | Lift |
-|-------------------|---------------------------|------------------------|------|
-| **PR-AUC** (lead metric for imbalanced fraud) | **0.198** | 0.056 | **3.5×** |
-| AUC-ROC | 0.692 | 0.481 | +0.21 |
-| FPR @ 90% recall | 0.71 | 0.91 | −0.20 |
-| Inference (CPU, per ego-graph) | p50 **1.0 ms** · p90 1.5 ms · p99 2.5 ms | — | — |
-| Parameters | 53,826 | — | — |
+| Metric (test set) | GNN v1.1.0 | v1.0.0 (previous) | Edge-free MLP baseline | Lift vs MLP |
+|-------------------|-----------|-------------------|------------------------|-------------|
+| **PR-AUC** (lead metric for imbalanced fraud) | **0.4125** | 0.198 | 0.1028 | **4.0×** |
+| AUC-ROC | 0.7668 | 0.692 | 0.5395 | +0.23 |
+| FPR @ 90% recall | 0.4877 | 0.71 | 0.8196 | −0.33 |
+| Inference (CPU, per ego-graph) | p50 **0.60 ms** · p90 0.62 ms · p99 0.70 ms | p50 1.0 ms · p99 2.5 ms | — | — |
+| Parameters | 371,843 | 53,826 | — | — |
 
-**Why PR-AUC leads**: at fraud rates like 0.1%, AUC-ROC is dominated by correctly ranking the 99.9% legitimate majority — it can look high while the fraud class is missed. PR-AUC measures performance on the minority (fraud) class directly, so it's the honest number to lead with. The graph layer's value is the **3.5× PR-AUC lift** over an edge-free MLP, not the absolute 0.198 on synthetic data.
+**Why PR-AUC leads**: at fraud rates like 0.1%, AUC-ROC is dominated by correctly ranking the 99.9% legitimate majority — it can look high while the fraud class is missed. PR-AUC measures performance on the minority (fraud) class directly, so it's the honest number to lead with. The graph layer's value is the **4.0× PR-AUC lift** over an edge-free MLP; GNN v1.1.0 lifted absolute PR-AUC by **108%** over v1.0.0 (0.198 → 0.4125) via the target-user readout and five new live features (see the [model card](models/payshield_gnn_v1_card.md)).
 
-Graph schema (heterogeneous): **node types** `user` (5 feat: credit score, account age, KYC tier, txn frequency, device count), `merchant` (19 feat: 15 MCC one-hot + amount/refund/age/city), `device` (4 feat: OS, app version, emulator), `transaction` (4 feat: amount, hour, weekend, salary-day). **Edge types**: `performed` (user→txn), `to` (txn→merchant), `used` (user→device), `shared_by` (device→user), `transferred_to` (user→user, P2P).
+Graph schema (heterogeneous): **node types** `user` (5 feat: credit score, account age, KYC tier, txn frequency, device count), `merchant` (21 feat: 15 MCC one-hot + amount/refund/age/city-tier/shell-flag/round-amount-share), `device` (4 feat: OS, app version, emulator), `transaction` (8 feat: amount, hour, weekend, salary-day, inter-arrival gap, txn count 5m/1h, distance from home centroid). **Edge types**: `performed` (user→txn), `to` (txn→merchant), `used` (user→device), `shared_by` (device→user), `transferred_to` (user→user, P2P).
 
-Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets its own SAGEConv weight matrix, so the model learns *per-relationship* propagation (shared-device mule rings ≠ merchant transfers) instead of collapsing the graph into one undirected adjacency — and the measured 3.5× PR-AUC lift above is the empirical justification: the edge-free MLP that ignores graph structure is barely better than a coin flip on this data. Full results: `models/gnn_benchmark_results.json`. Caveat: trained on synthetic data; the model card's earlier "AUC > 0.92" claim was never measured and is corrected to these numbers.
+Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets its own SAGEConv weight matrix, so the model learns *per-relationship* propagation (shared-device mule rings ≠ merchant transfers) instead of collapsing the graph into one undirected adjacency — and the measured 4.0× PR-AUC lift above is the empirical justification. Full results: `models/gnn_benchmark_results.json`, delta vs. the archived baseline: `models/gnn_benchmark_delta.md`. Caveat: trained on synthetic data; the model card's earlier "AUC > 0.92" claim was never measured and is corrected to these numbers.
 
 ### Implementation Status
 
 | Layer | Component | Status | Notes |
 |-------|-----------|--------|-------|
 | **L1** | Statistical filter (velocity, geo, Benford — 12 rules) | ✅ Production | p99 0.27 ms, Redis-backed features, config-driven rules |
-| **L2** | Graph neural network (HeteroConv+SAGE) | 🟡 Conditional fusion | Runs live for returning users (`SUCCESS`, prob > 0); skips gracefully for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`). 40 ms timeout guard with L1 fallback on `TIMEOUT` / `ERROR` / `MODEL_UNAVAILABLE`. Benchmarked PR-AUC 0.198 (3.5× lift vs. edge-free MLP) |
+| **L2** | Graph neural network (HeteroConv+SAGE) | 🟡 Conditional fusion | Runs live for returning users (`SUCCESS`, prob > 0); skips gracefully for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`). 40 ms timeout guard with L1 fallback on `TIMEOUT` / `ERROR` / `MODEL_UNAVAILABLE`. Served from checkpoint metadata (hidden/layers/dropout come from the artifact). Benchmarked GNN v1.1.0: PR-AUC 0.4125 (4.0× lift vs. edge-free MLP) |
 | **L3** | LLM investigation (Celery + Ollama, async) | ✅ Production | qwen2.5:3b, ~35 s async, valid JSON reports with quality scores |
 | **Ops** | Prometheus metrics + Grafana dashboards | ✅ Production | `prometheus/payshield-fraud-dashboard.json`, hot-path instrumentation |
 | **Auth** | API keys + JWT refresh rotation + TOTP MFA | ✅ Production | Per-key/per-user rate limits (1000/hr), `/auth/totp` setup/verify |
@@ -129,7 +129,7 @@ The `amount_total_1h` drift was investigated: today's hourly aggregate (₹2.66-
 
 ## Bug Resolution and Technical Notes
 
-Notable issues found and fixed while bringing the stack up end-to-end:
+Notable issues found and fixed while bringing the stack up end-to-end (19 total):
 
 | # | Bug | Root cause | Fix |
 |---|-----|------------|-----|
@@ -151,6 +151,7 @@ Notable issues found and fixed while bringing the stack up end-to-end:
 | 16 | Synthetic generator crashed: `Cannot choose from an empty sequence` | `CITY_TIER_WEIGHTS` samples `tier4` but `INDIAN_CITIES` had no tier-4 cities | added 4 tier-4 cities (Agra, Varanasi, Kochi, Gwalior) |
 | 17 | Synthetic generator crashed on device generation | `random.choice` called with `weights=` kwarg (numpy API on stdlib RNG) | `rng.choices(..., weights=[...])[0]` |
 | 18 | GNN benchmark revealed the model card's `AUC > 0.92` was never measured | aspirational claim from the design phase | corrected to measured test PR-AUC 0.198 (3.5× vs edge-free MLP 0.056) + AUC-ROC 0.692 (`scripts/benchmark_gnn.py`, `models/gnn_benchmark_results.json`); also fixed L2 claims: params 53,826 (not ~15K), CPU latency p99 2.5 ms (not < 50 ms) |
+| 19 | GNN v1.0 readout pooled the whole ego-graph; 19-dim merchants / 4-dim transactions capped signal | graph-level pooling diluted the target user's own pattern; thin feature schema | GNN **v1.1.0**: target-user readout with transaction attention, 5 new live features (merchant shell-flag, round-amount share, inter-arrival gap, 5m/1h velocity, location distance) — PR-AUC 0.198 → **0.4125** (+108%), params 53,826 → 371,843, p99 2.5 → 0.70 ms |
 
 ---
 
@@ -182,10 +183,10 @@ Stubs: `planner_agent` handles only `COMPLEX_INVESTIGATION_REQUEST`; `collective
 Honest accounting of what this system does not do yet:
 
 - **MFA**: TOTP implemented in P9 — admin setup/verify endpoint with 30s rolling codes (RFC 6238, SHA-1).
-- **GNN on CPU**: L2 is CPU-bound; a GPU would cut the already-sub-2.5ms inference further and speed up retraining.
+- **GNN on CPU**: L2 is CPU-bound; inference is already sub-ms (p99 0.70 ms) but a GPU would speed up retraining further.
 - **Real UPI volume**: everything is tested on synthetic data; real NPCI traffic has different seasonality and mule-ring density.
-- **GNN accuracy**: measured test PR-AUC 0.198 (3.5× vs. edge-free MLP baseline 0.056), AUC-ROC 0.692 on synthetic ego-graphs — the relational lift over an edge-free MLP is real and consistent, but the absolute numbers are modest; improvement paths: per-node readout instead of graph-level pooling, more history, real data.
-- **Model retraining**: auto-trigger exists (reflection task) but the manual approval gate for promotion is not wired — `POST /admin/models/promote` is the manual step.
+- **GNN accuracy**: measured test PR-AUC 0.4125 (4.0× vs. edge-free MLP baseline 0.1028), AUC-ROC 0.7668 on synthetic ego-graphs — the relational lift over an edge-free MLP is real and consistent; remaining improvement paths: more history per user, real data, deeper neighbor context.
+- **Model retraining**: automated — `make retrain` benchmarks a candidate, gates it against the currently promoted model (`scripts/check_improvement.py`, epsilon 0.005 PR-AUC) and only registers/promotes on improvement; `.github/workflows/retrain.yml` runs it weekly and opens a review PR.
 - **LLM on CPU**: ~35 s per investigation is fine async, but GPU (or an API fallback) would enable real-time investigation.
 - **L2 conditional fusion**: GNN runs live for returning users (`SUCCESS`, prob > 0) and skips gracefully for fresh users with < 2 graph nodes (`SKIPPED_NO_GRAPH`), with a 40 ms timeout guard. It is not a blocking hard gate — the ensemble falls back to L1-only fusion on `TIMEOUT`, `ERROR`, or `MODEL_UNAVAILABLE`. This is a deliberate architectural choice: unconditionally blocking the hot path on a synthetic-data-trained GNN would degrade availability for no fraud-detection gain on fresh users.
 
@@ -443,7 +444,7 @@ PayShield/
 │   └── thresholds/            # Environment-specific thresholds (dev + prod)
 │
 ├── models/                    # Model registry + cards
-│   ├── registry/              # v1.0.0 (statistical filter) + v0.1.0 (GNN) model cards
+│   ├── registry/              # v1.1.0 (GNN, production) + v1.0.0 (statistical) + v0.1.0 (GNN legacy) + latest → v1.1.0
 │   └── payshield_gnn_v1_card.md
 ├── dashboard/                 # Vite + React + TypeScript frontend
 ├── docker/                    # Dockerfiles + Compose (5 services, named data volumes)

@@ -28,15 +28,16 @@ PayShield processes real-time UPI transactions through a three-layer pipeline:
 ## Key Features
 
 - Real-time fraud detection (p50 8.5 ms, p99 63.3 ms measured)
-- L2 GNN conditional fusion: 3.5× PR-AUC lift vs edge-free MLP baseline
+- L2 GNN v1.1.0 conditional fusion: 4.0× PR-AUC lift vs edge-free MLP baseline; PR-AUC 0.4125 (+108% vs v1.0.0)
 - Ensemble fusion with isotonic calibration (ECE 0.010)
 - 14-agent framework (12 concrete agents + router + state)
 - JWT authentication + refresh rotation + TOTP MFA
 - Per-API-key/per-user rate limiting (Redis incr+TTL)
 - Tamper-evident hash-chained audit log with async queue (<1ms append)
 - Prometheus/Grafana observability (4-panel dashboard, 5 alert rules)
-- PSI drift detection (robust estimator: shared quantile bins + Laplace smoothing)
-- 392 tests at 74% coverage (gates: score 91%, ensemble 90%, graph 99%)
+- PSI drift detection driven by the feature registry (monitoring: true entries, drift_key aliases, binary-aware binning)
+- Automated retrain + improvement gate (`make retrain`, epsilon 0.005 PR-AUC, weekly CI workflow)
+- 412 tests (344 unit + 68 integration)
 
 ## Tech Stack
 

@@ -21,7 +21,12 @@ POST /v1/score
     │
     ├── Layer 2: GNN (conditional, 40 ms timeout guard)
     │   ├── Extracts 2-hop ego graph from NetworkXGraphDB
-    │   ├── HeteroConv + SAGEConv (53,826 params, 2 layers, hidden 64)
+    │   ├── HeteroConv + SAGEConv (371,843 params, 3 layers, hidden 128, dropout 0.3)
+    │   ├── Target-user readout with transaction attention (not global pooling)
+    │   ├── Merchant nodes 21 features (incl. shell flag, round-amount share);
+    │   │   transaction nodes 8 features (inter-arrival gap, 5m/1h velocity,
+    │   │   distance from home centroid)
+    │   ├── Model rebuilt from checkpoint metadata (hidden/layers/dropout)
     │   ├── Five status codes:
     │   │   SUCCESS           — GNN returned prob > 0 for returning user
     │   │   SKIPPED_NO_GRAPH  — fresh user, < 2 graph nodes
@@ -135,7 +140,7 @@ POST /v1/score
 
 ### 4.1 "Why conditional fusion instead of always-on GNN?"
 
-1. **Availability > perfection:** A synthetic-data-trained GNN has measured PR-AUC 0.198 — blocking the hot path on it unconditionally would reject legitimate transactions at a 71% FPR (at 90% recall). L1 rules alone catch obvious fraud with near-zero false positives.
+1. **Availability > perfection:** Even with GNN v1.1.0 at PR-AUC 0.4125, blocking the hot path unconditionally would still reject ~49% of legitimate transactions at 90% recall (FPR 0.4877). L1 rules alone catch obvious fraud with near-zero false positives — the GNN is a second opinion, not the gate.
 2. **Fresh-user problem:** Users with no graph history (< 2 nodes) produce empty ego-graphs. The GNN would return random noise. Skipping is correct.
 3. **Timeout guard:** 40 ms timeout via `asyncio.wait_for` — if GNN inference is slow, we fall back to L1. A blocked API is worse than a missed relational pattern.
 4. **Ensemble fallback:** When `l2_status != SUCCESS`, the ensemble drops L2 weight entirely and uses L1-only weighted fusion. The scale is continuous — a returning user with 500 ms GNN inference gets L1 fallback; a returning user with 0.5 ms inference gets full L2 weighting.
@@ -271,7 +276,7 @@ All instrumentation is wrapped in `try/except` — metrics collection never brea
 
 | Gate | Target | Actual | File |
 |------|--------|--------|------|
-| TOTAL | ≥ 70% | **74%** (6135/1617) | — |
+| TOTAL | ≥ 70% | **74%** (last measured Phase 5; gates re-verified on `make ci`) | — |
 | Score path | ≥ 80% | **91%** (287/26) | `api/routes/score.py` |
 | Ensemble | ≥ 80% | **90%** (133/13) | `engine/ensemble.py` |
 | Graph features | ≥ 80% | **99%** (152/2) | `engine/graph_feature_engine.py` |
@@ -280,14 +285,14 @@ All instrumentation is wrapped in `try/except` — metrics collection never brea
 
 | Layer | Tests | Files |
 |-------|-------|-------|
-| Unit — scoring/engine | ~95 | `test_statistical_filter.py`, `test_ensemble.py`, `test_graph_model.py`, `test_drift.py`, `test_redis_store.py` |
+| Unit — scoring/engine | ~125 | `test_statistical_filter.py`, `test_ensemble.py`, `test_graph_model.py`, `test_feature_engine.py`, `test_drift.py`, `test_drift_report.py`, `test_redis_store.py` |
 | Unit — security | 20 | `test_security_hardening.py` |
 | Unit — agents | 27 | `test_agents.py` |
 | Unit — A/B testing | 21 | `test_ab_testing.py` |
 | Unit — store/redis | 20 | `test_redis_clients.py`, `test_store_components.py` |
 | Integration — API | 48 | `test_api.py`, `test_score_path.py`, `test_security_api.py` |
 | E2E | 1 file | `test_full_flow.py` |
-| **Total** | **392 passed, 1 skipped** | |
+| **Total** | **412 collected (344 unit + 68 integration)** | |
 
 ### 7.3 Key Test Patterns
 
@@ -321,8 +326,8 @@ All instrumentation is wrapped in `try/except` — metrics collection never brea
 | HO-1 | Human review override capability | `agents/human_review_agent.py` |
 | HO-2 | Override rate reporting | `store/feedback/` directory |
 | HO-3 | Human oversight log | `store/audit_logs/` with JSONL entries |
-| AC-1 | PR-AUC ≥ 2x baseline | PR-AUC 0.195 ≥ 0.10 ✅ |
-| AC-2 | FPR at 90% recall tracked | FPR 0.7135 (benchmarked) |
+| AC-1 | PR-AUC ≥ 2x baseline | PR-AUC 0.4125 ≥ 2× no-skill (0.10) ✅ |
+| AC-2 | FPR at 90% recall tracked | FPR 0.4877 (benchmarked, down from 0.7135) |
 | RB-1 | Adversarial testing | `reports/adversarial/` |
 
 ---
@@ -339,13 +344,13 @@ All instrumentation is wrapped in `try/except` — metrics collection never brea
 - JWT refresh rotation (7-day sliding window)
 - PSI drift detection with validated estimator
 - Fairness audit (SPD/EOD across demographic slices)
-- 392 tests at 74% coverage
+- 412 tests (344 unit + 68 integration)
 
 ### What PayShield Does Not Do (Yet)
 - **GNN isn't always-on**: ~60% of requests skip L2 because the user's graph is too small (< 2 nodes) or model unavailable. This is architectural — fresh users produce random noise from empty ego-graphs.
-- **Auto-model promotion**: `POST /admin/models/promote` is manual. Automatic promotion needs a CI/CD pipeline with canary deployment and automated rollback.
+- **Auto-model promotion**: automated since 2026-08-15 — `make retrain` benchmarks a candidate, gates it against the currently promoted model (`scripts/check_improvement.py`, ≥ 0.005 PR-AUC delta) and registers/promotes only on improvement; `.github/workflows/retrain.yml` runs the same flow weekly and opens a review PR. `POST /admin/models/promote` remains available for manual promotion.
 - **Dashboard**: Functional but minimal (3 pages, inline styles, no auth logic). A production frontend would need a full SPA rewrite.
-- **Real data**: Trained on synthetic UPI data (30k transactions). Real NPCI data has different seasonality and fraud density.
+- **Real data**: Trained on synthetic UPI data (36k transactions). Real NPCI data has different seasonality and fraud density.
 - **Live agent orchestration**: 14 agents exist and are tested in isolation. Full swarm consensus is a research problem, not implemented.
 
 ---
@@ -353,10 +358,10 @@ All instrumentation is wrapped in `try/except` — metrics collection never brea
 ## 10. Interview Q&A — Anticipated Questions
 
 **Q: Why didn't you just use a rule engine instead of building a GNN?**
-A: L1 rules catch known patterns (velocity bursts, geo jumps). They cannot catch coordinated mule rings where 50 accounts each send one normal-looking transaction to the same merchant — that's a graph pattern. The GNN provides 3.5× PR-AUC lift over an edge-free baseline because it captures relational structure. But I don't block the hot path on it — it conditionally fuses.
+A: L1 rules catch known patterns (velocity bursts, geo jumps). They cannot catch coordinated mule rings where 50 accounts each send one normal-looking transaction to the same merchant — that's a graph pattern. The GNN provides 4.0× PR-AUC lift over an edge-free baseline because it captures relational structure. But I don't block the hot path on it — it conditionally fuses.
 
-**Q: Why 53,826 parameters for a fraud model? Isn't that overkill?**
-A: HeteroConv with per-edge-type SAGEConv weight matrices. Each of the 5 edge types (user→txn, txn→merchant, user→device, user→user, device→user) gets its own weight matrix — that's [(64×64) + (64×64)] × 2 layers × 5 edge types ≈ 81K — but with dimension-specific sizing and readout MLP, it's 54K. The value isn't more parameters — it's that shared-device mule rings and merchant transfers use different propagation rules.
+**Q: Why 371,843 parameters for a fraud model? Isn't that overkill?**
+A: HeteroConv with per-edge-type SAGEConv weight matrices. Each of the 5 edge types (user→txn, txn→merchant, user→device, user→user, device→user) gets its own weight matrix across 3 layers at hidden 128, plus a per-sample target-user readout with transaction attention and an MLP head. The v1.1 sweep picked hidden 128/3 layers for a +108% PR-AUC jump (0.198 → 0.4125) at p99 0.70 ms on CPU — the parameter cost is cheap relative to the latency and accuracy budget. The value isn't raw parameter count — it's that shared-device mule rings and merchant transfers use different propagation rules.
 
 **Q: How do you handle adversarial attacks — someone sending spoofed transactions to poison your velocity features?**
 A: L1 velocity features are per-user and per-device — poisoning requires control of the user's device or account, which is an authentication problem upstream. Benford's Law provides a distributional check that is hard to spoof without knowing the detection thresholds. For model-level adversarial attacks, the `reports/adversarial/` directory documents noise-injection testing.
@@ -366,7 +371,7 @@ A: `verify_chain()` recomputes every SHA-256 hash and checks that `prev_hash` ma
 
 **Q: What monitoring tells you your model is degrading in production?**
 A: Three signals:
-1. **PSI drift** — `GET /admin/drift/psi` compares yesterday's vs today's feature distributions. Validated estimator (shared quantile bins + Laplace smoothing), correctly calibrated to return 43→3.86 after the fix.
+1. **PSI drift** — `GET /admin/drift/psi` compares yesterday's vs today's feature distributions for every registry-monitored feature (`configs/feature_registry.yaml`, `monitoring: true` + `drift_key` aliases, `min_samples = 100` floor, binary features use exact-value binning). Validated estimator (shared quantile bins + Laplace smoothing), correctly calibrated to return 43→3.86 after the fix.
 2. **L2 status distribution** — Prometheus counter `layer2_escalation_total` by status. A sudden spike in TIMEOUT or ERROR means the GNN service is degraded.
 3. **Ensemble calibration** — ECE is tracked. If ECE drifts above 0.02, the calibrator needs refitting.
 
@@ -425,4 +430,4 @@ PayShield/
 
 ---
 
-*Last updated: 2026-08-01 after Phase 10 completion*
+*Last updated: 2026-08-15 (GNN v1.1.0, registry-driven drift monitoring, automated retrain gate)*

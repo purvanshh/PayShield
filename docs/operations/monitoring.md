@@ -56,16 +56,27 @@ Grafana is pre-provisioned via `grafana/provisioning/` (datasource + dashboard).
 
 ### Feature Sampling
 
-Every scored transaction logs per-feature values into time-scored Redis zsets:
+Every scored transaction logs per-feature values into time-scored Redis zsets.
+The monitored set is driven by the **global feature registry** (`configs/feature_registry.yaml`): every entry with `monitoring: true` is reported under its `drift_key` alias (the zset the scoring route writes), plus the legacy L0 velocity keys kept alongside:
 
 ```
 drift:feat:txn_count_5m            # member "{ts}:{value}", score = timestamp
 drift:feat:txn_count_1h
-drift:feat:amount_total_1h
+drift:feat:inter_arrival_gap_min   # model features (Phase 7) via drift_key
+drift:feat:loc_dist_km
+drift:feat:merchant_round_share
+drift:feat:is_shell                # registered; no samples until the scoring
+                                   #   path has a merchant-shell source
+drift:feat:amount_total_1h         # legacy L0 keys
 drift:feat:device_txn_count_24h
 drift:feat:distinct_users_last_24h
 drift:feat:distinct_merchants_1h
 ```
+
+Registry fields that matter for drift: `monitoring`, `drift_key` (zset name),
+and the `skew_detection` section (`psi_threshold`, `min_samples` — a window
+with fewer samples is reported `INSUFFICIENT_DATA`). Run
+`python scripts/validate_feature_registry.py` to check the registry parses.
 
 ### PSI Report
 
@@ -75,12 +86,16 @@ feature, using a robust Population Stability Index:
 - **Shared quantile bin edges** on the combined distribution — no binning mismatch
 - **Bin count scaled to sample size** (`max(3, n//5)`, capped at 10)
 - **Laplace smoothing** — zero-mass bins cannot produce infinite/false-spike PSI
+- **Exact-value binning for low-cardinality features** (binary/categorical,
+  ≤ 8 distinct values) — a 0/1 feature can never silently report PSI 0
 
-Thresholds: `< 0.1` STABLE · `0.1–0.25` MODERATE · `> 0.25` DRIFT.
+Thresholds: `< 0.1` STABLE · `0.1–0.25` MODERATE · `> 0.25` DRIFT (values come
+from `configs/feature_registry.yaml → skew_detection`; windows below
+`min_samples` are `INSUFFICIENT_DATA`).
 
 ```bash
 # CLI (runs inside the api image; prints report + writes JSON artifact)
-python scripts/run_drift_report.py
+python scripts/run_drift_report.py [--config configs/feature_registry.yaml]
 
 # API (same computation)
 curl http://localhost:8000/admin/drift/psi -H "X-API-Key: payshield-dev-key-2026"

@@ -1,7 +1,8 @@
 """
 Benchmark the L2 heterogeneous GNN (PayShieldGNN) end-to-end:
   - builds a heterogeneous ego-graph dataset from the synthetic UPI generator
-  - trains the GNN (HeteroConv + SAGEConv, 2 layers, hidden 64)
+  - trains the GNN (HeteroConv + SAGEConv, target-user readout; hidden/layers
+    come from the Optuna sweep, defaults hidden 128 / 3 layers)
   - evaluates AUC-ROC / PR-AUC / F1 / FPR@0.90 recall on a user-disjoint test split
   - benchmarks per-ego-graph inference latency on CPU (p50/p90/p95/p99)
   - trains an edge-free MLP baseline on the same target-user features
@@ -10,11 +11,12 @@ Everything is measured on synthetic data (the only data this repo ships), and
 every number is computed at runtime — nothing is hardcoded.
 
 Usage:
-    python scripts/benchmark_gnn.py [--users 6000 --merchants 500 --txns 18000
-                                    --epochs 40 --latency-runs 300 --seed 42]
+    python scripts/benchmark_gnn.py [--users 12000 --merchants 1000 --txns 36000
+                                    --epochs 100 --latency-runs 300 --seed 42
+                                    --sweep-trials 8 --save-model]
 
 Graph schema (heterogeneous):
-    node types:    user (5 features) | merchant (19) | device (4) | transaction (4)
+    node types:    user (5 features) | merchant (21) | device (4) | transaction (8)
     edge types:    user --performed--> transaction
                    transaction --to--> merchant
                    user --used--> device
