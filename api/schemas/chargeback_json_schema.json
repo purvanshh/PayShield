@@ -1,0 +1,1089 @@
+{
+  "$defs": {
+    "Attachment": {
+      "properties": {
+        "evidence_type": {
+          "description": "e.g. invoice, proof_of_delivery",
+          "title": "Evidence Type",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "filename": {
+          "default": "",
+          "title": "Filename",
+          "type": "string"
+        },
+        "content_type": {
+          "default": "",
+          "title": "Content Type",
+          "type": "string"
+        },
+        "checksum": {
+          "default": "",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "size_bytes": {
+          "default": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "evidence_type",
+        "url"
+      ],
+      "title": "Attachment",
+      "type": "object"
+    },
+    "AuditLogEntry": {
+      "description": "Single step of the evidence assembly chain (tamper-evident context).",
+      "properties": {
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "action": {
+          "description": "e.g. L1_EVIDENCE_COLLECTED",
+          "title": "Action",
+          "type": "string"
+        },
+        "agent": {
+          "description": "e.g. transaction_agent",
+          "title": "Agent",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "action",
+        "agent"
+      ],
+      "title": "AuditLogEntry",
+      "type": "object"
+    },
+    "BenfordEvidence": {
+      "description": "L1 Benford's-law snapshot for the merchant at transaction time.",
+      "properties": {
+        "rules_triggered": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rules Triggered",
+          "type": "array"
+        },
+        "chi2_statistic": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chi2 Statistic"
+        },
+        "observed_counts": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Observed Counts",
+          "type": "array"
+        },
+        "total_transactions": {
+          "default": 0,
+          "title": "Total Transactions",
+          "type": "integer"
+        },
+        "is_anomalous": {
+          "default": false,
+          "title": "Is Anomalous",
+          "type": "boolean"
+        },
+        "explanation": {
+          "default": "",
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "title": "BenfordEvidence",
+      "type": "object"
+    },
+    "CommunicationRecord": {
+      "properties": {
+        "channel": {
+          "default": "APP_CHAT",
+          "enum": [
+            "WHATSAPP",
+            "SMS",
+            "EMAIL",
+            "APP_CHAT",
+            "PHONE"
+          ],
+          "title": "Channel",
+          "type": "string"
+        },
+        "direction": {
+          "default": "INBOUND",
+          "enum": [
+            "INBOUND",
+            "OUTBOUND"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "participant": {
+          "default": "",
+          "title": "Participant",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "attachment_urls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Attachment Urls",
+          "type": "array"
+        }
+      },
+      "required": [
+        "timestamp"
+      ],
+      "title": "CommunicationRecord",
+      "type": "object"
+    },
+    "DeliveryProof": {
+      "properties": {
+        "courier_company": {
+          "default": "",
+          "title": "Courier Company",
+          "type": "string"
+        },
+        "tracking_id": {
+          "default": "",
+          "title": "Tracking Id",
+          "type": "string"
+        },
+        "dispatched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dispatched At"
+        },
+        "delivered_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivered At"
+        },
+        "delivered_address": {
+          "default": "",
+          "title": "Delivered Address",
+          "type": "string"
+        },
+        "proof_url": {
+          "default": "",
+          "title": "Proof Url",
+          "type": "string"
+        },
+        "signature_available": {
+          "default": false,
+          "title": "Signature Available",
+          "type": "boolean"
+        },
+        "weight_verified": {
+          "default": false,
+          "title": "Weight Verified",
+          "type": "boolean"
+        },
+        "recipient_confirmation": {
+          "default": false,
+          "title": "Recipient Confirmation",
+          "type": "boolean"
+        }
+      },
+      "title": "DeliveryProof",
+      "type": "object"
+    },
+    "DeviceFingerprint": {
+      "description": "Device evidence (retrieved from the device index, not re-scored).",
+      "properties": {
+        "device_id": {
+          "title": "Device Id",
+          "type": "string"
+        },
+        "user_id": {
+          "default": "",
+          "title": "User Id",
+          "type": "string"
+        },
+        "ip_address": {
+          "default": "",
+          "title": "Ip Address",
+          "type": "string"
+        },
+        "user_agent": {
+          "default": "",
+          "title": "User Agent",
+          "type": "string"
+        },
+        "screen_resolution": {
+          "default": "",
+          "title": "Screen Resolution",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "language": {
+          "default": "",
+          "title": "Language",
+          "type": "string"
+        },
+        "canvas_hash": {
+          "default": "",
+          "title": "Canvas Hash",
+          "type": "string"
+        },
+        "webgl_hash": {
+          "default": "",
+          "title": "Webgl Hash",
+          "type": "string"
+        },
+        "first_seen": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Seen"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seen"
+        },
+        "is_new_device": {
+          "default": true,
+          "title": "Is New Device",
+          "type": "boolean"
+        },
+        "proxy_score": {
+          "default": 0.0,
+          "title": "Proxy Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "title": "DeviceFingerprint",
+      "type": "object"
+    },
+    "EntitySummary": {
+      "properties": {
+        "entity_id": {
+          "default": "",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "entity_type": {
+          "default": "",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "risk_score": {
+          "default": 0.0,
+          "title": "Risk Score",
+          "type": "number"
+        }
+      },
+      "title": "EntitySummary",
+      "type": "object"
+    },
+    "EvidenceBundle": {
+      "description": "Categorised evidence pulled from PayShield L1/L2/L3 and merchant data.",
+      "properties": {
+        "velocity_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VelocityEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "geo_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "benford_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BenfordEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "graph_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GraphEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "investigation_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "merchant_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MerchantEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transaction_proof": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TransactionProof"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "device_fingerprint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeviceFingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ip_geolocation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IPGeolocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/Attachment"
+          },
+          "title": "Attachments",
+          "type": "array"
+        },
+        "audit_trail": {
+          "items": {
+            "$ref": "#/$defs/AuditLogEntry"
+          },
+          "title": "Audit Trail",
+          "type": "array"
+        },
+        "completeness_score": {
+          "default": 0.0,
+          "title": "Completeness Score",
+          "type": "number"
+        }
+      },
+      "title": "EvidenceBundle",
+      "type": "object"
+    },
+    "GeoEvidence": {
+      "description": "L1 geo filter snapshot taken at transaction time.",
+      "properties": {
+        "rules_triggered": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rules Triggered",
+          "type": "array"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "previous_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Previous Location"
+        },
+        "geo_velocity_kmh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo Velocity Kmh"
+        },
+        "explanation": {
+          "default": "",
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "title": "GeoEvidence",
+      "type": "object"
+    },
+    "GraphEvidence": {
+      "description": "L2 GNN evidence snapshot taken at transaction time.",
+      "properties": {
+        "risk_paths_found": {
+          "items": {
+            "$ref": "#/$defs/RiskPath"
+          },
+          "title": "Risk Paths Found",
+          "type": "array"
+        },
+        "connected_entities": {
+          "items": {
+            "$ref": "#/$defs/EntitySummary"
+          },
+          "title": "Connected Entities",
+          "type": "array"
+        },
+        "gnn_score": {
+          "default": 0.0,
+          "title": "Gnn Score",
+          "type": "number"
+        },
+        "anomaly_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anomaly Type"
+        }
+      },
+      "title": "GraphEvidence",
+      "type": "object"
+    },
+    "IPGeolocation": {
+      "properties": {
+        "ip_address": {
+          "default": "",
+          "title": "Ip Address",
+          "type": "string"
+        },
+        "country": {
+          "default": "",
+          "title": "Country",
+          "type": "string"
+        },
+        "region": {
+          "default": "",
+          "title": "Region",
+          "type": "string"
+        },
+        "city": {
+          "default": "",
+          "title": "City",
+          "type": "string"
+        },
+        "isp": {
+          "default": "",
+          "title": "Isp",
+          "type": "string"
+        },
+        "is_proxy": {
+          "default": false,
+          "title": "Is Proxy",
+          "type": "boolean"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "match_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Match Score"
+        }
+      },
+      "title": "IPGeolocation",
+      "type": "object"
+    },
+    "InvestigationNarrative": {
+      "description": "AI-generated rebuttal narrative (from the chargeback LLM template).",
+      "properties": {
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "full_report": {
+          "default": "",
+          "title": "Full Report",
+          "type": "string"
+        },
+        "key_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Evidence",
+          "type": "array"
+        },
+        "quality_score": {
+          "default": 0.0,
+          "title": "Quality Score",
+          "type": "number"
+        }
+      },
+      "title": "InvestigationNarrative",
+      "type": "object"
+    },
+    "InvestigationReport": {
+      "description": "L3 LLM investigation report (issued asynchronously post-scoring).",
+      "properties": {
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "narrative": {
+          "default": "",
+          "title": "Narrative",
+          "type": "string"
+        },
+        "fraud_type": {
+          "default": "OTHER",
+          "title": "Fraud Type",
+          "type": "string"
+        },
+        "confidence": {
+          "default": "LOW",
+          "title": "Confidence",
+          "type": "string"
+        },
+        "recommended_action": {
+          "default": "ALLOW",
+          "title": "Recommended Action",
+          "type": "string"
+        },
+        "key_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Evidence",
+          "type": "array"
+        },
+        "quality_score": {
+          "default": 0.0,
+          "title": "Quality Score",
+          "type": "number"
+        }
+      },
+      "title": "InvestigationReport",
+      "type": "object"
+    },
+    "MerchantEvidence": {
+      "description": "Merchant-provided evidence pulled from the merchant's own systems.\n\nRetrieved by ``razorpay_client.fetch_merchant_evidence`` (Phase 11) or\nsupplied via the API request ``evidence_override``.",
+      "properties": {
+        "delivery_proof": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeliveryProof"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "customer_communication": {
+          "items": {
+            "$ref": "#/$defs/CommunicationRecord"
+          },
+          "title": "Customer Communication",
+          "type": "array"
+        },
+        "refund_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RefundPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "terms_of_service": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TermsOfService"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "MerchantEvidence",
+      "type": "object"
+    },
+    "RefundPolicy": {
+      "properties": {
+        "policy_url": {
+          "default": "",
+          "title": "Policy Url",
+          "type": "string"
+        },
+        "policy_version": {
+          "default": "",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "returns_allowed_days": {
+          "default": 7,
+          "title": "Returns Allowed Days",
+          "type": "integer"
+        },
+        "restocking_fee_percent": {
+          "default": 0.0,
+          "title": "Restocking Fee Percent",
+          "type": "number"
+        },
+        "return_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Return Conditions",
+          "type": "array"
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective From"
+        }
+      },
+      "title": "RefundPolicy",
+      "type": "object"
+    },
+    "RiskPath": {
+      "properties": {
+        "path": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Path",
+          "type": "array"
+        },
+        "score": {
+          "default": 0.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "RiskPath",
+      "type": "object"
+    },
+    "TermsOfService": {
+      "properties": {
+        "tos_url": {
+          "default": "",
+          "title": "Tos Url",
+          "type": "string"
+        },
+        "tos_version": {
+          "default": "",
+          "title": "Tos Version",
+          "type": "string"
+        },
+        "relevant_clause": {
+          "default": "",
+          "title": "Relevant Clause",
+          "type": "string"
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective From"
+        }
+      },
+      "title": "TermsOfService",
+      "type": "object"
+    },
+    "TransactionProof": {
+      "description": "Transaction-level proof pulled from the PayShield audit log.",
+      "properties": {
+        "txn_timestamp": {
+          "format": "date-time",
+          "title": "Txn Timestamp",
+          "type": "string"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Amount"
+        },
+        "currency": {
+          "default": "INR",
+          "title": "Currency",
+          "type": "string"
+        },
+        "payment_method": {
+          "default": "UPI",
+          "title": "Payment Method",
+          "type": "string"
+        },
+        "auth_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auth Code"
+        },
+        "settlement_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Settlement Id"
+        },
+        "merchant_id": {
+          "default": "",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "was_blocked": {
+          "default": false,
+          "title": "Was Blocked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "txn_timestamp",
+        "amount"
+      ],
+      "title": "TransactionProof",
+      "type": "object"
+    },
+    "VelocityEvidence": {
+      "description": "L1 velocity filter snapshot taken at transaction time.",
+      "properties": {
+        "rules_triggered": {
+          "description": "e.g. V-RULE-02, V-RULE-03",
+          "items": {
+            "type": "string"
+          },
+          "title": "Rules Triggered",
+          "type": "array"
+        },
+        "txn_count_5m": {
+          "default": 0,
+          "title": "Txn Count 5M",
+          "type": "integer"
+        },
+        "txn_count_1h": {
+          "default": 0,
+          "title": "Txn Count 1H",
+          "type": "integer"
+        },
+        "amount_total_1h": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "default": "0",
+          "title": "Amount Total 1H"
+        },
+        "explanation": {
+          "default": "",
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "title": "VelocityEvidence",
+      "type": "object"
+    }
+  },
+  "description": "Complete chargeback rebuttal contract (PayShield -> Razorpay/NPCI)",
+  "properties": {
+    "dispute_id": {
+      "title": "Dispute Id",
+      "type": "string"
+    },
+    "payment_id": {
+      "title": "Payment Id",
+      "type": "string"
+    },
+    "transaction_id": {
+      "title": "Transaction Id",
+      "type": "string"
+    },
+    "network": {
+      "default": "UPI",
+      "enum": [
+        "UPI",
+        "VISA",
+        "MASTERCARD",
+        "AMEX",
+        "RUPAY"
+      ],
+      "title": "Network",
+      "type": "string"
+    },
+    "reason_code": {
+      "title": "Reason Code",
+      "type": "string"
+    },
+    "reason_description": {
+      "default": "",
+      "title": "Reason Description",
+      "type": "string"
+    },
+    "response_type": {
+      "enum": [
+        "ACCEPT",
+        "REJECT",
+        "PARTIAL"
+      ],
+      "title": "Response Type",
+      "type": "string"
+    },
+    "response_deadline": {
+      "format": "date-time",
+      "title": "Response Deadline",
+      "type": "string"
+    },
+    "response_urgency": {
+      "default": 0.0,
+      "title": "Response Urgency",
+      "type": "number"
+    },
+    "evidence": {
+      "$ref": "#/$defs/EvidenceBundle"
+    },
+    "narrative": {
+      "$ref": "#/$defs/InvestigationNarrative"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "generated_by": {
+      "default": "chargeback_agent_v1.0.0",
+      "title": "Generated By",
+      "type": "string"
+    },
+    "audit_trail": {
+      "items": {
+        "$ref": "#/$defs/AuditLogEntry"
+      },
+      "title": "Audit Trail",
+      "type": "array"
+    },
+    "confidence_score": {
+      "default": 0.0,
+      "title": "Confidence Score",
+      "type": "number"
+    },
+    "razorpay_payload": {
+      "additionalProperties": true,
+      "title": "Razorpay Payload",
+      "type": "object"
+    }
+  },
+  "required": [
+    "dispute_id",
+    "payment_id",
+    "transaction_id",
+    "reason_code",
+    "response_type",
+    "response_deadline"
+  ],
+  "title": "ChargebackRebuttalDocument",
+  "type": "object"
+}

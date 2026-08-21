@@ -1,0 +1,213 @@
+{
+  "sample": {
+    "dispute_id": "disp_2Vw9aZ0q3X",
+    "payment_id": "pay_2RzD5mK9bL",
+    "transaction_id": "TXN-2026-08121-000117",
+    "network": "VISA",
+    "reason_code": "10.4",
+    "reason_description": "Cardholder fraud probe",
+    "response_type": "REJECT",
+    "response_deadline": "2026-08-30T16:39:59.489493Z",
+    "response_urgency": 0.55,
+    "evidence": {
+      "velocity_evidence": {
+        "rules_triggered": [
+          "V-RULE-02"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 4,
+        "amount_total_1h": "9800.00",
+        "explanation": "User performed 4 transactions in 1 hour totaling Rs.9,800 - within normal range"
+      },
+      "geo_evidence": {
+        "rules_triggered": [],
+        "location": "Mumbai, IN",
+        "previous_location": "Mumbai, IN",
+        "geo_velocity_kmh": 3.2,
+        "explanation": "Location consistent with historical geofence (delta 3.2 km/h)"
+      },
+      "benford_evidence": {
+        "rules_triggered": [],
+        "chi2_statistic": 9.1,
+        "observed_counts": [
+          18,
+          15,
+          12,
+          10,
+          9,
+          7,
+          10,
+          4,
+          5
+        ],
+        "total_transactions": 90,
+        "is_anomalous": false,
+        "explanation": "Merchant amount distribution follows Benford expectation"
+      },
+      "graph_evidence": {
+        "risk_paths_found": [],
+        "connected_entities": [],
+        "gnn_score": 0.12,
+        "anomaly_type": null
+      },
+      "investigation_report": {
+        "summary": "No fraudulent pattern detected; transaction consistent with user history.",
+        "narrative": "",
+        "fraud_type": "OTHER",
+        "confidence": "LOW",
+        "recommended_action": "ALLOW",
+        "key_evidence": [
+          "54 matching transactions in user history"
+        ],
+        "quality_score": 0.78
+      },
+      "merchant_evidence": {
+        "delivery_proof": {
+          "courier_company": "BlueDart",
+          "tracking_id": "BD-991-4412",
+          "dispatched_at": "2026-07-23T16:39:59.489493Z",
+          "delivered_at": "2026-07-25T16:39:59.489493Z",
+          "delivered_address": "12 Marine Lines, Mumbai",
+          "proof_url": "https://storage.payshield.dev/pod/BD-991-4412.jpg",
+          "signature_available": true,
+          "weight_verified": true,
+          "recipient_confirmation": true
+        },
+        "customer_communication": [
+          {
+            "channel": "WHATSAPP",
+            "direction": "OUTBOUND",
+            "timestamp": "2026-07-25T16:39:59.489493Z",
+            "participant": "+91-98xxxxxx21",
+            "summary": "Customer confirmed delivery and satisfaction",
+            "attachment_urls": []
+          }
+        ],
+        "refund_policy": null,
+        "terms_of_service": null
+      },
+      "transaction_proof": {
+        "txn_timestamp": "2026-07-21T16:39:59.489493Z",
+        "amount": "4500.00",
+        "currency": "INR",
+        "payment_method": "UPI",
+        "auth_code": "AUTH-88271",
+        "settlement_id": "set_4Kj2",
+        "merchant_id": "M00042",
+        "was_blocked": false
+      },
+      "device_fingerprint": {
+        "device_id": "DEV-88412",
+        "user_id": "U001_82417",
+        "ip_address": "10.12.44.88",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) ...",
+        "screen_resolution": "390x844",
+        "timezone": "Asia/Kolkata",
+        "language": "",
+        "canvas_hash": "",
+        "webgl_hash": "",
+        "first_seen": "2026-01-23T16:39:59.489493Z",
+        "last_seen": "2026-08-21T16:39:59.489493Z",
+        "is_new_device": false,
+        "proxy_score": 0.02
+      },
+      "ip_geolocation": null,
+      "attachments": [
+        {
+          "evidence_type": "invoice",
+          "url": "https://storage.payshield.dev/inv/TXN-2026-08121-000117.pdf",
+          "description": "Transaction invoice",
+          "filename": "invoice.pdf",
+          "content_type": "application/pdf",
+          "checksum": "",
+          "size_bytes": 0
+        },
+        {
+          "evidence_type": "proof_of_delivery",
+          "url": "https://storage.payshield.dev/pod/BD-991-4412.jpg",
+          "description": "BlueDart POD",
+          "filename": "pod.jpg",
+          "content_type": "image/jpeg",
+          "checksum": "",
+          "size_bytes": 0
+        }
+      ],
+      "audit_trail": [],
+      "completeness_score": 0.92
+    },
+    "narrative": {
+      "summary": "Transaction was legitimate. Device fingerprint is stable across 210 days of history, geo velocity is consistent, and delivery proof (BlueDart signature POD, customer WhatsApp confirmation) is on file.",
+      "full_report": "L1 velocity: 4 txns in 1h totaling Rs 9,800, no V-RULE-* blocks. Geo: same-city. Benford: merchant distribution conforms. L2 GNN: 0.12 risk. Delivery: signed POD on 2026-07-25. Conclusion: the chargeback disclosure ('unauthorized') is contradicted by 210 days of consistent device telemetry and delivery evidence.",
+      "key_evidence": [
+        "Device fingerprint stable 210 days",
+        "Geo velocity 3.2 km/h within geofence",
+        "Signed POD received",
+        "Customer-confirmed delivery correspondence"
+      ],
+      "quality_score": 0.91
+    },
+    "generated_at": "2026-08-21T16:39:59.490760",
+    "generated_by": "chargeback_agent_v1.0.0",
+    "audit_trail": [
+      {
+        "timestamp": "2026-08-21T16:39:55.489493Z",
+        "action": "L1_EVIDENCE_COLLECTED",
+        "agent": "transaction_agent",
+        "detail": "velocity/geo/benford snapshots retrieved"
+      },
+      {
+        "timestamp": "2026-08-21T16:39:56.489493Z",
+        "action": "L2_GRAPH_ANALYZED",
+        "agent": "graph_model",
+        "detail": "gnn_score=0.12"
+      },
+      {
+        "timestamp": "2026-08-21T16:39:57.489493Z",
+        "action": "L3_NARRATIVE_GENERATED",
+        "agent": "llm_investigator",
+        "detail": "summary generated (quality 0.91)"
+      },
+      {
+        "timestamp": "2026-08-21T16:39:58.489493Z",
+        "action": "REBUTTAL_ASSEMBLED",
+        "agent": "chargeback_agent",
+        "detail": "razorpay payload built"
+      }
+    ],
+    "confidence_score": 0.87,
+    "razorpay_payload": {
+      "contest": true,
+      "evidence": {
+        "amount": 4500,
+        "summary": "Transaction was legitimate. Device fingerprint is stable across 210 days of history, geo velocity is consistent, and delivery proof (BlueDart signature POD, customer WhatsApp confirmation) is on file.",
+        "detailed_reason": "L1 velocity: 4 txns in 1h totaling Rs 9,800, no V-RULE-* blocks. Geo: same-city. Benford: merchant distribution conforms. L2 GNN: 0.12 risk. Delivery: signed POD on 2026-07-25. Conclusion: the chargeback disclosure ('unauthorized') is contradicted by 210 days of consistent device telemetry and delivery evidence.",
+        "billing_proof": [
+          {
+            "type": "document",
+            "url": "https://storage.payshield.dev/inv/TXN-2026-08121-000117.pdf",
+            "description": "Invoice"
+          }
+        ],
+        "proof_of_delivery": [
+          {
+            "type": "document",
+            "url": "https://storage.payshield.dev/pod/BD-991-4412.jpg",
+            "description": "BlueDart POD"
+          }
+        ],
+        "customer_communication": [
+          {
+            "type": "document",
+            "url": "https://storage.payshield.dev/chat/BD-991-4412.pdf",
+            "description": "Customer WhatsApp confirmation"
+          }
+        ]
+      }
+    }
+  },
+  "evidence_override": {
+    "delivery_proof_url": "https://storage.payshield.dev/pod/BD-991-4412.jpg",
+    "customer_notes": "POD + WhatsApp chat attached",
+    "attachment_urls": []
+  }
+}
