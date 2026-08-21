@@ -1,0 +1,53 @@
+# Return-risk rules (Track 02 - Phase 4/6).
+#
+# Fed into return_risk/rules_engine.py (Phase 14). Conditions reference the
+# feature names from configs/feature_registry_return.yaml.
+
+version: "1.0.0"
+
+rules:
+  - rule_id: "R-RULE-01"
+    name: "Serial Returner"
+    condition: "user_return_rate_30d > 0.30 AND user_total_orders > 3"
+    action: "FLAG_FOR_REVIEW"
+    severity: 4
+    description: "User returns >30% of orders across a 30-day window."
+
+  - rule_id: "R-RULE-02"
+    name: "High Value Fashion Return"
+    condition: "txn_amount > 3000 AND txn_category == 'fashion' AND user_return_rate_30d > 0.20"
+    action: "REQUIRE_PREPAID_ONLY"
+    severity: 4
+    description: "Expensive fashion order for a user with elevated return rate."
+
+  - rule_id: "R-RULE-03"
+    name: "COD Refusal User"
+    condition: "user_cod_refusal_rate > 0.40"
+    action: "REQUIRE_PREPAID_ONLY"
+    severity: 5
+    description: "User refuses COD more than 40% of the time."
+
+  - rule_id: "R-RULE-04"
+    name: "Return Burst"
+    condition: "user_return_velocity_7d >= 3"
+    action: "FLAG_FOR_REVIEW"
+    severity: 3
+    description: "Three or more returns within a single week."
+
+  - rule_id: "R-RULE-05"
+    name: "Late Night High-Value New User"
+    condition: "txn_time_of_day_risk > 0.7 AND txn_amount > 5000 AND user_first_return_days == 0 (no history)"
+    action: "CAP_QUANTITY_2"
+    severity: 2
+    description: "Soft control: cap quantity for unknown users ordering big late at night."
+
+risk_tiers:
+  LOW:
+    max_score: 0.30
+    action: "ACCEPT"
+  MEDIUM:
+    max_score: 0.70
+    action: "FLAG_FOR_REVIEW"
+  HIGH:
+    max_score: 1.00
+    action: "REQUIRE_PREPAID"

@@ -1,0 +1,209 @@
+# Return-risk feature registry (Track 02 - Phase 4).
+#
+# Mirrors the shape of configs/feature_registry.yaml. The composite score is
+# a weighted sum computed by return_risk/scorer.py (Phases 15) from the
+# weights below. Values marked ``normalized: true`` are already in [0,1].
+#
+# Redis layout (see docs/reference/return_risk_redis_schema.md):
+#   return_risk:user:{user_id}      -> hash of user-level features
+#   return_risk:merchant:{merchant_id}:category -> zset merchant-category baselines
+#   return_risk:user:{user_id}:returns -> zset (score=epoch ts, member=order_id)
+#
+# Composite formula (Phase 4 decision):
+#   score = clamp( sum( w_i * value_i ) , 0, 1 )  with weights below.
+
+version: "1.0.0"
+
+composite_weights:
+  user_return_rate_30d: 0.25
+  user_serial_returner_flag: 0.20
+  merchant_return_rate_30d: 0.15
+  txn_category_return_baseline: 0.15
+  txn_amount_risk: 0.10
+  txn_cod_refusal_rate: 0.10
+  user_return_velocity_7d: 0.05
+
+features:
+  # ---- user-level (redis: return_risk:user:{user_id}) ----
+  - name: user_return_rate_30d
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: return_rate_30d
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.25
+    description: "Returns / orders in last 30 days (category-normalised)"
+  - name: user_return_rate_90d
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: return_rate_90d
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Returns / orders in last 90 days"
+  - name: user_return_rate_lifetime
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: return_rate_lifetime
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Lifetime returns / orders"
+  - name: user_avg_return_value
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: avg_return_value
+    normalized: false
+    description: "Average value of returned items"
+  - name: user_max_return_value
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: max_return_value
+    normalized: false
+    description: "Max value of a single returned item"
+  - name: user_return_reason_distribution
+    kind: user
+    type: categorical
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: return_reason_distribution
+    description: "{DEFECTIVE: n, SIZE_ISSUE: n, CHANGED_MIND: n}"
+  - name: user_cod_refusal_rate
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: cod_refusal_rate
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.10
+    description: "COD orders refused / total COD orders"
+  - name: user_serial_returner_flag
+    kind: user
+    type: boolean
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: serial_returner_flag
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.20
+    description: ">50% return rate AND >3 orders"
+  - name: user_return_velocity_7d
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}:returns"
+    redis_field: count_7d
+    normalized: false
+    min_val: 0
+    max_val: 20
+    weight: 0.05
+    description: "Number of returns in last 7 days"
+  - name: user_first_return_days
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: first_return_days
+    normalized: false
+    description: "Days between first order and first return"
+  - name: user_return_pattern_score
+    kind: user
+    type: numeric
+    redis_key: "return_risk:user:{user_id}"
+    redis_field: return_pattern_score
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "0-1 consistency of return reasons across history"
+
+  # ---- merchant-level (redis: return_risk:merchant:{merchant_id}) ----
+  - name: merchant_return_rate_30d
+    kind: merchant
+    type: numeric
+    redis_key: "return_risk:merchant:{merchant_id}"
+    redis_field: return_rate_30d
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.15
+    description: "Merchant-wide 30d return rate"
+  - name: merchant_return_rate_by_category
+    kind: merchant
+    type: numeric
+    redis_key: "return_risk:merchant:{merchant_id}:category"
+    redis_field: category
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "zset: score=return_rate, member=category"
+  - name: merchant_avg_return_resolution_time
+    kind: merchant
+    type: numeric
+    redis_key: "return_risk:merchant:{merchant_id}"
+    redis_field: avg_resolution_hours
+    normalized: false
+    description: "Hours to resolve an average return"
+  - name: merchant_return_fraud_rate
+    kind: merchant
+    type: numeric
+    redis_key: "return_risk:merchant:{merchant_id}"
+    redis_field: return_fraud_rate
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Merchant-reported fraud / total returns"
+
+  # ---- transaction-level (computed at scoring time) ----
+  - name: txn_category_return_baseline
+    kind: txn
+    type: numeric
+    source: computed
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.15
+    description: "Baseline return rate for the product category of this order"
+  - name: txn_amount_risk
+    kind: txn
+    type: numeric
+    source: computed
+    normalized: true
+    min_val: 0
+    max_val: 1
+    weight: 0.10
+    description: "High-value orders carry higher return-fraud exposure"
+  - name: txn_cod_flag
+    kind: txn
+    type: boolean
+    source: computed
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Order placed on cash-on-delivery"
+  - name: txn_time_of_day_risk
+    kind: txn
+    type: numeric
+    source: computed
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Late-night orders return more often"
+  - name: txn_is_salary_day
+    kind: txn
+    type: boolean
+    source: computed
+    normalized: true
+    min_val: 0
+    max_val: 1
+    description: "Payday-adjacent ordering (from existing PayShield feature)"
+  - name: txn_user_merchant_interaction_count
+    kind: txn
+    type: numeric
+    source: computed
+    normalized: false
+    min_val: 0
+    description: "How many times this user has ordered from this merchant"

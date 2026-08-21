@@ -9,6 +9,7 @@ from api.schemas.chargeback import (
     ChargebackSubmitRequest,
     ChargebackSubmitResponse,
 )
+from api.schemas.return_risk import ReturnScoreRequest, ReturnScoreResponse
 
 __all__ = [
     "GeoPoint",
@@ -31,6 +32,8 @@ __all__ = [
     "ChargebackRespondResponse",
     "ChargebackSubmitRequest",
     "ChargebackSubmitResponse",
+    "ReturnScoreRequest",
+    "ReturnScoreResponse",
 ]
 
 
