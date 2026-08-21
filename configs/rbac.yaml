@@ -3,6 +3,8 @@ roles:
     - score:read
     - investigation:read
     - feedback:write
+    - chargeback:read
+    - return_risk:read
   admin:
     - score:read
     - investigation:read
@@ -12,6 +14,10 @@ roles:
     - agent:manage
     - metrics:read
     - health:read
+    - chargeback:read
+    - chargeback:write
+    - chargeback:admin
+    - return_risk:read
   system:
     - score:write
     - score:read
@@ -19,3 +25,12 @@ roles:
     - feedback:write
     - metrics:read
     - health:read
+    - chargeback:read
+    - chargeback:write
+    - return_risk:read
+  chargeback_admin:
+    - chargeback:read
+    - chargeback:write
+    - chargeback:admin
+  return_risk_reader:
+    - return_risk:read

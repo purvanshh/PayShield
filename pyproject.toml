@@ -29,6 +29,7 @@ dependencies = [
     "shap>=0.44.0",
     "celery>=5.4.0",
     "faker>=22.0.0",
+    "python-dateutil>=2.9.0",
 ]
 
 [tool.ruff]

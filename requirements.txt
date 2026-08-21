@@ -19,6 +19,7 @@ ollama>=0.1.0
 shap>=0.44.0
 celery>=5.4.0
 faker>=22.0.0
+python-dateutil>=2.9.0
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
 pytest-cov>=4.1.0

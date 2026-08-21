@@ -27,3 +27,23 @@ ollama:
 feature_drift:
   psi_threshold: 0.25
   check_interval_minutes: 60
+
+chargeback:
+  enabled: true
+  auto_submit: false
+  confidence_threshold: 0.6
+  response_deadline_days:
+    UPI: 7
+    VISA: 30
+    MASTERCARD: 30
+    AMEX: 20
+    RUPAY: 15
+  razorpay_api_base: "https://api.razorpay.com/v1"
+
+return_risk:
+  enabled: true
+  risk_tiers:
+    LOW: {max_score: 0.3, action: "ACCEPT"}
+    MEDIUM: {max_score: 0.7, action: "FLAG_FOR_REVIEW"}
+    HIGH: {max_score: 1.0, action: "REQUIRE_PREPAID"}
+  feature_lookback_days: 90
