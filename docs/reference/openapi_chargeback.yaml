@@ -1,0 +1,208 @@
+openapi: "3.1.0"
+info:
+  title: PayShield Chargeback API (fragment)
+  version: "1.0.0"
+  description: >
+    Fragment for the chargeback evidence responder. Mounted under /v1 in the
+    PayShield API. Auth: API key header X-API-Key. RBAC: chargeback:read /
+    chargeback:write / chargeback:admin (see configs/rbac.yaml).
+servers:
+  - url: http://localhost:8000
+paths:
+  /v1/chargeback/respond:
+    post:
+      tags: [chargeback]
+      summary: Assemble a chargeback rebuttal from PayShield evidence
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChargebackRespondRequest"
+      responses:
+        "200":
+          description: Rebuttal assembled (not submitted unless auto_submit)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargebackRespondResponse"
+        "404":
+          description: Dispute/transaction not found in PayShield audit log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Insufficient evidence to construct a rebuttal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded (100/hour per API key)
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Razorpay API unavailable (when auto_submit=true)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/chargeback/{dispute_id}:
+    get:
+      tags: [chargeback]
+      summary: Retrieve a previously generated rebuttal by dispute id
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: dispute_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Stored rebuttal document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargebackRespondResponse"
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/chargeback/{dispute_id}/submit:
+    post:
+      tags: [chargeback]
+      summary: Submit a drafted rebuttal to Razorpay (human in the loop)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: dispute_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChargebackSubmitRequest"
+      responses:
+        "200":
+          description: Submission accepted by Razorpay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargebackSubmitResponse"
+        "502":
+          $ref: "#/components/responses/RazorpayError"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    RazorpayError:
+      description: Razorpay rejected/errored the submission; payload mirrored
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          examples: [CHARGEBACK_DISPUTE_NOT_FOUND, INSUFFICIENT_EVIDENCE]
+        detail: { type: string }
+        request_id: { type: string }
+    ChargebackRespondRequest:
+      type: object
+      required: [dispute_id, payment_id]
+      properties:
+        dispute_id: { type: string, example: "disp_2Vw9aZ0q3X" }
+        payment_id: { type: string, example: "pay_2RzD5mK9bL" }
+        auto_submit: { type: boolean, default: false }
+        reason_code: { type: string, default: "10.4" }
+        reason_description: { type: string }
+        response_deadline: { type: string, format: date-time }
+        evidence_override:
+          $ref: "#/components/schemas/EvidenceOverride"
+    EvidenceOverride:
+      type: object
+      properties:
+        delivery_proof_url: { type: string, format: uri }
+        customer_notes: { type: string }
+        attachment_urls:
+          type: array
+          items: { type: string, format: uri }
+    ChargebackRespondResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status: { type: string, enum: [SUCCESS] }
+        data:
+          $ref: "#/components/schemas/ChargebackRespondData"
+        latency_ms: { type: number }
+    ChargebackRespondData:
+      type: object
+      required: [rebuttal_id, dispute_id, response_type, confidence_score, evidence_completeness, narrative, razorpay_payload, audit_trail]
+      properties:
+        rebuttal_id: { type: string, example: "reb_abc123" }
+        dispute_id: { type: string }
+        response_type: { type: string, enum: [ACCEPT, REJECT, PARTIAL] }
+        confidence_score: { type: number, minimum: 0, maximum: 1 }
+        evidence_completeness: { type: number, minimum: 0, maximum: 1 }
+        narrative:
+          type: object
+          properties:
+            summary: { type: string }
+            full_report: { type: string }
+            key_evidence: { type: array, items: { type: string } }
+        razorpay_payload: { type: object }
+        audit_trail:
+          type: array
+          items:
+            type: object
+            properties:
+              ts: { type: string, format: date-time }
+              action: { type: string }
+              agent: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    ChargebackSubmitRequest:
+      type: object
+      required: [strike]
+      properties:
+        strike: { type: string, enum: [contest, accept, partial] }
+        comment: { type: string }
+    ChargebackSubmitResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status: { type: string, enum: [SUBMITTED] }
+        data:
+          type: object
+          properties:
+            submission_id: { type: string }
+            dispute_id: { type: string }
+            razorpay_status: { type: string }
+            submitted_at: { type: string, format: date-time }
+            latency_ms: { type: number }
+        latency_ms: { type: number }

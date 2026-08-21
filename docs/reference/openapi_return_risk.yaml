@@ -1,0 +1,138 @@
+openapi: "3.1.0"
+info:
+  title: PayShield Return-Risk API (fragment)
+  version: "1.0.0"
+  description: >
+    Fragment for the proactive return-risk scorer. Mounted under /v1 in the
+    PayShield API. Auth: API key header X-API-Key. RBAC: return_risk:read.
+servers:
+  - url: http://localhost:8000
+paths:
+  /v1/return/score:
+    post:
+      tags: [return-risk]
+      summary: Score return-risk for an order before dispatch/checkout
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnScoreRequest"
+      responses:
+        "200":
+          description: Return-risk score with feature breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnScoreResponse"
+        "422":
+          description: Validation error (e.g. non-positive amount)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded (1000/hour per API key)
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error: { type: string }
+        detail: { type: string }
+        request_id: { type: string }
+    ReturnScoreRequest:
+      type: object
+      required: [order_id, user_id, merchant_id, amount, currency, category]
+      properties:
+        order_id: { type: string, example: "order_abc123" }
+        user_id: { type: string, example: "U001" }
+        merchant_id: { type: string, example: "M001" }
+        amount: { type: number, minimum: 0, example: 4500.0 }
+        currency: { type: string, default: "INR" }
+        category: { type: string, example: "fashion" }
+        payment_method:
+          type: string
+          enum: [UPI, CARD, COD, NETBANKING, WALLET]
+        cod_flag: { type: boolean, default: false }
+        items:
+          type: array
+          items:
+            type: object
+            required: [sku, price, quantity]
+            properties:
+              sku: { type: string }
+              name: { type: string }
+              price: { type: number }
+              quantity: { type: integer, minimum: 1 }
+        shipping_address:
+          type: object
+          properties:
+            city: { type: string }
+            tier: { type: integer, example: 1 }
+        device_fingerprint: { type: string }
+    ReturnScoreResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status: { type: string, enum: [SUCCESS] }
+        data:
+          $ref: "#/components/schemas/ReturnScoreData"
+        latency_ms: { type: number }
+    ReturnScoreData:
+      type: object
+      required: [order_id, return_risk_score, risk_tier, confidence]
+      properties:
+        order_id: { type: string }
+        return_risk_score: { type: number, minimum: 0, maximum: 1, example: 0.73 }
+        risk_tier: { type: string, enum: [LOW, MEDIUM, HIGH] }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        feature_breakdown:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              value: {}
+              weight: { type: number }
+              contribution: { type: number }
+        rules_triggered:
+          type: array
+          items:
+            type: object
+            properties:
+              rule_id: { type: string, example: "R-RULE-01" }
+              name: { type: string }
+              condition: { type: string }
+              triggered: { type: boolean }
+              action: { type: string }
+        recommendations:
+          type: array
+          items: { type: string }
+        user_profile:
+          type: object
+          properties:
+            total_orders: { type: integer }
+            total_returns: { type: integer }
+            return_rate_30d: { type: number }
+            return_rate_lifetime: { type: number }
+            avg_return_value: { type: number }
+            last_return_date: { type: string }
