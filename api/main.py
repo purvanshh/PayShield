@@ -5,7 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.lifespan import lifespan_manager
-from api.middleware import CorrelationIdMiddleware, RequestTimingMiddleware, SecurityHeadersMiddleware
+from api.middleware import (
+    CorrelationIdMiddleware,
+    RequestTimingMiddleware,
+    SecurityHeadersMiddleware,
+)
 from api.security import rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -118,6 +122,12 @@ def _include_routers(app: FastAPI):
         app.include_router(compliance_router, tags=["compliance"])
     except Exception as e:
         logger.warning(f"compliance_router_skipped: {e}")
+
+    try:
+        from api.routes.chargeback_webhook import router as chargeback_webhook_router
+        app.include_router(chargeback_webhook_router, tags=["webhooks"])
+    except Exception as e:
+        logger.warning(f"chargeback_webhook_router_skipped: {e}")
 
     try:
         from api.routes.graph import router as graph_router

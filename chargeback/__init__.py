@@ -13,6 +13,7 @@ from chargeback.exceptions import (
     ChargebackError,
     ChargebackTransactionNotFoundError,
     InsufficientEvidenceError,
+    RazorpayAPIError,
     RazorpaySubmitError,
 )
 
@@ -21,6 +22,7 @@ __all__ = [
     "ChargebackError",
     "ChargebackTransactionNotFoundError",
     "InsufficientEvidenceError",
+    "RazorpayAPIError",
     "RazorpaySubmitError",
 ]
 

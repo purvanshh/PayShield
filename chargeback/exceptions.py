@@ -10,6 +10,27 @@ class ChargebackError(Exception):
     """
 
 
+class RazorpayAPIError(ChargebackError):
+    """Raised when Razorpay returns an error (mirrors status + body)."""
+
+    def __init__(self, message: str, status_code: int = 0, razorpay_error: dict | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.razorpay_error = razorpay_error or {}
+
+
+class RazorpaySubmitError(RazorpayAPIError):
+    """Razorpay rejected or was unreachable during submission.
+
+    Backwards-compatible alias exposing ``response`` for the JSON error body
+    in addition to ``razorpay_error``.
+    """
+
+    def __init__(self, message: str, status_code: int = 0, response: dict | None = None):
+        super().__init__(message, status_code=status_code, razorpay_error=response)
+        self.response = self.razorpay_error
+
+
 class ChargebackTransactionNotFoundError(ChargebackError):
     """The internal transaction id is absent from the audit chain."""
 
@@ -20,15 +41,3 @@ class ChargebackDisputeNotFoundError(ChargebackError):
 
 class InsufficientEvidenceError(ChargebackError):
     """Evidence completeness below threshold - do not submit on air."""
-
-
-class RazorpaySubmitError(ChargebackError):
-    """Razorpay rejected or was unreachable during submission.
-
-    Carries ``response`` (the JSON error body when present) and ``status_code``.
-    """
-
-    def __init__(self, message: str, status_code: int = 0, response: dict | None = None):
-        super().__init__(message)
-        self.status_code = status_code
-        self.response = response or {}
