@@ -9,10 +9,8 @@ tier) is implemented in Phase 15.
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from return_risk.feature_engine import FeatureRegistry
-from return_risk.rules_engine import RulesEngine, ReturnRule
+from return_risk.rules_engine import RulesEngine
 
 
 class ReturnRiskScorer:

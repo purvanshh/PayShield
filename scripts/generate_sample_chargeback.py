@@ -10,7 +10,7 @@ Usage: python scripts/generate_sample_chargeback.py
 
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -33,12 +33,11 @@ def _sample() -> dict:
         InvestigationNarrative,
         InvestigationReport,
         MerchantEvidence,
-        RiskPath,
         TransactionProof,
         VelocityEvidence,
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     deadline = now + timedelta(days=9)
 
     evidence = EvidenceBundle(
