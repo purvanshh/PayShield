@@ -23,7 +23,6 @@ Usage:
 import argparse
 import json
 import sys
-import time
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal
@@ -52,7 +51,7 @@ def _make_scorer(redis):
     )
 
 
-async def _seed_train(redis, users, orders, labels):
+async def _seed_train(redis, users, orders, labels):  # noqa: ARG001 - seeded window implies labels
     """Seed user/merchant profiles from the training window only."""
     by_user: dict[str, list] = {}
     for order in orders:
@@ -184,12 +183,16 @@ async def _run(args) -> dict:
         "false_positive_analysis": analysis,
         "config": {"feature_weights": scorer.weights, "risk_tiers": scorer.risk_tiers},
     }
+    import asyncio
     import pathlib
 
-    pathlib.Path("models").mkdir(exist_ok=True)
-    with open("models/return_risk_benchmark_results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"  Results saved to models/return_risk_benchmark_results.json")
+    def _save_results():
+        pathlib.Path("models").mkdir(exist_ok=True)
+        with open("models/return_risk_benchmark_results.json", "w") as f:
+            json.dump(results, f, indent=2)
+
+    await asyncio.to_thread(_save_results)
+    print("  Results saved to models/return_risk_benchmark_results.json")
     print("=" * 60)
     return metrics
 
@@ -212,7 +215,7 @@ def _chronological_split(orders):
     return train, test, test_user_ids
 
 
-def _false_positive_analysis(test_orders, labels, y_pred, y_scores):
+def _false_positive_analysis(test_orders, labels, y_pred, y_scores):  # noqa: ARG001 - labels companion window
     """Breakdown of misclassified orders by user archetype (honesty section)."""
     misclassified = Counter()
     false_positives = Counter()
