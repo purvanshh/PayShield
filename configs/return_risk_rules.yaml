@@ -1,45 +1,78 @@
-# Return-risk rules (Track 02 - Phase 4/6).
+# Return-risk rules (Track 02 - Phase 14).
 #
-# Fed into return_risk/rules_engine.py (Phase 14). Conditions reference the
-# feature names from configs/feature_registry_return.yaml.
+# Fed into return_risk/rules_engine.py. Conditions are Python expressions
+# evaluated against the flattened feature dict produced by
+# return_risk/feature_engine.py (whitelisted builtins only - no injection
+# from config). Feature names follow configs/feature_registry_return.yaml,
+# with a couple of engine-exposed extras (user_cod_orders, user_is_new,
+# txn_amount_risk, txn_time_of_day_risk, merchant_return_rate_30d...).
 
 version: "1.0.0"
 
 rules:
   - rule_id: "R-RULE-01"
     name: "Serial Returner"
-    condition: "user_return_rate_30d > 0.30 AND user_total_orders > 3"
+    description: "User has returned more than 50% of orders with at least 3 orders"
+    condition: "user_serial_returner_flag == True"
     action: "FLAG_FOR_REVIEW"
-    severity: 4
-    description: "User returns >30% of orders across a 30-day window."
+    severity: 5
+    enabled: true
 
   - rule_id: "R-RULE-02"
     name: "High Value Fashion Return"
-    condition: "txn_amount > 3000 AND txn_category == 'fashion' AND user_return_rate_30d > 0.20"
-    action: "REQUIRE_PREPAID_ONLY"
+    description: "High-value fashion order from user with elevated return rate"
+    condition: "float(txn_amount_risk) > 0.3 and float(txn_category_return_baseline) > 0.25 and float(user_return_rate_30d) > 0.20"
+    action: "REQUIRE_PREPAID"
     severity: 4
-    description: "Expensive fashion order for a user with elevated return rate."
+    enabled: true
 
   - rule_id: "R-RULE-03"
-    name: "COD Refusal User"
-    condition: "user_cod_refusal_rate > 0.40"
-    action: "REQUIRE_PREPAID_ONLY"
-    severity: 5
-    description: "User refuses COD more than 40% of the time."
+    name: "COD Refusal Pattern"
+    description: "User has refused multiple COD deliveries"
+    condition: "float(user_cod_refusal_rate) > 0.30 and int(user_cod_orders) > 2"
+    action: "BLOCK_COD"
+    severity: 4
+    enabled: true
 
   - rule_id: "R-RULE-04"
-    name: "Return Burst"
-    condition: "user_return_velocity_7d >= 3"
+    name: "Return Velocity Spike"
+    description: "User has returned 2+ items in the last 7 days"
+    condition: "int(user_return_velocity_7d) >= 2"
     action: "FLAG_FOR_REVIEW"
     severity: 3
-    description: "Three or more returns within a single week."
+    enabled: true
 
   - rule_id: "R-RULE-05"
-    name: "Late Night High-Value New User"
-    condition: "txn_time_of_day_risk > 0.7 AND txn_amount > 5000 AND user_first_return_days == 0 (no history)"
-    action: "CAP_QUANTITY_2"
+    name: "New User High Value"
+    description: "New user placing high-value order"
+    condition: "bool(user_is_new) and float(txn_amount_risk) > 0.5 and float(txn_category_return_baseline) > 0.20"
+    action: "REQUIRE_PREPAID"
+    severity: 3
+    enabled: true
+
+  - rule_id: "R-RULE-06"
+    name: "Merchant Return Rate Elevated"
+    description: "Merchant has higher than normal return rate"
+    condition: "float(merchant_return_rate_30d) > 0.25"
+    action: "FLAG_FOR_REVIEW"
     severity: 2
-    description: "Soft control: cap quantity for unknown users ordering big late at night."
+    enabled: true
+
+  - rule_id: "R-RULE-07"
+    name: "Late Night Order"
+    description: "Order placed during high-risk hours (11 PM - 5 AM)"
+    condition: "float(txn_time_of_day_risk) > 0"
+    action: "FLAG_FOR_REVIEW"
+    severity: 1
+    enabled: true
+
+  - rule_id: "R-RULE-08"
+    name: "Low Risk Profile"
+    description: "User with consistent low return rate and established history"
+    condition: "float(user_return_rate_lifetime) < 0.10 and int(user_total_orders) > 5"
+    action: "ACCEPT"
+    severity: 1
+    enabled: true
 
 risk_tiers:
   LOW:
