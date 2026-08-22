@@ -274,6 +274,25 @@ class FakeSyncRedis:
         self._store.hashes.setdefault(name, {})[key] = value
         return 1
 
+    def hmset(self, key, mapping):
+        self._store.hashes.setdefault(key, {}).update(mapping)
+        return True
+
+    def sadd(self, key, *members):
+        self._store.sets.setdefault(key, set()).update(members)
+        return len(self._store.sets[key])
+
+    def smembers(self, key):
+        return set(self._store.sets.get(key, set()))
+
+    def lpush(self, key, *values):
+        self._store.lists[key] = list(values) + self._store.lists.get(key, [])
+        return len(self._store.lists[key])
+
+    def lrange(self, key, start, stop):
+        items = self._store.lists.get(key, [])
+        return items[start:None if stop == -1 else stop + 1]
+
     def hgetall(self, key):
         return dict(self._store.hashes.get(key, {}))
 
