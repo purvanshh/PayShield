@@ -1,19 +1,19 @@
 """ChargebackRebuttalBuilder tests (Phase 10)."""
+# ruff: noqa: ARG001, ARG002 -- LLM double mirrors the OllamaClient interface
 
 import json
 from datetime import datetime, timedelta
 
 from api.schemas.chargeback import (
     Attachment,
+    DeliveryProof,
     DeviceFingerprint,
     EvidenceBundle,
     MerchantEvidence,
-    DeliveryProof,
     TransactionProof,
 )
 from chargeback.narrative_generator import NarrativeGenerator
 from chargeback.rebuttal_builder import ChargebackRebuttalBuilder
-from tests.fake_redis import FakeRedis
 
 
 class FakeCollector:

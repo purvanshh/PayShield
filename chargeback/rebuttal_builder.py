@@ -20,7 +20,7 @@ required before POST /v1/chargeback/{dispute_id}/submit.
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from api.schemas.chargeback import (
     AuditLogEntry,
@@ -45,8 +45,8 @@ class ChargebackRebuttalBuilder:
         evidence_collector,
         llm_client=None,
         razorpay_client=None,
-        narrative_generator: Optional[NarrativeGenerator] = None,
-        config: Optional[dict] = None,
+        narrative_generator: NarrativeGenerator | None = None,
+        config: dict | None = None,
     ):
         self.evidence_collector = evidence_collector
         self.llm_client = llm_client
@@ -66,7 +66,7 @@ class ChargebackRebuttalBuilder:
         network: str = "UPI",
         reason_code: str = "",
         reason_description: str = "",
-        response_deadline: Optional[datetime] = None,
+        response_deadline: datetime | None = None,
     ) -> ChargebackRebuttalDocument:
         """Build a complete rebuttal document.
 
@@ -79,7 +79,7 @@ class ChargebackRebuttalBuilder:
         6. assemble the document with its audit trail
 
         Raises:
-            ChargebackTransactionNotFound: via the evidence collector when the
+            ChargebackTransactionNotFoundError: via the evidence collector when the
                 transaction is absent from the audit chain. A low-confidence
                 draft is still produced for human review.
         """

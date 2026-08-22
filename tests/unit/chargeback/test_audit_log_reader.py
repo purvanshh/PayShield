@@ -1,7 +1,5 @@
 """AuditLogReader tests (Phase 9) - JSONL chain read-back."""
 
-import json
-from datetime import datetime, timedelta, timezone
 
 from store.audit_log import AuditLogReader, AuditLogWriter
 

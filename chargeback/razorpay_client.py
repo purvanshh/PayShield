@@ -14,7 +14,7 @@ Env overrides: RAZORPAY_API_KEY, RAZORPAY_API_SECRET, RAZORPAY_API_BASE.
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -33,7 +33,7 @@ class RazorpayClient:
         api_key: str = "",
         api_secret: str = "",
         base_url: str = "",
-        transport: Optional[httpx.AsyncBaseTransport] = None,
+        transport: httpx.AsyncBaseTransport | None = None,
         timeout: float = 15.0,
     ):
         self.api_key = api_key or os.getenv("RAZORPAY_API_KEY", "")
@@ -84,7 +84,7 @@ class RazorpayClient:
         return data
 
     async def fetch_merchant_evidence(
-        self, transaction_id: str, dispute_id: str = ""
+        self, transaction_id: str, dispute_id: str = ""  # noqa: ARG002 - Phase 11 wiring
     ) -> dict | None:
         """Placeholder for the Phase 11 merchant evidence wiring.
 

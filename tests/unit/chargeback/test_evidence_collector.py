@@ -1,11 +1,12 @@
 """ChargebackEvidenceCollector tests (Phase 9)."""
+# ruff: noqa: ARG001, ARG002 -- test doubles mirror the collector interfaces
 
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from chargeback.evidence_collector import ChargebackEvidenceCollector
-from chargeback.exceptions import ChargebackTransactionNotFound
+from chargeback.exceptions import ChargebackTransactionNotFoundError
 from store.audit_log import AuditLogReader, AuditLogWriter
 from tests.fake_redis import FakeRedis
 
@@ -65,7 +66,7 @@ class TestChargebackEvidenceCollector:
         try:
             await collector.collect_evidence("TXN_MISSING")
             raised = False
-        except ChargebackTransactionNotFound:
+        except ChargebackTransactionNotFoundError:
             raised = True
         assert raised is True
 
@@ -168,9 +169,8 @@ class TestChargebackEvidenceCollector:
         assert bundle.investigation_report is not None
         assert bundle.investigation_report.summary == "No anomaly"
 
-    async def test_explanation_artifact_fallback(self, tmp_path, monkeypatch, capsys):
-        from chargeback.evidence_collector import ChargebackEvidenceCollector as CEC
-        import os
+    async def test_explanation_artifact_fallback(self, tmp_path):
+        from chargeback.evidence_collector import ChargebackEvidenceCollector
 
         art_dir = tmp_path / "explanations"
         art_dir.mkdir()
@@ -187,8 +187,8 @@ class TestChargebackEvidenceCollector:
                 }
             )
         )
-        collector = CEC(redis=FakeRedis(), audit_reader=AuditLogReader(str(tmp_path / "empty")),
-                        explanation_dir=str(art_dir))
+        collector = ChargebackEvidenceCollector(redis=FakeRedis(), audit_reader=AuditLogReader(str(tmp_path / "empty")),
+                                                explanation_dir=str(art_dir))
         bundle = await collector.collect_evidence(TXN)
         assert bundle.transaction_proof is not None
         assert float(bundle.transaction_proof.amount) == 999.0

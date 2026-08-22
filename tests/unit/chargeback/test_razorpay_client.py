@@ -1,4 +1,5 @@
 """RazorpayClient tests (Phase 10) - httpx MockTransport."""
+# ruff: noqa: ARG001 -- handler doubles ignore the request object
 
 import httpx
 import pytest

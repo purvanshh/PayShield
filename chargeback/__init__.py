@@ -9,15 +9,17 @@ Package layout:
 """
 
 from chargeback.exceptions import (
+    ChargebackDisputeNotFoundError,
     ChargebackError,
-    ChargebackTransactionNotFound,
+    ChargebackTransactionNotFoundError,
     InsufficientEvidenceError,
     RazorpaySubmitError,
 )
 
 __all__ = [
+    "ChargebackDisputeNotFoundError",
     "ChargebackError",
-    "ChargebackTransactionNotFound",
+    "ChargebackTransactionNotFoundError",
     "InsufficientEvidenceError",
     "RazorpaySubmitError",
 ]

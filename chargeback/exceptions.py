@@ -10,11 +10,11 @@ class ChargebackError(Exception):
     """
 
 
-class ChargebackTransactionNotFound(ChargebackError):
+class ChargebackTransactionNotFoundError(ChargebackError):
     """The internal transaction id is absent from the audit chain."""
 
 
-class ChargebackDisputeNotFound(ChargebackError):
+class ChargebackDisputeNotFoundError(ChargebackError):
     """The dispute id is unknown (wrong webhook payload, or outside retention)."""
 
 

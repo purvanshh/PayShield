@@ -1,18 +1,17 @@
 """Import/smoke tests for the chargeback package (Phase 8 hello worlds)."""
 
-import pytest
 
 
 class TestChargebackPackage:
     def test_exceptions_importable(self):
         from chargeback import (
             ChargebackError,
-            ChargebackTransactionNotFound,
+            ChargebackTransactionNotFoundError,
             InsufficientEvidenceError,
             RazorpaySubmitError,
         )
 
-        assert issubclass(ChargebackTransactionNotFound, ChargebackError)
+        assert issubclass(ChargebackTransactionNotFoundError, ChargebackError)
         assert issubclass(InsufficientEvidenceError, ChargebackError)
         assert issubclass(RazorpaySubmitError, ChargebackError)
 

@@ -13,9 +13,10 @@ must reflect point-in-time state, not hindsight.
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 from api.schemas.chargeback import (
     AuditLogEntry,
@@ -28,7 +29,7 @@ from api.schemas.chargeback import (
     TransactionProof,
     VelocityEvidence,
 )
-from chargeback.exceptions import ChargebackTransactionNotFound
+from chargeback.exceptions import ChargebackTransactionNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +69,9 @@ class ChargebackEvidenceCollector:
         redis=None,
         audit_reader=None,
         statistical_filter=None,
-        gnn_engine: Optional[Any] = None,
-        llm_investigator: Optional[Any] = None,
-        merchant_evidence_provider: Optional[Callable[..., Awaitable[dict | None]]] = None,
+        gnn_engine: Any | None = None,
+        llm_investigator: Any | None = None,
+        merchant_evidence_provider: Callable[..., Awaitable[dict | None]] | None = None,
         explanation_dir: str = "models/production/explanations",
     ):
         self.redis = redis
@@ -89,14 +90,14 @@ class ChargebackEvidenceCollector:
         """Collect available evidence for a transaction.
 
         Raises:
-            ChargebackTransactionNotFound: txn missing from the audit chain.
+            ChargebackTransactionNotFoundError: txn missing from the audit chain.
         """
         evidence = EvidenceBundle()
         audit_trail: list[AuditLogEntry] = []
 
         txn_record = await self._load_txn_record(transaction_id)
         if not txn_record:
-            raise ChargebackTransactionNotFound(
+            raise ChargebackTransactionNotFoundError(
                 f"Transaction {transaction_id} not found in audit log"
             )
 
@@ -106,7 +107,7 @@ class ChargebackEvidenceCollector:
         evidence.benford_evidence = await self._collect_l1_benford(txn_record)
         audit_trail.append(
             AuditLogEntry(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 action="L1_EVIDENCE_COLLECTED",
                 agent="transaction_agent",
                 detail=f"rules={txn_record.get('triggered_rules', [])}",
@@ -119,7 +120,7 @@ class ChargebackEvidenceCollector:
             evidence.graph_evidence = graph
             audit_trail.append(
                 AuditLogEntry(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     action="L2_GRAPH_ANALYZED",
                     agent="graph_model",
                     detail=f"gnn_score={graph.gnn_score}",
@@ -132,7 +133,7 @@ class ChargebackEvidenceCollector:
             evidence.investigation_report = l3
             audit_trail.append(
                 AuditLogEntry(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     action="L3_NARRATIVE_GENERATED",
                     agent="llm_investigator",
                     detail=f"quality={l3.quality_score}",
@@ -147,7 +148,7 @@ class ChargebackEvidenceCollector:
         if evidence.device_fingerprint is None:
             audit_trail.append(
                 AuditLogEntry(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     action="DEVICE_LOOKUP_MISSED",
                     agent="transaction_agent",
                     detail="device not in index",
@@ -164,7 +165,7 @@ class ChargebackEvidenceCollector:
                     evidence.merchant_evidence = MerchantEvidence.model_validate(merchant)
                     audit_trail.append(
                         AuditLogEntry(
-                            timestamp=datetime.now(timezone.utc),
+                            timestamp=datetime.now(UTC),
                             action="MERCHANT_EVIDENCE_COLLECTED",
                             agent="merchant_api",
                             detail="delivery/comms evidence merged",
@@ -393,7 +394,7 @@ class ChargebackEvidenceCollector:
                 record["timestamp"].replace("Z", "+00:00")
             )
             if isinstance(record.get("timestamp"), str) and record.get("timestamp")
-            else datetime.now(timezone.utc),
+            else datetime.now(UTC),
             amount=_as_decimal(record.get("amount", 0)),
             currency="INR",
             payment_method="UPI",

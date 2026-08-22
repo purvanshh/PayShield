@@ -15,7 +15,6 @@ import logging
 import re
 from inspect import isawaitable
 from pathlib import Path
-from typing import Any, Optional
 
 from jinja2 import Environment, FileSystemLoader
 
