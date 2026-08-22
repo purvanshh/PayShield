@@ -93,14 +93,18 @@ class FeatureContribution(BaseModel):
     value: Any
     weight: float
     contribution: float
+    normalized_value: float | None = None
+    source: str = "unknown"
 
 
 class RuleTriggered(BaseModel):
     rule_id: str
     name: str
-    condition: str
-    triggered: bool
-    action: str
+    condition: str = ""
+    triggered: bool = True
+    action: str = ""
+    severity: int = 0
+    description: str = ""
 
 
 class ReturnUserProfile(BaseModel):

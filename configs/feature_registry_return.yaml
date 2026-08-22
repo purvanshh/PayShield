@@ -20,7 +20,7 @@ composite_weights:
   merchant_return_rate_30d: 0.15
   txn_category_return_baseline: 0.15
   txn_amount_risk: 0.10
-  txn_cod_refusal_rate: 0.10
+  user_cod_refusal_rate: 0.10
   user_return_velocity_7d: 0.05
 
 features:
