@@ -1,0 +1,1735 @@
+{
+  "users": [
+    {
+      "user_id": "U_5be6128e",
+      "user_type": "honest",
+      "name": "Aishani Bassi",
+      "email": "hyadav@example.com",
+      "phone": "+918495931034",
+      "city": "Muzaffarpur",
+      "return_rate": 0.07567729011266215,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_47294739",
+      "user_type": "honest",
+      "name": "Janya Gaba",
+      "email": "isha34@example.net",
+      "phone": "1928327648",
+      "city": "Anantapur",
+      "return_rate": 0.06923370979034532,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_0e51f30d",
+      "user_type": "honest",
+      "name": "Azad Mutti",
+      "email": "eloyal@example.org",
+      "phone": "5376724238",
+      "city": "Bhimavaram",
+      "return_rate": 0.13217372039881714,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_663f1c97",
+      "user_type": "honest",
+      "name": "Theodore Devi",
+      "email": "wchand@example.org",
+      "phone": "+912269166978",
+      "city": "Begusarai",
+      "return_rate": 0.0586115437670228,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_ae270da7",
+      "user_type": "honest",
+      "name": "Amara Oak",
+      "email": "memonradhika@example.org",
+      "phone": "00482814893",
+      "city": "Dindigul",
+      "return_rate": 0.07066646487428688,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_f4188f3f",
+      "user_type": "honest",
+      "name": "Ekiya Suresh",
+      "email": "choudhuryjanani@example.com",
+      "phone": "+910391171822",
+      "city": "Jamalpur",
+      "return_rate": 0.08229682321016399,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_df57c59a",
+      "user_type": "honest",
+      "name": "Siddharth Zacharia",
+      "email": "devikarastogi@example.net",
+      "phone": "5787133150",
+      "city": "Giridih",
+      "return_rate": 0.08186314145131543,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_b535106e",
+      "user_type": "honest",
+      "name": "Veer Bir",
+      "email": "narayananekavir@example.net",
+      "phone": "+914738299737",
+      "city": "Jhansi",
+      "return_rate": 0.12664592494388618,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_6e595ed3",
+      "user_type": "honest",
+      "name": "Pallavi Roy",
+      "email": "rbhagat@example.net",
+      "phone": "1065133387",
+      "city": "Bhusawal",
+      "return_rate": 0.08235880737747388,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_3ff350bf",
+      "user_type": "honest",
+      "name": "Saanvi Chaudhari",
+      "email": "zachariahalexander@example.org",
+      "phone": "+912677360260",
+      "city": "Bilaspur",
+      "return_rate": 0.023282514251572357,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_747b6dba",
+      "user_type": "honest",
+      "name": "Pallavi Sur",
+      "email": "ranveerminhas@example.org",
+      "phone": "+919805009788",
+      "city": "Howrah",
+      "return_rate": 0.10567109779029714,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_d9f195d0",
+      "user_type": "honest",
+      "name": "Ekapad Bir",
+      "email": "netradar@example.net",
+      "phone": "+919909169985",
+      "city": "Kurnool",
+      "return_rate": 0.0748687716287153,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_3d1a85dd",
+      "user_type": "honest",
+      "name": "Meghana Deep",
+      "email": "tanvi51@example.org",
+      "phone": "09911838425",
+      "city": "Sambalpur",
+      "return_rate": 0.08875251685677794,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_702cdd20",
+      "user_type": "honest",
+      "name": "Abhiram Mistry",
+      "email": "desaiaishani@example.org",
+      "phone": "+918244935348",
+      "city": "Chandrapur",
+      "return_rate": 0.12373917372766238,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_0d01280f",
+      "user_type": "honest",
+      "name": "Pallavi Malhotra",
+      "email": "aggarwalgauri@example.org",
+      "phone": "4278680112",
+      "city": "Uluberia",
+      "return_rate": 0.04478093976316247,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_6e068097",
+      "user_type": "honest",
+      "name": "Benjamin Morar",
+      "email": "balveer53@example.net",
+      "phone": "+911586923226",
+      "city": "Mangalore",
+      "return_rate": 0.09933909832361357,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_c84a7b28",
+      "user_type": "honest",
+      "name": "Yuvraj Loke",
+      "email": "hritikraja@example.org",
+      "phone": "03375433036",
+      "city": "Alwar",
+      "return_rate": 0.07103003823113349,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_c5f8bc16",
+      "user_type": "honest",
+      "name": "Indali Upadhyay",
+      "email": "vyadav@example.org",
+      "phone": "+914294019655",
+      "city": "Medininagar",
+      "return_rate": 0.040932145515768986,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_629c2ae3",
+      "user_type": "honest",
+      "name": "Aachal Basu",
+      "email": "hagarwal@example.net",
+      "phone": "3561595148",
+      "city": "Alappuzha",
+      "return_rate": 0.14653718883152062,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_4bb00f20",
+      "user_type": "honest",
+      "name": "Rehaan Salvi",
+      "email": "nghosh@example.net",
+      "phone": "06804436995",
+      "city": "Mango",
+      "return_rate": 0.11359651479604946,
+      "order_frequency_days": 14,
+      "avg_order_value": 2500,
+      "return_reason_distribution": {
+        "DEFECTIVE": 0.4,
+        "SIZE_ISSUE": 0.3,
+        "CHANGED_MIND": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_82dc4c8e",
+      "user_type": "casual_returner",
+      "name": "Omkaar Chad",
+      "email": "yutika95@example.org",
+      "phone": "+914332003791",
+      "city": "Vijayanagaram",
+      "return_rate": 0.29804813985656153,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_31c681ec",
+      "user_type": "casual_returner",
+      "name": "Warda Ratta",
+      "email": "manbirahluwalia@example.org",
+      "phone": "03287083172",
+      "city": "Bettiah",
+      "return_rate": 0.2967727379426547,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_513a7052",
+      "user_type": "casual_returner",
+      "name": "Yamini Sandhu",
+      "email": "vdutt@example.com",
+      "phone": "04348734714",
+      "city": "Darbhanga",
+      "return_rate": 0.22998547292835528,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_8a476a87",
+      "user_type": "casual_returner",
+      "name": "Lakshit Dora",
+      "email": "leeladua@example.net",
+      "phone": "+911665876036",
+      "city": "Bhimavaram",
+      "return_rate": 0.2545207884903596,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_db52ca58",
+      "user_type": "casual_returner",
+      "name": "Vansha Ahuja",
+      "email": "chanchal66@example.net",
+      "phone": "8937346706",
+      "city": "Machilipatnam",
+      "return_rate": 0.16883883707255137,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_77a6e17c",
+      "user_type": "casual_returner",
+      "name": "Avi Ramesh",
+      "email": "chackopriya@example.org",
+      "phone": "02046537556",
+      "city": "Bidar",
+      "return_rate": 0.34649314644133694,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_78660765",
+      "user_type": "casual_returner",
+      "name": "Charles Palla",
+      "email": "ekapadbaria@example.org",
+      "phone": "+913092327193",
+      "city": "Bardhaman",
+      "return_rate": 0.21918608734639006,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_9b1bc895",
+      "user_type": "casual_returner",
+      "name": "Nihal Mukhopadhyay",
+      "email": "baldevika@example.net",
+      "phone": "6631931491",
+      "city": "Sri Ganganagar",
+      "return_rate": 0.21762250001369987,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_5eddbbbf",
+      "user_type": "casual_returner",
+      "name": "Yashawini Om",
+      "email": "salvivrishti@example.org",
+      "phone": "05726284987",
+      "city": "Junagadh",
+      "return_rate": 0.18869604204946136,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_44b591f7",
+      "user_type": "casual_returner",
+      "name": "Yatan Chadha",
+      "email": "shravya37@example.net",
+      "phone": "6507527354",
+      "city": "Parbhani",
+      "return_rate": 0.3139335755676726,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_e14eb70d",
+      "user_type": "casual_returner",
+      "name": "Advaith Varughese",
+      "email": "frederickkhurana@example.net",
+      "phone": "07837770143",
+      "city": "Latur",
+      "return_rate": 0.2580778081414914,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_5e781fd7",
+      "user_type": "casual_returner",
+      "name": "Hemangini Sandal",
+      "email": "indira74@example.com",
+      "phone": "03135182337",
+      "city": "Giridih",
+      "return_rate": 0.30784670637749845,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_98c7472a",
+      "user_type": "casual_returner",
+      "name": "Harish Hari",
+      "email": "utkarsh52@example.com",
+      "phone": "+918240084271",
+      "city": "Chapra",
+      "return_rate": 0.21901655396588784,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_70c2903f",
+      "user_type": "casual_returner",
+      "name": "Qarin Behl",
+      "email": "vanya11@example.com",
+      "phone": "01902294131",
+      "city": "Medininagar",
+      "return_rate": 0.2636062813111844,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_39c6a1ca",
+      "user_type": "casual_returner",
+      "name": "Shravya Savant",
+      "email": "pushti49@example.net",
+      "phone": "+919133412328",
+      "city": "Sangli-Miraj & Kupwad",
+      "return_rate": 0.17722577863447653,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_b07aa066",
+      "user_type": "casual_returner",
+      "name": "Bishakha Bali",
+      "email": "bhavyamandal@example.net",
+      "phone": "01349361832",
+      "city": "Ajmer",
+      "return_rate": 0.19056242787703997,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_cae9b4a7",
+      "user_type": "casual_returner",
+      "name": "Bhavya Sarna",
+      "email": "sidhudaksha@example.net",
+      "phone": "04887719065",
+      "city": "Indore",
+      "return_rate": 0.2570216827296228,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_ac9ed156",
+      "user_type": "casual_returner",
+      "name": "Amruta Baria",
+      "email": "upmavenkataraman@example.net",
+      "phone": "04296717565",
+      "city": "Vasai-Virar",
+      "return_rate": 0.25360336455086285,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_6961929e",
+      "user_type": "casual_returner",
+      "name": "Bhavya Rattan",
+      "email": "shagaurang@example.com",
+      "phone": "05168087603",
+      "city": "Panchkula",
+      "return_rate": 0.18235341274017502,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_0d366dfc",
+      "user_type": "casual_returner",
+      "name": "Amara Deep",
+      "email": "raksha71@example.org",
+      "phone": "9324808613",
+      "city": "Surendranagar Dudhrej",
+      "return_rate": 0.2827067207013718,
+      "order_frequency_days": 10,
+      "avg_order_value": 3500,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.4,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_d50755d9",
+      "user_type": "serial_returner",
+      "name": "Wishi Manne",
+      "email": "ojasvi77@example.org",
+      "phone": "08263982146",
+      "city": "Guna",
+      "return_rate": 0.5194662427198551,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_486822b9",
+      "user_type": "serial_returner",
+      "name": "Vrishti Dixit",
+      "email": "eyohannan@example.com",
+      "phone": "08867533963",
+      "city": "Varanasi",
+      "return_rate": 0.4598428427586342,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_b489d070",
+      "user_type": "serial_returner",
+      "name": "Libni Doshi",
+      "email": "ibansal@example.net",
+      "phone": "5171870262",
+      "city": "Nandyal",
+      "return_rate": 0.6833988521665986,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_56abf2f1",
+      "user_type": "serial_returner",
+      "name": "Faris Narasimhan",
+      "email": "onadig@example.net",
+      "phone": "08091343161",
+      "city": "Raiganj",
+      "return_rate": 0.5849040710376197,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_e746ccb9",
+      "user_type": "serial_returner",
+      "name": "Chakradhar Nair",
+      "email": "memonjagrati@example.com",
+      "phone": "02386922219",
+      "city": "Udupi",
+      "return_rate": 0.7484562713449789,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_e9af299d",
+      "user_type": "serial_returner",
+      "name": "Vincent Shenoy",
+      "email": "tripti40@example.com",
+      "phone": "08217594647",
+      "city": "Davanagere",
+      "return_rate": 0.637127592106558,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_7bb38605",
+      "user_type": "serial_returner",
+      "name": "Warjas Raj",
+      "email": "chakrika40@example.net",
+      "phone": "04090974395",
+      "city": "Jhansi",
+      "return_rate": 0.8593776649186836,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_c16d83ed",
+      "user_type": "serial_returner",
+      "name": "Gunbir Baral",
+      "email": "ridhi09@example.com",
+      "phone": "2145623285",
+      "city": "Dehradun",
+      "return_rate": 0.7194359480417479,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_f1b64afe",
+      "user_type": "serial_returner",
+      "name": "Chakrika Nigam",
+      "email": "sidhufaqid@example.org",
+      "phone": "+916851604817",
+      "city": "Firozabad",
+      "return_rate": 0.6289152137813854,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_a377f6f1",
+      "user_type": "serial_returner",
+      "name": "Hritik Kaur",
+      "email": "nbakshi@example.net",
+      "phone": "09317461200",
+      "city": "Kumbakonam",
+      "return_rate": 0.5502738006807633,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_e3236d1a",
+      "user_type": "serial_returner",
+      "name": "Lipika Setty",
+      "email": "oni92@example.com",
+      "phone": "1796405377",
+      "city": "Mirzapur",
+      "return_rate": 0.48792416117029813,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_5e09a9ee",
+      "user_type": "serial_returner",
+      "name": "Darsh Rao",
+      "email": "ranveer17@example.org",
+      "phone": "3900532931",
+      "city": "Dharmavaram",
+      "return_rate": 0.5949021567722962,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_3ba5cd2f",
+      "user_type": "serial_returner",
+      "name": "Manbir Agate",
+      "email": "maanav28@example.com",
+      "phone": "+911020539502",
+      "city": "Faridabad",
+      "return_rate": 0.7417204690279443,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_86ad8a8c",
+      "user_type": "serial_returner",
+      "name": "Devansh Soni",
+      "email": "gpathak@example.net",
+      "phone": "+917839084700",
+      "city": "Rewa",
+      "return_rate": 0.6773698000180779,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_7d824264",
+      "user_type": "serial_returner",
+      "name": "Ethan Buch",
+      "email": "manbir12@example.com",
+      "phone": "9856984789",
+      "city": "Navi Mumbai",
+      "return_rate": 0.7348300280862922,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_da509fed",
+      "user_type": "serial_returner",
+      "name": "Qushi Seth",
+      "email": "odikanori@example.com",
+      "phone": "06156545271",
+      "city": "Guwahati",
+      "return_rate": 0.747209331628634,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_be9d61ee",
+      "user_type": "serial_returner",
+      "name": "Kalpit Bhasin",
+      "email": "jason65@example.net",
+      "phone": "00494519832",
+      "city": "Rajahmundry",
+      "return_rate": 0.7704475653956299,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_d86a6460",
+      "user_type": "serial_returner",
+      "name": "Ishwar Mallick",
+      "email": "pushtibal@example.net",
+      "phone": "4024455022",
+      "city": "Coimbatore",
+      "return_rate": 0.6852116138658124,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_f8c88fae",
+      "user_type": "serial_returner",
+      "name": "Gavin Wali",
+      "email": "krishasaini@example.com",
+      "phone": "02545991022",
+      "city": "Jodhpur",
+      "return_rate": 0.5784592602868751,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_6c8c3b6a",
+      "user_type": "serial_returner",
+      "name": "Riya Sachdeva",
+      "email": "tanveer81@example.com",
+      "phone": "01497840369",
+      "city": "Chennai",
+      "return_rate": 0.5779839403419765,
+      "order_frequency_days": 7,
+      "avg_order_value": 4500,
+      "return_reason_distribution": {
+        "CHANGED_MIND": 0.5,
+        "SIZE_ISSUE": 0.3,
+        "DEFECTIVE": 0.1,
+        "OTHER": 0.1
+      }
+    },
+    {
+      "user_id": "U_36136e15",
+      "user_type": "fraud_returner",
+      "name": "Aadhya Mann",
+      "email": "jagdish07@example.net",
+      "phone": "02268388516",
+      "city": "Junagadh",
+      "return_rate": 0.8971673659992048,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_13eecdc6",
+      "user_type": "fraud_returner",
+      "name": "Pushti Ravel",
+      "email": "hmann@example.com",
+      "phone": "+915297516136",
+      "city": "Loni",
+      "return_rate": 0.9439088297924334,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_4f6e274b",
+      "user_type": "fraud_returner",
+      "name": "Timothy Nath",
+      "email": "farajuppal@example.net",
+      "phone": "+918835523124",
+      "city": "Malegaon",
+      "return_rate": 0.7732489356309274,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_c257cf73",
+      "user_type": "fraud_returner",
+      "name": "Peter Tak",
+      "email": "rsen@example.net",
+      "phone": "9552717744",
+      "city": "Nagercoil",
+      "return_rate": 0.8836720585222906,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_7634c169",
+      "user_type": "fraud_returner",
+      "name": "Baljiwan Bhandari",
+      "email": "bhavini11@example.net",
+      "phone": "8679807935",
+      "city": "Orai",
+      "return_rate": 0.790693711648234,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_73557b9d",
+      "user_type": "fraud_returner",
+      "name": "Hemal Chad",
+      "email": "balveerkota@example.net",
+      "phone": "07889255466",
+      "city": "Khora ",
+      "return_rate": 0.9062414715058552,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_a5b5cdc2",
+      "user_type": "fraud_returner",
+      "name": "Dominic Narayan",
+      "email": "rajubhanumati@example.com",
+      "phone": "9251925462",
+      "city": "Tirupati",
+      "return_rate": 0.8382583424090114,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_caaa5bbe",
+      "user_type": "fraud_returner",
+      "name": "Joshua Vyas",
+      "email": "sampathyashoda@example.com",
+      "phone": "+915423573322",
+      "city": "Sagar",
+      "return_rate": 0.7994132351969383,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_81f7f3fb",
+      "user_type": "fraud_returner",
+      "name": "Gayathri Deep",
+      "email": "kdube@example.org",
+      "phone": "9270653794",
+      "city": "Muzaffarpur",
+      "return_rate": 0.8001086903845587,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_f7315749",
+      "user_type": "fraud_returner",
+      "name": "Rishi Pillai",
+      "email": "xshenoy@example.com",
+      "phone": "08862392407",
+      "city": "Begusarai",
+      "return_rate": 0.8433354310273082,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_d88c656d",
+      "user_type": "fraud_returner",
+      "name": "Bhavani Chacko",
+      "email": "anjalisengupta@example.net",
+      "phone": "+916137506068",
+      "city": "Noida",
+      "return_rate": 0.8182672321481306,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_5ffa46ef",
+      "user_type": "fraud_returner",
+      "name": "Ayaan Nagar",
+      "email": "nayakmadhav@example.org",
+      "phone": "+914727790104",
+      "city": "Jalgaon",
+      "return_rate": 0.7817373761842876,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_9bdf90f2",
+      "user_type": "fraud_returner",
+      "name": "Indrajit Mani",
+      "email": "charvidara@example.org",
+      "phone": "+916971179808",
+      "city": "Asansol",
+      "return_rate": 0.8701749989764216,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_9d642932",
+      "user_type": "fraud_returner",
+      "name": "Wridesh Saha",
+      "email": "frederickviswanathan@example.com",
+      "phone": "+918888806706",
+      "city": "Nizamabad",
+      "return_rate": 0.7164163329368911,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_c9dc72b8",
+      "user_type": "fraud_returner",
+      "name": "Hemani Khosla",
+      "email": "natarajankiaan@example.org",
+      "phone": "08527722170",
+      "city": "Panihati",
+      "return_rate": 0.8326734446163331,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_e2c328aa",
+      "user_type": "fraud_returner",
+      "name": "Diya Mukherjee",
+      "email": "qsolanki@example.org",
+      "phone": "3450541566",
+      "city": "Kharagpur",
+      "return_rate": 0.8261457109889063,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_7f072cb9",
+      "user_type": "fraud_returner",
+      "name": "Jhalak Venkataraman",
+      "email": "fitan61@example.com",
+      "phone": "2845115447",
+      "city": "Rourkela",
+      "return_rate": 0.6815209651863838,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_727716ec",
+      "user_type": "fraud_returner",
+      "name": "Ira Saran",
+      "email": "dakshesh16@example.com",
+      "phone": "2029702135",
+      "city": "Yamunanagar",
+      "return_rate": 0.9090408253217572,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_9ae77eab",
+      "user_type": "fraud_returner",
+      "name": "Shivani Prabhakar",
+      "email": "sachi19@example.org",
+      "phone": "5654310278",
+      "city": "Kishanganj",
+      "return_rate": 0.7735642979239021,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_42a259a6",
+      "user_type": "fraud_returner",
+      "name": "Tanish Mangal",
+      "email": "hiyengar@example.org",
+      "phone": "+917271551884",
+      "city": "Sangli-Miraj & Kupwad",
+      "return_rate": 0.905137498862624,
+      "order_frequency_days": 5,
+      "avg_order_value": 6000,
+      "return_reason_distribution": {
+        "EMPTY_BOX": 0.3,
+        "DAMAGED": 0.3,
+        "WRONG_ITEM": 0.2,
+        "CHANGED_MIND": 0.2
+      }
+    },
+    {
+      "user_id": "U_b34191b8",
+      "user_type": "new_user",
+      "name": "Janaki Trivedi",
+      "email": "jairajiyer@example.org",
+      "phone": "+917058957829",
+      "city": "Amritsar",
+      "return_rate": 0.014825509239820733,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_b788f5d1",
+      "user_type": "new_user",
+      "name": "Nirja Rout",
+      "email": "dassedhitha@example.net",
+      "phone": "+917785289226",
+      "city": "Amravati",
+      "return_rate": 0.08879378921952943,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_2a26f770",
+      "user_type": "new_user",
+      "name": "Ekantika Kar",
+      "email": "zilmil41@example.com",
+      "phone": "+918424981829",
+      "city": "Tirunelveli",
+      "return_rate": 0.06553819668349423,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_e6e987ca",
+      "user_type": "new_user",
+      "name": "Benjamin Balakrishnan",
+      "email": "bathalka@example.net",
+      "phone": "+919690784473",
+      "city": "Bihar Sharif",
+      "return_rate": 0.20343785564994432,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_0f5675f8",
+      "user_type": "new_user",
+      "name": "Ria Sagar",
+      "email": "nshetty@example.com",
+      "phone": "2555625881",
+      "city": "New Delhi",
+      "return_rate": 0.1938409689580385,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_7318b96d",
+      "user_type": "new_user",
+      "name": "Lohit Chatterjee",
+      "email": "mannanleena@example.net",
+      "phone": "03259532787",
+      "city": "Aizawl",
+      "return_rate": 0.027217633027855126,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_f1fac6e7",
+      "user_type": "new_user",
+      "name": "Yashasvi Shankar",
+      "email": "tanveerpandit@example.org",
+      "phone": "+914797480162",
+      "city": "Ambarnath",
+      "return_rate": 0.05560489704772678,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_0b95017c",
+      "user_type": "new_user",
+      "name": "Charan Hayer",
+      "email": "bhavya16@example.net",
+      "phone": "08499121655",
+      "city": "Asansol",
+      "return_rate": 0.0,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_66c14dca",
+      "user_type": "new_user",
+      "name": "Chakradev Barad",
+      "email": "gaurisom@example.net",
+      "phone": "02982595269",
+      "city": "Guntakal",
+      "return_rate": 0.23725036399547034,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_827c9f8c",
+      "user_type": "new_user",
+      "name": "Chandani Soman",
+      "email": "pillaygarima@example.net",
+      "phone": "+916940974993",
+      "city": "Ballia",
+      "return_rate": 0.0,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_a107cc46",
+      "user_type": "new_user",
+      "name": "Manbir Kibe",
+      "email": "choudharyrayaan@example.org",
+      "phone": "05626368970",
+      "city": "Kadapa",
+      "return_rate": 0.07731138389005067,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_ff84faef",
+      "user_type": "new_user",
+      "name": "Krisha Murthy",
+      "email": "triptiwalia@example.com",
+      "phone": "5497334843",
+      "city": "Tumkur",
+      "return_rate": 0.2904163655357069,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_b47a1c5b",
+      "user_type": "new_user",
+      "name": "Edhitha Srinivasan",
+      "email": "anusha41@example.net",
+      "phone": "8665240415",
+      "city": "Bardhaman",
+      "return_rate": 0.1677350059000572,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_33baba88",
+      "user_type": "new_user",
+      "name": "Anita Devan",
+      "email": "khatrixavier@example.org",
+      "phone": "8330165712",
+      "city": "Jamalpur",
+      "return_rate": 0.1310307834267616,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_682b163a",
+      "user_type": "new_user",
+      "name": "Vansha Iyengar",
+      "email": "ekani40@example.org",
+      "phone": "9380262067",
+      "city": "Ramagundam",
+      "return_rate": 0.052876719098757435,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_4c636e95",
+      "user_type": "new_user",
+      "name": "Gautami Mane",
+      "email": "fviswanathan@example.org",
+      "phone": "7431527420",
+      "city": "Sagar",
+      "return_rate": 0.07284782521327353,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_317304b5",
+      "user_type": "new_user",
+      "name": "Nidra Sane",
+      "email": "gabriel61@example.org",
+      "phone": "+917530463745",
+      "city": "Ballia",
+      "return_rate": 0.1644619436085159,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_42f525b9",
+      "user_type": "new_user",
+      "name": "Warinder Bhatia",
+      "email": "shroffdamyanti@example.org",
+      "phone": "08414593327",
+      "city": "Malda",
+      "return_rate": 0.19379126502488617,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_5fa5e0aa",
+      "user_type": "new_user",
+      "name": "Urishilla Yogi",
+      "email": "yugbumb@example.net",
+      "phone": "08519108839",
+      "city": "Dehradun",
+      "return_rate": 0.13247179389396407,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    },
+    {
+      "user_id": "U_711c7673",
+      "user_type": "new_user",
+      "name": "Samesh Suresh",
+      "email": "uppalsanaya@example.org",
+      "phone": "02867908740",
+      "city": "Rohtak",
+      "return_rate": 0.15509712655806374,
+      "order_frequency_days": 30,
+      "avg_order_value": 2000,
+      "return_reason_distribution": {
+        "SIZE_ISSUE": 0.5,
+        "CHANGED_MIND": 0.3,
+        "DEFECTIVE": 0.2
+      }
+    }
+  ],
+  "merchants": [
+    {
+      "merchant_id": "M_bdd640fb",
+      "merchant_type": "fashion_retailer",
+      "name": "Konda-Kapoor",
+      "category": "fashion",
+      "return_rate": 0.3,
+      "avg_order_value": 3000
+    },
+    {
+      "merchant_id": "M_ad3c2d6d",
+      "merchant_type": "electronics_store",
+      "name": "Chahal, Sami and Balay",
+      "category": "electronics",
+      "return_rate": 0.12,
+      "avg_order_value": 8000
+    },
+    {
+      "merchant_id": "M_3b8faa18",
+      "merchant_type": "grocery_chain",
+      "name": "Bala, Issac and Saini",
+      "category": "groceries",
+      "return_rate": 0.04,
+      "avg_order_value": 800
+    },
+    {
+      "merchant_id": "M_47378190",
+      "merchant_type": "home_decor",
+      "name": "Dutta Ltd",
+      "category": "home",
+      "return_rate": 0.18,
+      "avg_order_value": 2500
+    },
+    {
+      "merchant_id": "M_27cd8130",
+      "merchant_type": "beauty_brand",
+      "name": "Nayar Inc",
+      "category": "beauty",
+      "return_rate": 0.15,
+      "avg_order_value": 1500
+    }
+  ],
+  "orders_count": 2000,
+  "metadata": {
+    "generated_at": "2026-08-21T00:00:00",
+    "num_users": 100,
+    "num_orders": 2000,
+    "seed": 42,
+    "orders_per_user": 20,
+    "num_users_per_type": 20
+  }
+}

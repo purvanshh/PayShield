@@ -269,3 +269,30 @@ class FakeSyncRedis:
     def setex(self, key, ttl, value):
         self._store.strings[key] = value
         return True
+
+    def hset(self, name, key, value):
+        self._store.hashes.setdefault(name, {})[key] = value
+        return 1
+
+    def hgetall(self, key):
+        return dict(self._store.hashes.get(key, {}))
+
+    def hget(self, key, field):
+        return self._store.hashes.get(key, {}).get(field)
+
+    def hincrby(self, key, field, amount=1):
+        hash_store = self._store.hashes.setdefault(key, {})
+        hash_store[field] = str(int(hash_store.get(field, 0)) + amount)
+        return int(hash_store[field])
+
+    def zadd(self, key, mapping):
+        zset = self._store.zsets.setdefault(key, {})
+        zset.update(mapping)
+        return len(zset)
+
+    def zrangebyscore(self, key, min_, max_):
+        zset = self._store.zsets.get(key, {})
+        return sorted((m for m, s in zset.items() if min_ <= s <= max_), key=lambda m: zset[m])
+
+    def zscore(self, key, member):
+        return self._store.zsets.get(key, {}).get(member)
