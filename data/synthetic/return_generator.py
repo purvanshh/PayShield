@@ -160,10 +160,10 @@ class ReturnRiskSyntheticGenerator:
         merchants = []
         all_orders: list[dict[str, Any]] = []
 
-        for mtype in self.MERCHANT_TYPES.keys():
+        for mtype in self.MERCHANT_TYPES:
             merchants.append(self.generate_merchant(mtype))
 
-        for user_type in self.USER_TYPES.keys():
+        for user_type in self.USER_TYPES:
             for _ in range(num_users_per_type):
                 user = self.generate_user(user_type)
                 users.append(user)
