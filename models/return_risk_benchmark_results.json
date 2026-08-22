@@ -1,6 +1,6 @@
 {
   "benchmark_type": "return_risk",
-  "timestamp": "2026-08-21T17:36:31.585110",
+  "timestamp": "2026-08-21T17:37:34.976353",
   "dataset": {
     "total_orders": 10000,
     "train_orders": 8000,
