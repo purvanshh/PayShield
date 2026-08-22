@@ -1,6 +1,5 @@
 import logging
-from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,7 +11,13 @@ try:
 except ImportError:
     yaml = None
 
-from api.auth import AuthManager, UserPrincipal
+try:
+    from api.auth import auth_manager as _auth_manager
+
+    _auth_available = True
+except ImportError:
+    _auth_available = False
+    _auth_manager = None
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -23,10 +28,11 @@ async def get_current_user(
 ) -> Any:
     if credentials is None and x_api_key is None:
         raise HTTPException(status_code=401, detail="Missing authentication credentials")
-    auth = AuthManager()
-    principal = auth.verify_access_token(credentials.credentials) if credentials else None
+    if not _auth_available or _auth_manager is None:
+        raise HTTPException(status_code=401, detail="Authentication not configured")
+    principal = _auth_manager.verify_access_token(credentials.credentials) if credentials else None
     if principal is None:
-        principal = auth.verify_api_key((credentials.credentials if credentials else x_api_key) or "")
+        principal = _auth_manager.verify_api_key((credentials.credentials if credentials else x_api_key) or "")
     if principal is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return principal
@@ -40,10 +46,14 @@ class RBACEnforcer:
     def _load_config(self, path: str):
         if yaml is None:
             self._matrix = {
-                "analyst": ["score:read", "investigation:read", "feedback:write"],
+                "analyst": ["score:read", "investigation:read", "feedback:write",
+                            "chargeback:read", "return_risk:read"],
                 "admin": ["score:read", "investigation:read", "feedback:write",
-                          "rule:write", "model:promote", "agent:manage"],
-                "system": ["score:write", "metrics:read", "health:read"],
+                          "rule:write", "model:promote", "agent:manage",
+                          "chargeback:read", "chargeback:write", "chargeback:admin",
+                          "return_risk:read"],
+                "system": ["score:write", "metrics:read", "health:read",
+                           "chargeback:read", "chargeback:write", "return_risk:read"],
             }
             return
         try:
@@ -52,10 +62,14 @@ class RBACEnforcer:
             self._matrix = data.get("roles", self._matrix)
         except FileNotFoundError:
             self._matrix = {
-                "analyst": ["score:read", "investigation:read", "feedback:write"],
+                "analyst": ["score:read", "investigation:read", "feedback:write",
+                            "chargeback:read", "return_risk:read"],
                 "admin": ["score:read", "investigation:read", "feedback:write",
-                          "rule:write", "model:promote", "agent:manage"],
-                "system": ["score:write", "metrics:read", "health:read"],
+                          "rule:write", "model:promote", "agent:manage",
+                          "chargeback:read", "chargeback:write", "chargeback:admin",
+                          "return_risk:read"],
+                "system": ["score:write", "metrics:read", "health:read",
+                           "chargeback:read", "chargeback:write", "return_risk:read"],
             }
 
     def has_permission(self, principal: Any, resource: str, action: str) -> bool:

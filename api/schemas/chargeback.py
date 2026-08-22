@@ -263,6 +263,8 @@ class EvidenceOverride(BaseModel):
 class ChargebackRespondRequest(BaseModel):
     dispute_id: str
     payment_id: str
+    transaction_id: str
+    network: NetworkName = "UPI"
     auto_submit: bool = False
     evidence_override: EvidenceOverride | None = None
     reason_code: str | None = None
