@@ -40,6 +40,21 @@ CRITICAL_FEATURES = [
     "txn_category_return_baseline",
 ]
 
+# Rule-based score adjustments (Phase 15 design note): rules carry domain
+# knowledge - a proven COD-refusal pattern, a serial-returner flag, a
+# velocity spike - which is why fired rules nudge the composite rather than
+# only flagging. Total adjustment is capped so stacking rules never drowns
+# the weighted signal.
+RULE_BOOST = {
+    "R-RULE-01": 0.15,  # serial returner
+    "R-RULE-02": 0.10,  # high-value fashion order
+    "R-RULE-03": 0.15,  # COD refusal pattern
+    "R-RULE-04": 0.05,  # return velocity spike
+    "R-RULE-05": 0.10,  # new user high value
+    "R-RULE-08": -0.05,  # low-risk profile (reduces score)
+}
+BOOST_CAP = 0.25
+
 
 class ReturnRiskScorer:
     """Combines features, rules and weights into a return-risk assessment."""
@@ -124,7 +139,11 @@ class ReturnRiskScorer:
     def _compute_score(
         self, features: dict[str, Any], rules_triggered: list[dict[str, Any]]
     ) -> tuple[float, dict[str, dict[str, Any]]]:
-        """Weighted composite score with per-feature contributions."""
+        """Weighted composite score with per-feature contributions.
+
+        The weighted sum carries the signal; fired domain rules nudge it
+        (capped) so stacked-risk profiles land in the right tier.
+        """
         score = 0.0
         breakdown = {}
 
@@ -145,11 +164,15 @@ class ReturnRiskScorer:
                 "source": source,
             }
 
-        for rule in rules_triggered:
-            if rule.get("triggered") and rule.get("action") == "BLOCK_COD":
-                score = min(1.0, score + 0.15)
+        score += self.promotion_score(rules_triggered)
+        score = max(0.0, min(1.0, score))
+        return score, breakdown
 
-        return min(1.0, score), breakdown
+    @staticmethod
+    def promotion_score(rules_triggered: list[dict[str, Any]]) -> float:
+        """Post-contribution adjustment from fired rules (capped, [-0.05, +0.25])."""
+        boost = sum(RULE_BOOST.get(r.get("rule_id", ""), 0.0) for r in rules_triggered if r.get("triggered"))
+        return max(-0.05, min(BOOST_CAP, boost))
 
     @staticmethod
     def _normalize_feature(feature_name: str, value: Any) -> float:

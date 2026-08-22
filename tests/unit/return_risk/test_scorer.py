@@ -81,9 +81,10 @@ class TestReturnRiskScorer:
         )
         breakdown = result["feature_breakdown"]
         total = round(sum(f["contribution"] for f in breakdown.values()), 4)
-        # BLOCK_COD is a post-contribution rule adjustment (+0.15 for a user
-        # with a proven COD-refusal pattern), independent of this order's flag
-        assert abs((total + 0.15) - result["return_risk_score"]) < 1e-3
+        # post-contribution rule adjustment (see scorer.RULE_BOOST) - capped,
+        # and transparently derivable from the fired rules in the response
+        boost = ReturnRiskScorer.promotion_score(result["rules_triggered"])
+        assert abs((total + boost) - result["return_risk_score"]) < 1e-3
         for name, entry in breakdown.items():
             assert entry["source"] not in ("", "unknown") or name in (
                 "txn_user_merchant_interaction_count",

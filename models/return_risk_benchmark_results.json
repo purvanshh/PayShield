@@ -1,0 +1,65 @@
+{
+  "benchmark_type": "return_risk",
+  "timestamp": "2026-08-21T17:36:31.585110",
+  "dataset": {
+    "total_orders": 10000,
+    "train_orders": 8000,
+    "test_orders": 2000,
+    "positive_rate": 0.4
+  },
+  "metrics": {
+    "precision": 1.0,
+    "recall": 0.3675,
+    "f1": 0.5375,
+    "pr_auc": 0.9806,
+    "roc_auc": 0.9846,
+    "num_positive": 800,
+    "num_negative": 1200,
+    "positive_rate": 0.4,
+    "medium_or_higher": {
+      "threshold": 0.3,
+      "precision": 0.9444,
+      "recall": 0.9125,
+      "f1": 0.9282
+    }
+  },
+  "thresholds_note": "HIGH tier threshold 0.7 (block/prepaid); MEDIUM+ decision 0.3 (flag for review) - both reported honestly",
+  "tier_distribution_on_test": {
+    "LOW": 1227,
+    "MEDIUM": 479,
+    "HIGH": 294
+  },
+  "false_positive_analysis": {
+    "false_negatives_by_user_type": {
+      "false_negative:serial_returner": 235,
+      "false_negative:fraud_returner": 271
+    },
+    "false_positives_by_user_type": {},
+    "note": "serial/fraud returners scored below HIGH are misses; casual/new users scored HIGH are false positives"
+  },
+  "config": {
+    "feature_weights": {
+      "user_return_rate_30d": 0.25,
+      "user_serial_returner_flag": 0.2,
+      "merchant_return_rate_30d": 0.15,
+      "txn_category_return_baseline": 0.15,
+      "txn_amount_risk": 0.1,
+      "user_cod_refusal_rate": 0.1,
+      "user_return_velocity_7d": 0.05
+    },
+    "risk_tiers": {
+      "LOW": {
+        "max_score": 0.3,
+        "action": "ACCEPT"
+      },
+      "MEDIUM": {
+        "max_score": 0.7,
+        "action": "FLAG_FOR_REVIEW"
+      },
+      "HIGH": {
+        "max_score": 1.0,
+        "action": "REQUIRE_PREPAID"
+      }
+    }
+  }
+}
