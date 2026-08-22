@@ -116,8 +116,9 @@ class ReturnUserProfile(BaseModel):
     avg_return_value: Decimal = Decimal("0")
     max_return_value: Decimal = Decimal("0")
     cod_refusal_rate: float = 0.0
-    serial_returner_flag: bool = False
+    serial_returner: bool = False
     return_velocity_7d: int = 0
+    is_new_user: bool = False
     last_return_date: str = ""
 
 
@@ -135,6 +136,38 @@ class ReturnScoreResponse(BaseModel):
 class ReturnScoreEnvelopeResponse(BaseModel):
     status: str = "SUCCESS"
     data: ReturnScoreResponse
+    latency_ms: float = 0.0
+
+
+class ReturnStatusUpdateRequest(BaseModel):
+    """Merchant return-system callback that refreshes the user profile."""
+
+    user_id: str
+    order_id: str
+    amount: Decimal = Field(default=Decimal("0"), ge=0)
+    category: str = ""
+    cod_flag: bool = False
+    returned: bool = True
+    return_reason: str = ""
+
+
+class ReturnStatusUpdateResponse(BaseModel):
+    status: str = "SUCCESS"
+    data: dict[str, Any] = Field(default_factory=dict)
+    latency_ms: float = 0.0
+
+
+class ReturnProfileData(BaseModel):
+    """Merchant-dashboard view of a user's return history."""
+
+    user_id: str
+    total_orders: int = 0
+    total_returns: int = 0
+    return_rate_30d: float = 0.0
+    return_rate_lifetime: float = 0.0
+    serial_returner: bool = False
+    avg_return_value: Decimal = Decimal("0")
+    is_new_user: bool = False
     latency_ms: float = 0.0
 
 

@@ -141,5 +141,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"chargeback_router_skipped: {e}")
 
+    try:
+        from api.routes.return_risk import router as return_risk_router
+        app.include_router(return_risk_router, prefix="/v1", tags=["return-risk"])
+    except Exception as e:
+        logger.warning(f"return_risk_router_skipped: {e}")
+
 
 app = create_app()

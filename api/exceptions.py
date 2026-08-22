@@ -58,11 +58,15 @@ class BatchSizeExceededError(PayShieldException):
 def register_exception_handlers(app):
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        # exc.errors() can carry non-JSON-native constraint payloads
+        # (e.g. Decimal gt/ge bounds); sanitise with FastAPI's encoder.
+        from fastapi.encoders import jsonable_encoder
+
         return JSONResponse(
             status_code=422,
             content={
                 "error": "VALIDATION_ERROR",
-                "detail": exc.errors(),
+                "detail": jsonable_encoder(exc.errors()),
                 "request_id": get_current_request_id(),
             },
         )

@@ -18,6 +18,7 @@ roles:
     - chargeback:write
     - chargeback:admin
     - return_risk:read
+    - return_risk:write
   system:
     - score:write
     - score:read
@@ -28,6 +29,7 @@ roles:
     - chargeback:read
     - chargeback:write
     - return_risk:read
+    - return_risk:write
   chargeback_admin:
     - chargeback:read
     - chargeback:write
