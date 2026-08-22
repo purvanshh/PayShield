@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant R as Razorpay (webhook)
+    participant A as API
+    participant AL as Audit chain (JSONL)
+    participant EC as Evidence Collector
+    participant RB as Rebuttal Builder
+    participant NG as Narrative Generator
+    participant RZ as Razorpay Client (mock/real)
+
+    R->>A: POST /webhooks/razorpay/chargeback (HMAC signed)
+    A->>A: verify signature + persist dispute marker
+    A->>AL: CHARGEBACK_CREATED (tamper-evident append)
+    A->>EC: collect_evidence(transaction_id)
+    EC->>AL: read SCORE_DECISION entry (point-in-time payload)
+    EC->>AL: read transaction proof, device index, Benford mirrors
+    EC->>RB: EvidenceBundle completeness
+    RB->>RB: rule-based response type (ACCEPT/REJECT/PARTIAL)
+    RB->>NG: narrative prompt (Jinja2 + evidence facts)
+    NG-->>RB: narrative or deterministic fallback
+    RB->>RB: Razorpay payload (contest + evidence slots)
+    RB-->>A: ChargebackRebuttalDocument (draft cached)
+    A-->>R: 200 processed (background auto-rebuttal)
+    Note over A: submit only via /submit with chargeback:admin
+    RZ->>RZ: disputes/{id}/contest (mock fixtures or real API)

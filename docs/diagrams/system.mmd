@@ -1,0 +1,24 @@
+flowchart TB
+    M[Merchant App] --> A1[POST /v1/score - Live Fraud Detection]
+    M --> A2[POST /v1/return/score - Proactive Return Risk]
+    M --> A3[POST /v1/chargeback/respond - Remedial Dispute Response]
+
+    A1 --> L1[L1 Velocity + Geo + Benford rules]
+    L1 --> L2[L2 GNN - conditional, SKIPPED_NO_GRAPH for new users]
+    L2 --> L3[L3 LLM narrative - async, never blocking]
+    L3 --> E[Ensemble fusion -> ALLOW / REVIEW / BLOCK]
+
+    A2 --> FE[ReturnRiskFeatureEngine - Redis profiles + zsets]
+    FE --> RE[RulesEngine - YAML, reloadable]
+    RE --> WS[Weighted Scorer - per-feature breakdown]
+    WS --> TR[Risk tier + recommendations]
+
+    A3 --> EC[ChargebackEvidenceCollector - audit chain reads only]
+    EC --> RB[RebuttalBuilder - ACCEPT / REJECT / PARTIAL]
+    RB --> NG[NarrativeGenerator - LLM + deterministic fallback]
+    NG --> RP[Razorpay payload - single builder, mock or real]
+    RP --> HS[Human review -> submit - chargeback:admin gate]
+
+    STORE[(Tamper-evident audit chain + Redis mirrors)] --> EC
+    STORE --> FE
+    STORE --> L1

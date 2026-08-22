@@ -1,0 +1,23 @@
+flowchart LR
+    S1[/Return Score 0.83 HIGH/]
+    S1 --> F1[user_return_rate_30d 0.66 x 0.25 = 0.165]
+    S1 --> F2[user_serial_returner_flag TRUE x 0.20 = 0.20]
+    S1 --> F3[merchant_return_rate_30d 0.30 x 0.15 = 0.045]
+    S1 --> F4[txn_category_return_baseline 0.30 x 0.15 = 0.045]
+    S1 --> F5[txn_amount_risk 0.55 x 0.10 = 0.055]
+    S1 --> F6[user_cod_refusal_rate 0.375 x 0.10 = 0.0375]
+    S1 --> F7[user_return_velocity_7d 3 x 0.05 = 0.030]
+    F1 -.-> SUM[weighted sum 0.5775]
+    F2 -.-> SUM
+    F3 -.-> SUM
+    F4 -.-> SUM
+    F5 -.-> SUM
+    F6 -.-> SUM
+    F7 -.-> SUM
+    R1[R-RULE-01 serial +0.15] -.-> ADJ[rule adjustment +0.25 capped]
+    R2[R-RULE-02 high value +0.10] -.-> ADJ
+    R3[R-RULE-03 cod pattern +0.15] -.-> ADJ
+    R4[R-RULE-04 velocity spike +0.05] -.-> ADJ
+    SUM --> TOTAL[score 0.8275]
+    ADJ --> TOTAL
+    TOTAL --> TR[HIGH tier -> REQUIRE_PREPAID + manual review + signature]
