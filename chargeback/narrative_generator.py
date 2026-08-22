@@ -15,8 +15,9 @@ import logging
 import re
 from inspect import isawaitable
 from pathlib import Path
+from typing import Any
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from api.schemas.chargeback import EvidenceBundle, InvestigationNarrative
 
@@ -31,7 +32,7 @@ class NarrativeGenerator:
 
     def __init__(
         self,
-        llm_client=None,
+        llm_client: Any = None,
         template_dir: Path | str = DEFAULT_TEMPLATE_DIR,
         template_name: str = DEFAULT_TEMPLATE,
         model_name: str = "llama3.1:8b",
@@ -42,7 +43,12 @@ class NarrativeGenerator:
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self._env = Environment(loader=FileSystemLoader(str(template_dir)))
+        self._env = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            autoescape=select_autoescape(
+                default=False, default_for_string=True, enabled_extensions=("html", "xml")
+            ),
+        )
         self._template = self._env.get_template(template_name)
 
     # ------------------------------------------------------------------ #
@@ -56,7 +62,7 @@ class NarrativeGenerator:
     ) -> str:
         """Render the chargeback narrative prompt (Jinja2)."""
         facts = self.evidence_facts(evidence)
-        return self._template.render(
+        return str(self._template.render(
             dispute=reason_code,
             dispute_description=reason_description,
             response_type=response_type,
@@ -66,7 +72,7 @@ class NarrativeGenerator:
                 "REJECT": "reject (contest)",
                 "PARTIAL": "partially accept",
             }.get(response_type, response_type),
-        )
+        ))
 
     @staticmethod
     def evidence_facts(evidence: EvidenceBundle) -> list[dict[str, str]]:

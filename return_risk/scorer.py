@@ -253,7 +253,7 @@ class ReturnRiskScorer:
 
     @staticmethod
     def _build_user_profile(features: dict[str, Any]) -> dict[str, Any]:
-        def _value(name: str, default=0):
+        def _value(name: str, default: Any = 0) -> Any:
             return features.get(name, {}).get("value", default)
 
         return {

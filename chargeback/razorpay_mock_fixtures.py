@@ -55,7 +55,7 @@ def mock_contest_response(
     dispute_id: str = "disp_2Vw9aZ0q3X", outcome: str = "under_review"
 ) -> dict[str, Any]:
     """Razorpay's post-contest entity (``open -> under_review -> won|lost``)."""
-    assert outcome in STATUS_SEQUENCE, f"unexpected status {outcome}"
+    assert outcome in STATUS_SEQUENCE, f"unexpected status {outcome}"  # nosec B101 - fixture contract guard, never in production paths
     return {
         "id": dispute_id,
         "entity": "dispute",

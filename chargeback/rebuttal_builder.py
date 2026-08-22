@@ -42,11 +42,11 @@ class ChargebackRebuttalBuilder:
 
     def __init__(
         self,
-        evidence_collector,
-        llm_client=None,
-        razorpay_client=None,
+        evidence_collector: Any,
+        llm_client: Any = None,
+        razorpay_client: Any = None,
         narrative_generator: NarrativeGenerator | None = None,
-        config: dict | None = None,
+        config: dict[str, Any] | None = None,
     ):
         self.evidence_collector = evidence_collector
         self.llm_client = llm_client
@@ -153,7 +153,7 @@ class ChargebackRebuttalBuilder:
         return f"reb_{digest}"
 
     @staticmethod
-    def _determine_response_type(evidence, reason_code: str) -> str:
+    def _determine_response_type(evidence: Any, reason_code: str) -> str:
         """Rule-based disposition.
 
         - ACCEPT: completeness below thresholds or service reason without
@@ -217,7 +217,7 @@ class ChargebackRebuttalBuilder:
         payment_id: str,
         response_type: str,
         narrative: InvestigationNarrative,
-        evidence,
+        evidence: Any,
     ) -> dict[str, Any]:
         """Exact Razorpay contest payload (single place to update on API drift)."""
         evidence_slots: dict[str, list[dict[str, str]]] = {
@@ -278,7 +278,7 @@ class ChargebackRebuttalBuilder:
 
         evidence_slots = {k: v for k, v in evidence_slots.items() if v}
         amount = int(float(tp.amount)) if tp and tp.amount is not None else None
-        payload = {
+        payload: dict[str, Any] = {
             "contest": response_type == "REJECT",
             "evidence": {"summary": narrative.summary},
         }

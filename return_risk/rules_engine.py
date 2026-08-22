@@ -56,7 +56,7 @@ class RulesEngine:
         self.risk_tiers: dict[str, dict[str, Any]] = {}
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         if not self.rules_path.exists():
             return
         with open(self.rules_path, encoding="utf-8") as f:
@@ -77,7 +77,7 @@ class RulesEngine:
         ]
         self.risk_tiers = data.get("risk_tiers", {})
 
-    def reload_rules(self):
+    def reload_rules(self) -> None:
         """Reload rules from the configured YAML file."""
         self.rules = []
         self.risk_tiers = {}
@@ -146,4 +146,4 @@ class RulesEngine:
 def _safe_eval(condition: str, features: dict[str, Any]) -> bool:
     """Evaluate a rule condition against features with a restricted scope."""
     scope = {**_SAFE_BUILTINS, **features}
-    return bool(eval(condition, {"__builtins__": {}}, scope))  # noqa: S307 - whitelisted scope
+    return bool(eval(condition, {"__builtins__": {}}, scope))  # nosec B307 - whitelisted scope (no builtins, no config); conditions are repo YAML, never user input  # noqa: S307

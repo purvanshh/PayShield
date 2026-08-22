@@ -52,7 +52,7 @@ class RazorpayClient:
         api_secret: str | None = None,
         base_url: str = "",
         mock_mode: bool = False,
-        mock_responses: dict | None = None,
+        mock_responses: dict[str, Any] | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         timeout: float = 30.0,
     ):
@@ -75,7 +75,7 @@ class RazorpayClient:
             )
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
 
@@ -87,12 +87,12 @@ class RazorpayClient:
         """Fetch the dispute entity from Razorpay."""
         if self.mock_mode:
             if dispute_id in self.mock_responses:
-                return self.mock_responses[dispute_id]
+                return dict(self.mock_responses[dispute_id])
             return mock_get_chargeback(dispute_id)
         resp = await self._request("GET", f"{self.base_url}/disputes/{dispute_id}")
         return self._handle(resp, f"disputes/{dispute_id}")
 
-    async def contest_chargeback(self, dispute_id: str, rebuttal) -> dict[str, Any]:
+    async def contest_chargeback(self, dispute_id: str, rebuttal: Any) -> dict[str, Any]:
         """Submit an assembled rebuttal document to Razorpay.
 
         This is the critical submission method: it takes the
@@ -119,7 +119,7 @@ class RazorpayClient:
             "rebuttal_id": getattr(rebuttal, "dispute_id", dispute_id),
         }
 
-    async def submit_contest(self, dispute_id: str, payload: dict[str, Any]) -> dict:
+    async def submit_contest(self, dispute_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Low-level raw contest submission (used by the submit endpoint).
 
         ``contest_chargeback`` is preferred - it works at the document level
@@ -154,7 +154,7 @@ class RazorpayClient:
 
     async def fetch_merchant_evidence(
         self, transaction_id: str, dispute_id: str = ""  # noqa: ARG002 - Phase 11 wiring
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Enrichment hook for merchant-provided evidence (Phase 11).
 
         Returns a mapping compatible with
@@ -178,7 +178,7 @@ class RazorpayClient:
     # mocks                                                               #
     # ------------------------------------------------------------------ #
 
-    def _mock_contest_chargeback(self, dispute_id: str, rebuttal) -> dict[str, Any]:
+    def _mock_contest_chargeback(self, dispute_id: str, rebuttal: Any) -> dict[str, Any]:
         payload = getattr(rebuttal, "razorpay_payload", {})
         outcome = payload.get("contest", True) and "under_review" or "accepted"
         return {
@@ -189,7 +189,7 @@ class RazorpayClient:
             "mock": True,
         }
 
-    def _mock_contest_response(self, dispute_id: str, payload: dict) -> dict[str, Any]:
+    def _mock_contest_response(self, dispute_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         outcome = "under_review" if payload.get("contest", True) else "accepted"
         return mock_contest_response(dispute_id, outcome=outcome)
 
@@ -197,7 +197,7 @@ class RazorpayClient:
     # helpers                                                             #
     # ------------------------------------------------------------------ #
 
-    async def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
+    async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
         """Perform a request, converting transport failures to a 503 error."""
         try:
             return await self.client.request(method, url, **kwargs)
@@ -205,7 +205,7 @@ class RazorpayClient:
             logger.warning("razorpay %s request failed: %s", method, e)
             raise RazorpayAPIError(f"Razorpay unreachable: {e}", status_code=503) from e
 
-    def _handle(self, resp: httpx.Response, context: str) -> dict:
+    def _handle(self, resp: httpx.Response, context: str) -> dict[str, Any]:
         if resp.status_code >= 400:
             body = self._safe_json(resp.text)
             logger.warning(
@@ -219,7 +219,7 @@ class RazorpayClient:
         return self._safe_json(resp.text)
 
     @staticmethod
-    def _safe_json(text: str) -> dict:
+    def _safe_json(text: str) -> dict[str, Any]:
         try:
             import json
 

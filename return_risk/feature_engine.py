@@ -42,7 +42,7 @@ DEFAULT_RESOLUTION_HOURS = 72.0
 class ReturnRiskFeatureEngine:
     """Extracts return-risk features from the Redis feature store."""
 
-    def __init__(self, redis):
+    def __init__(self, redis: Any):
         self.redis = redis
 
     # ------------------------------------------------------------------ #
@@ -126,7 +126,7 @@ class ReturnRiskFeatureEngine:
         reasons_raw = data.get("return_reason_distribution", "{}")
         try:
             reasons = json.loads(reasons_raw) if isinstance(reasons_raw, str) else reasons_raw
-        except Exception:
+        except Exception:  # nosec B112 - unparseable reason JSON degrades to empty distribution
             reasons = {}
 
         return {
@@ -186,7 +186,7 @@ class ReturnRiskFeatureEngine:
             score = await self.redis.zscore(zkey, category)
             if score is not None:
                 return float(score)
-        except Exception:
+        except Exception:  # nosec B110 - zset read failure falls back to lookup table
             pass
         return self._category_baseline(category)
 
@@ -303,7 +303,7 @@ class FeatureRegistry:
         self.version: str = "1.0.0"
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         import yaml
 
         if not self.path.exists():

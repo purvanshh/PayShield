@@ -1,5 +1,7 @@
 """Chargeback domain exceptions (Track 02 - Phase 8)."""
 
+from typing import Any
+
 
 class ChargebackError(Exception):
     """Base error for the evidence responder.
@@ -13,7 +15,7 @@ class ChargebackError(Exception):
 class RazorpayAPIError(ChargebackError):
     """Raised when Razorpay returns an error (mirrors status + body)."""
 
-    def __init__(self, message: str, status_code: int = 0, razorpay_error: dict | None = None):
+    def __init__(self, message: str, status_code: int = 0, razorpay_error: dict[str, Any] | None = None):
         super().__init__(message)
         self.status_code = status_code
         self.razorpay_error = razorpay_error or {}
@@ -26,7 +28,7 @@ class RazorpaySubmitError(RazorpayAPIError):
     in addition to ``razorpay_error``.
     """
 
-    def __init__(self, message: str, status_code: int = 0, response: dict | None = None):
+    def __init__(self, message: str, status_code: int = 0, response: dict[str, Any] | None = None):
         super().__init__(message, status_code=status_code, razorpay_error=response)
         self.response = self.razorpay_error
 

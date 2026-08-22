@@ -41,10 +41,10 @@ except ImportError:  # pragma: no cover - benford_chi2 ships with engine
     _benford_available = False
 
 
-def _as_decimal(value) -> Decimal:
+def _as_decimal(value: Any) -> Decimal:
     try:
         return Decimal(str(value))
-    except Exception:
+    except Exception:  # nosec B110 - degenerate value, never crash evidence retrieval
         return Decimal("0")
 
 
@@ -66,12 +66,12 @@ class ChargebackEvidenceCollector:
 
     def __init__(
         self,
-        redis=None,
-        audit_reader=None,
-        statistical_filter=None,
+        redis: Any = None,
+        audit_reader: Any = None,
+        statistical_filter: Any = None,
         gnn_engine: Any | None = None,
         llm_investigator: Any | None = None,
-        merchant_evidence_provider: Callable[..., Awaitable[dict | None]] | None = None,
+        merchant_evidence_provider: Callable[..., Awaitable[dict[str, Any] | None]] | None = None,
         explanation_dir: str = "models/production/explanations",
     ):
         self.redis = redis
@@ -208,7 +208,7 @@ class ChargebackEvidenceCollector:
         record.update(await self._read_redis_l1(record))
         return record
 
-    async def _async_get_transaction(self, transaction_id: str) -> dict | None:
+    async def _async_get_transaction(self, transaction_id: str) -> dict[str, Any] | None:
         getter = getattr(self.audit_reader, "get_transaction", None)
         if getter is None:
             return None
@@ -216,9 +216,10 @@ class ChargebackEvidenceCollector:
         if isinstance(result, dict):
             return result
         if isinstance(result, Awaitable):
-            return await result
+            resolved = await result
+            if isinstance(resolved, dict):
+                return resolved
         return None
-
     def _try_explanation_artifact(self, transaction_id: str) -> dict[str, Any] | None:
         """Fall back to the persisted L1 explanation artifact.
 
@@ -230,7 +231,7 @@ class ChargebackEvidenceCollector:
             return None
         try:
             with open(path, encoding="utf-8") as f:
-                artifact = json.load(f)
+                artifact: dict[str, Any] = json.load(f)
             return {
                 "txn_id": transaction_id,
                 "user_id": "",
@@ -260,7 +261,7 @@ class ChargebackEvidenceCollector:
         try:
             txn_ts = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))
             txn_epoch = txn_ts.timestamp()
-        except Exception:
+        except Exception:  # nosec B112 - malformed timestamps fall back to no-window
             txn_epoch = 0.0
         try:
             raw = await self.redis.lrange(f"velocity:user:{user_id}", 0, -1)
@@ -268,7 +269,7 @@ class ChargebackEvidenceCollector:
             for line in raw:
                 try:
                     entries.append(json.loads(line))
-                except Exception:
+                except Exception:  # nosec B112 - unparseable velocity line is skipped
                     continue
             past = [e for e in entries if e.get("ts", 0) < txn_epoch - 1] if txn_epoch else entries
             out["txn_count_5m"] = sum(1 for e in past if e.get("ts", 0) >= txn_epoch - 300)
@@ -438,7 +439,8 @@ class ChargebackEvidenceCollector:
                 return None
 
             def _first_feature(prefix: str) -> str:
-                for feat in json.loads(data.get("features", "[]")):
+                features: list[str] = json.loads(data.get("features", "[]"))
+                for feat in features:
                     if feat.startswith(prefix):
                         return feat[len(prefix):]
                 return ""
