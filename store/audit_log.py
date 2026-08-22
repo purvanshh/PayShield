@@ -242,3 +242,65 @@ class AsyncAuditLogWriter:
 
 
 async_audit_logger = AsyncAuditLogWriter()
+
+
+class AuditLogReader:
+    """Read-back access to the tamper-evident JSONL chain.
+
+    Retrieval only - never mutates the chain. Used by the chargeback
+    evidence collector (chargeback/evidence_collector.py) to reconstruct
+    the transaction-time evidence: audit entries are the source of truth
+    for what the L1/L2/L3 layers *actually knew* when the transaction was
+    scored, which is exactly what a dispute rebuttal must reflect.
+    """
+
+    def __init__(self, log_dir: str = AUDIT_LOG_DIR):
+        self.log_dir = log_dir
+
+    def _files(self) -> list[str]:
+        try:
+            return sorted(f for f in os.listdir(self.log_dir) if f.endswith(".jsonl"))
+        except FileNotFoundError:
+            return []
+
+    def read_all(self) -> list[dict]:
+        entries = []
+        for fname in self._files():
+            with open(os.path.join(self.log_dir, fname), encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        entries.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        logger.warning("audit_corrupt_entry in %s", fname)
+        return entries
+
+    def get_entries(self, event_type: str | None = None) -> list[dict]:
+        entries = self.read_all()
+        if event_type:
+            entries = [e for e in entries if e.get("event_type") == event_type]
+        return entries
+
+    def get_transaction(self, transaction_id: str) -> dict | None:
+        """Return the most recent SCORE_DECISION entry for a txn (or None).
+
+        The returned dict is the raw audit entry: ``payload`` holds the
+        scoring record, ``decision`` the gate outcome and ``actor`` the
+        masked user id. The masker leaves txn/user ids intact (only PAN,
+        UPI handle and device-fingerprint patterns are masked).
+        """
+        candidates = [
+            e
+            for e in self.read_all()
+            if e.get("event_type") == "SCORE_DECISION"
+            and e.get("payload", {}).get("txn_id") == transaction_id
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda e: e.get("timestamp", ""))
+
+    def verify_chain(self) -> tuple[bool, int]:
+        """Integrity check reusing the writer's hash-chain algorithm."""
+        writer = AuditLogWriter(self.log_dir)
+        return writer.verify_chain()
