@@ -1,0 +1,3792 @@
+{
+  "transactions": [
+    {
+      "txn_id": "TXN_bd9c66b3-ad3",
+      "user_id": "U_bdd640fb",
+      "merchant_id": "M_23b8c1e9",
+      "amount": 4688.22,
+      "timestamp": "2026-07-08T17:33:13.324652",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_972a8469",
+      "location": {
+        "lat": 23.2587775,
+        "lon": -162.936802
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 2,
+        "amount_total_1h": 15627.59,
+        "geo_velocity_kmh": 35.36
+      },
+      "l2_result": {
+        "gnn_score": 0.2984,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 1,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_b38a088c-a65",
+      "user_id": "U_3b8faa18",
+      "merchant_id": "M_8fadc1a6",
+      "amount": 3548.94,
+      "timestamp": "2026-06-25T17:33:13.324924",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_72ff5d2a",
+      "location": {
+        "lat": 68.1798025,
+        "lon": -30.647502
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 2,
+        "amount_total_1h": 12055.38,
+        "geo_velocity_kmh": 71.84
+      }
+    },
+    {
+      "txn_id": "TXN_371ecd7b-27c",
+      "user_id": "U_c241330b",
+      "merchant_id": "M_6c307511",
+      "amount": 5160.97,
+      "timestamp": "2026-05-24T17:33:13.324948",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_1a2a73ed",
+      "location": {
+        "lat": -65.103727,
+        "lon": 23.971919
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 2,
+        "amount_total_1h": 18448.07,
+        "geo_velocity_kmh": 44.08
+      },
+      "l2_result": {
+        "gnn_score": 0.31,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 3,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_1ff49b78-894",
+      "user_id": "U_580d7b71",
+      "merchant_id": "M_0b1f9163",
+      "amount": 4188.15,
+      "timestamp": "2026-07-09T17:33:13.324972",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_142c3fe8",
+      "location": {
+        "lat": 58.187279,
+        "lon": -22.601112
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 8,
+        "amount_total_1h": 4029.92,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_a9488d99-0bb",
+      "user_id": "U_e2acf72f",
+      "merchant_id": "M_3139d32c",
+      "amount": 6611.74,
+      "timestamp": "2026-07-08T17:33:13.324990",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_fc377a4c",
+      "location": {
+        "lat": -68.581005,
+        "lon": -55.021345
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 10,
+        "amount_total_1h": 18099.84,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1781,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 1,
+        "connected_entities": 4
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_a9488d99-0bb analyzed. Risk level: HIGH.",
+        "quality_score": 0.59,
+        "anomaly_flags": [
+          "geo_anomaly",
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_35a240ae-5af",
+      "user_id": "U_47294739",
+      "merchant_id": "M_5d65a441",
+      "amount": 3059.51,
+      "timestamp": "2026-06-20T17:33:13.325011",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_efc89849",
+      "location": {
+        "lat": 83.9556745,
+        "lon": -141.66607
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 3,
+        "amount_total_1h": 16368.47,
+        "geo_velocity_kmh": 19.78
+      },
+      "l2_result": {
+        "gnn_score": 0.5454,
+        "anomaly_type": null,
+        "risk_paths_found": 0,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_ece66fa2-fd5",
+      "user_id": "U_88bd6407",
+      "merchant_id": "M_7656af72",
+      "amount": 3455.14,
+      "timestamp": "2026-07-15T17:33:13.325028",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_3838b326",
+      "location": {
+        "lat": -2.9510165,
+        "lon": -149.968543
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 9,
+        "amount_total_1h": 15446.97,
+        "geo_velocity_kmh": 16.26
+      }
+    },
+    {
+      "txn_id": "TXN_9132b63e-f16",
+      "user_id": "U_ce177b4e",
+      "merchant_id": "M_10f1bc81",
+      "amount": 4958.08,
+      "timestamp": "2026-06-18T17:33:13.325046",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_366eb16f",
+      "location": {
+        "lat": 85.942977,
+        "lon": 88.022742
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 6,
+        "amount_total_1h": 21946.9,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_6dadd6c7-95a",
+      "user_id": "U_23bed01d",
+      "merchant_id": "M_89fa6a68",
+      "amount": 5332.62,
+      "timestamp": "2026-07-14T17:33:13.325082",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_5cabcc97",
+      "location": {
+        "lat": -31.1265325,
+        "lon": -105.733712
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 4,
+        "amount_total_1h": 14149.56,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2086,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 0,
+        "connected_entities": 3
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_6dadd6c7-95a analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.57,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_ae340454-cac",
+      "user_id": "U_c17af08a",
+      "merchant_id": "M_27209bdf",
+      "amount": 3346.9,
+      "timestamp": "2026-06-07T17:33:13.325102",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_62801c45",
+      "location": {
+        "lat": 12.440146,
+        "lon": 139.915161
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 2,
+        "amount_total_1h": 14683.12,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.0521,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 1,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_1d53434b-b88",
+      "user_id": "U_405cacec",
+      "merchant_id": "M_f143262f",
+      "amount": 3670.89,
+      "timestamp": "2026-07-16T17:33:13.325118",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_c0398710",
+      "location": {
+        "lat": -18.3746595,
+        "lon": 164.113746
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 2,
+        "amount_total_1h": 22492.5,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.42,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 1,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_436d76e2-b83",
+      "user_id": "U_6f4cc69a",
+      "merchant_id": "M_f42d47cc",
+      "amount": 527.88,
+      "timestamp": "2026-07-18T17:33:13.325134",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_2dbc2134",
+      "location": {
+        "lat": 46.2797615,
+        "lon": -122.871125
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 4,
+        "amount_total_1h": 17370.04,
+        "geo_velocity_kmh": 26.19
+      },
+      "l2_result": {
+        "gnn_score": 0.3125,
+        "anomaly_type": null,
+        "risk_paths_found": 1,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_436d76e2-b83 analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.67,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_295b4715-c33",
+      "user_id": "U_d777a477",
+      "merchant_id": "M_32ebd689",
+      "amount": 6114.36,
+      "timestamp": "2026-07-13T17:33:13.325152",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_ec24a3c5",
+      "location": {
+        "lat": 52.3657295,
+        "lon": -179.692966
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 9,
+        "amount_total_1h": 19023.35,
+        "geo_velocity_kmh": 46.48
+      },
+      "l2_result": {
+        "gnn_score": 0.5153,
+        "anomaly_type": null,
+        "risk_paths_found": 0,
+        "connected_entities": 8
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_295b4715-c33 analyzed. Risk level: HIGH.",
+        "quality_score": 0.61,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_4eb93eff-ce8",
+      "user_id": "U_04fc6d82",
+      "merchant_id": "M_e0f3eab0",
+      "amount": 558.61,
+      "timestamp": "2026-06-16T17:33:13.325169",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_e0c53cb8",
+      "location": {
+        "lat": 62.298718,
+        "lon": -137.717632
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 6,
+        "amount_total_1h": 21774.07,
+        "geo_velocity_kmh": 16.32
+      },
+      "l2_result": {
+        "gnn_score": 0.4818,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 2
+      }
+    },
+    {
+      "txn_id": "TXN_a8e56e0c-20d",
+      "user_id": "U_d0e6e660",
+      "merchant_id": "M_885f6e66",
+      "amount": 4430.52,
+      "timestamp": "2026-07-06T17:33:13.325185",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_2a45c2ab",
+      "location": {
+        "lat": -18.849404,
+        "lon": 103.292704
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 5,
+        "amount_total_1h": 16537.96,
+        "geo_velocity_kmh": 55.66
+      }
+    },
+    {
+      "txn_id": "TXN_b683d2e6-337",
+      "user_id": "U_f6e07cc0",
+      "merchant_id": "M_c1590f53",
+      "amount": 1477.33,
+      "timestamp": "2026-06-10T17:33:13.325199",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_abf3ad39",
+      "location": {
+        "lat": 84.4503125,
+        "lon": 20.478606
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 9,
+        "amount_total_1h": 17276.99,
+        "geo_velocity_kmh": 53.48
+      },
+      "l2_result": {
+        "gnn_score": 0.1501,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_b683d2e6-337 analyzed. Risk level: HIGH.",
+        "quality_score": 0.43,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_01d74256-386",
+      "user_id": "U_1064005c",
+      "merchant_id": "M_8dcdcd03",
+      "amount": 1998.1,
+      "timestamp": "2026-07-22T17:33:13.325225",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_0f1259e0",
+      "location": {
+        "lat": -28.543907,
+        "lon": -143.814728
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 10,
+        "amount_total_1h": 13314.71,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.4839,
+        "anomaly_type": null,
+        "risk_paths_found": 2,
+        "connected_entities": 3
+      }
+    },
+    {
+      "txn_id": "TXN_8a0b3c33-36d",
+      "user_id": "U_5496f63c",
+      "merchant_id": "M_474a493b",
+      "amount": 3871.17,
+      "timestamp": "2026-06-03T17:33:13.325241",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_e1e3db63",
+      "location": {
+        "lat": 63.2882135,
+        "lon": 129.351272
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 7,
+        "amount_total_1h": 23068.0,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_5ab33edf-6e5",
+      "user_id": "U_7914c120",
+      "merchant_id": "M_1825bc54",
+      "amount": 3880.02,
+      "timestamp": "2026-07-05T17:33:13.325255",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_dd2467ac",
+      "location": {
+        "lat": -75.458534,
+        "lon": 170.821241
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 8,
+        "amount_total_1h": 9568.72,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.6004,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 3,
+        "connected_entities": 4
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_5ab33edf-6e5 analyzed. Risk level: LOW.",
+        "quality_score": 0.82,
+        "anomaly_flags": [
+          "device_mismatch",
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_310c0c00-3fa",
+      "user_id": "U_0f844fef",
+      "merchant_id": "M_ccf3a171",
+      "amount": 3249.34,
+      "timestamp": "2026-05-23T17:33:13.325273",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_23e2fcb4",
+      "location": {
+        "lat": 23.24799,
+        "lon": -81.49061
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 10,
+        "amount_total_1h": 7598.38,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_19108be5-8ce",
+      "user_id": "U_dfde4fbf",
+      "merchant_id": "M_ceda8bbb",
+      "amount": 4468.12,
+      "timestamp": "2026-07-06T17:33:13.325287",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_8a63f881",
+      "location": {
+        "lat": -86.0384695,
+        "lon": -129.92993
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 7,
+        "amount_total_1h": 21684.46,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.4258,
+        "anomaly_type": null,
+        "risk_paths_found": 2,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_e7067ef4-66a",
+      "user_id": "U_3c835dc0",
+      "merchant_id": "M_7b3a4e3e",
+      "amount": 2878.9,
+      "timestamp": "2026-07-10T17:33:13.325305",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_008d4127",
+      "location": {
+        "lat": 14.803042,
+        "lon": -37.620193
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 1,
+        "amount_total_1h": 8989.02,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.3609,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 3,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_8e46d534-c88",
+      "user_id": "U_747b6dba",
+      "merchant_id": "M_f512c4c3",
+      "amount": 1502.39,
+      "timestamp": "2026-06-02T17:33:13.325322",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_27a0c3d7",
+      "location": {
+        "lat": -39.0246795,
+        "lon": -20.706198
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 5,
+        "amount_total_1h": 15528.68,
+        "geo_velocity_kmh": 53.16
+      },
+      "l2_result": {
+        "gnn_score": -0.0847,
+        "anomaly_type": null,
+        "risk_paths_found": 3,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_958ca9ba-0cd",
+      "user_id": "U_944528c0",
+      "merchant_id": "M_bf7b539b",
+      "amount": 3954.39,
+      "timestamp": "2026-06-21T17:33:13.325339",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_da4bd9ca",
+      "location": {
+        "lat": 52.5730875,
+        "lon": -95.478948
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 7,
+        "amount_total_1h": 16756.26,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.6542,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_958ca9ba-0cd analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.48,
+        "anomaly_flags": [
+          "geo_anomaly",
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_3c365296-dca",
+      "user_id": "U_14822f53",
+      "merchant_id": "M_98543881",
+      "amount": -372.36,
+      "timestamp": "2026-05-30T17:33:13.325356",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_e3e9de99",
+      "location": {
+        "lat": 62.9210795,
+        "lon": -47.814142
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 4,
+        "amount_total_1h": 17156.31,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1638,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 2,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_3c365296-dca analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.71,
+        "anomaly_flags": [
+          "velocity_spike",
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_ef48e8d5-50f",
+      "user_id": "U_9e8fc965",
+      "merchant_id": "M_956b8c0c",
+      "amount": 4850.62,
+      "timestamp": "2026-06-08T17:33:13.325374",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_b758588d",
+      "location": {
+        "lat": -5.6619105,
+        "lon": -51.856453
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 9,
+        "amount_total_1h": 13248.05,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.3152,
+        "anomaly_type": null,
+        "risk_paths_found": 3,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_ef48e8d5-50f analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.66,
+        "anomaly_flags": [
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_12922f83-ef8",
+      "user_id": "U_abf3e3fc",
+      "merchant_id": "M_50f0fd0a",
+      "amount": 4922.36,
+      "timestamp": "2026-06-21T17:33:13.325391",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_ff9ab5c2",
+      "location": {
+        "lat": 61.127454,
+        "lon": -126.322974
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 6,
+        "amount_total_1h": 10635.44,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_3e896c64-e11",
+      "user_id": "U_8181a8cc",
+      "merchant_id": "M_5958a499",
+      "amount": 1157.69,
+      "timestamp": "2026-05-25T17:33:13.325405",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_702cdd20",
+      "location": {
+        "lat": 55.8189605,
+        "lon": -17.587348
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 3,
+        "amount_total_1h": 19639.93,
+        "geo_velocity_kmh": 46.07
+      },
+      "l2_result": {
+        "gnn_score": 0.3138,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_3e896c64-e11 analyzed. Risk level: LOW.",
+        "quality_score": 0.55,
+        "anomaly_flags": [
+          "device_mismatch",
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_ee87905e-4ca",
+      "user_id": "U_ce9e1a11",
+      "merchant_id": "M_aaf91531",
+      "amount": 3591.21,
+      "timestamp": "2026-06-11T17:33:13.325422",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_e0ccedc5",
+      "location": {
+        "lat": -53.9515035,
+        "lon": -38.015939
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 10,
+        "amount_total_1h": 16860.61,
+        "geo_velocity_kmh": 60.88
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_ee87905e-4ca analyzed. Risk level: HIGH.",
+        "quality_score": 0.86,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_57c700aa-b7b",
+      "user_id": "U_be0f051b",
+      "merchant_id": "M_48212ddb",
+      "amount": 3655.86,
+      "timestamp": "2026-07-03T17:33:13.325438",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_da587e8a",
+      "location": {
+        "lat": -19.137362,
+        "lon": 91.339422
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 2,
+        "amount_total_1h": 12055.1,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_57c700aa-b7b analyzed. Risk level: HIGH.",
+        "quality_score": 0.74,
+        "anomaly_flags": [
+          "velocity_spike",
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_0b49452d-46d",
+      "user_id": "U_e87d1c78",
+      "merchant_id": "M_a2607723",
+      "amount": 605.79,
+      "timestamp": "2026-06-10T17:33:13.325454",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_217d65a0",
+      "location": {
+        "lat": 81.023819,
+        "lon": -39.363837
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 7,
+        "amount_total_1h": 21889.9,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_e21342b0-f1e",
+      "user_id": "U_8d3aed99",
+      "merchant_id": "M_0279b6a6",
+      "amount": 2980.18,
+      "timestamp": "2026-06-13T17:33:13.325468",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_8babce3b",
+      "location": {
+        "lat": -80.3287705,
+        "lon": 18.221323
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 2,
+        "amount_total_1h": 14010.5,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_f8e1daa7-cbc",
+      "user_id": "U_6e068097",
+      "merchant_id": "M_5d59cd2a",
+      "amount": 5115.15,
+      "timestamp": "2026-05-29T17:33:13.325482",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_5b9962c6",
+      "location": {
+        "lat": -33.6080095,
+        "lon": -46.034744
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 5,
+        "amount_total_1h": 20675.87,
+        "geo_velocity_kmh": 18.77
+      },
+      "l2_result": {
+        "gnn_score": 0.3802,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 3,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_2790cebd-bfd",
+      "user_id": "U_c7b5b2bc",
+      "merchant_id": "M_6808593f",
+      "amount": 3296.56,
+      "timestamp": "2026-06-24T17:33:13.325498",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_dd56cc94",
+      "location": {
+        "lat": -46.378765,
+        "lon": -84.945734
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 5,
+        "amount_total_1h": 12530.51,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1354,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_ab7f089a-cd5",
+      "user_id": "U_2dea9493",
+      "merchant_id": "M_c84a7b28",
+      "amount": 4212.44,
+      "timestamp": "2026-07-15T17:33:13.325514",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_3f87e362",
+      "location": {
+        "lat": -18.3798875,
+        "lon": -94.53131
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 5,
+        "amount_total_1h": 17248.58,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_eb1fa9f2-d10",
+      "user_id": "U_61ee411a",
+      "merchant_id": "M_787f2425",
+      "amount": 4123.85,
+      "timestamp": "2026-06-29T17:33:13.325597",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_d20eac17",
+      "location": {
+        "lat": -28.9053005,
+        "lon": -60.31883
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 1,
+        "amount_total_1h": 11361.05,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_adf4e62d-665",
+      "user_id": "U_11c58ef0",
+      "merchant_id": "M_59e4b671",
+      "amount": 2608.59,
+      "timestamp": "2026-07-19T17:33:13.325620",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_54c63cd8",
+      "location": {
+        "lat": -82.591037,
+        "lon": -118.076372
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 8,
+        "amount_total_1h": 16166.33,
+        "geo_velocity_kmh": 35.44
+      },
+      "l2_result": {
+        "gnn_score": 0.2518,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 3
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_adf4e62d-665 analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.49,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_6f3f920c-98b",
+      "user_id": "U_2db69edb",
+      "merchant_id": "M_43f59a85",
+      "amount": 1856.61,
+      "timestamp": "2026-06-24T17:33:13.325638",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_504d281f",
+      "location": {
+        "lat": 27.143591,
+        "lon": 145.455898
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 2,
+        "amount_total_1h": 18229.3,
+        "geo_velocity_kmh": 35.59
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_6f3f920c-98b analyzed. Risk level: LOW.",
+        "quality_score": 0.62,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_006ed6e3-6fa",
+      "user_id": "U_629c2ae3",
+      "merchant_id": "M_41357e8c",
+      "amount": 3219.14,
+      "timestamp": "2026-07-04T17:33:13.325654",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_89d7fd6c",
+      "location": {
+        "lat": -37.1087845,
+        "lon": 15.539914
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 5,
+        "amount_total_1h": 16648.97,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_b841d0a0-1fe",
+      "user_id": "U_aa0b7b14",
+      "merchant_id": "M_505cc686",
+      "amount": 1458.01,
+      "timestamp": "2026-05-25T17:33:13.325669",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_4f2d4796",
+      "location": {
+        "lat": 89.0177005,
+        "lon": 39.254274
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 5,
+        "amount_total_1h": 7289.98,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.0903,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_ad64b56c-610",
+      "user_id": "U_4bb00f20",
+      "merchant_id": "M_6ba25efe",
+      "amount": 1627.74,
+      "timestamp": "2026-05-27T17:33:13.325683",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_9d9262af",
+      "location": {
+        "lat": 62.7680295,
+        "lon": -18.428765
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 10,
+        "amount_total_1h": 17573.17,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.3344,
+        "anomaly_type": null,
+        "risk_paths_found": 1,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_a79ac9aa-9b4",
+      "user_id": "U_001a9a8b",
+      "merchant_id": "M_6e0d2648",
+      "amount": 727.68,
+      "timestamp": "2026-07-11T17:33:13.325699",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_71316269",
+      "location": {
+        "lat": -32.6349665,
+        "lon": 94.434449
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 6,
+        "amount_total_1h": 13985.14,
+        "geo_velocity_kmh": 48.48
+      },
+      "l2_result": {
+        "gnn_score": 0.0053,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_a79ac9aa-9b4 analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.71,
+        "anomaly_flags": [
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_a9f25336-83f",
+      "user_id": "U_f5b78cc7",
+      "merchant_id": "M_a8aa7158",
+      "amount": 5350.67,
+      "timestamp": "2026-07-22T17:33:13.325716",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_17e8392a",
+      "location": {
+        "lat": -26.9529415,
+        "lon": -13.34482
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 6,
+        "amount_total_1h": 7994.83,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2392,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 1,
+        "connected_entities": 4
+      }
+    },
+    {
+      "txn_id": "TXN_c4bbb7a9-d98",
+      "user_id": "U_25b8fd4b",
+      "merchant_id": "M_fbe33b24",
+      "amount": 3673.93,
+      "timestamp": "2026-07-21T17:33:13.325730",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_e2d9de5d",
+      "location": {
+        "lat": 79.0513575,
+        "lon": 129.060961
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 7,
+        "amount_total_1h": 27992.0,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.6447,
+        "anomaly_type": null,
+        "risk_paths_found": 1,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_e4855aa1-016",
+      "user_id": "U_624c69b6",
+      "merchant_id": "M_25c73c44",
+      "amount": 2015.34,
+      "timestamp": "2026-06-22T17:33:13.325745",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_e2add909",
+      "location": {
+        "lat": -61.388191,
+        "lon": 48.248626
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 9,
+        "amount_total_1h": 17906.21,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.6117,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_d92c9227-ead",
+      "user_id": "U_f53d4330",
+      "merchant_id": "M_0cdb1ca4",
+      "amount": 4596.53,
+      "timestamp": "2026-06-06T17:33:13.325760",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_cd29a36f",
+      "location": {
+        "lat": 34.7267195,
+        "lon": 178.403064
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 6,
+        "amount_total_1h": 10799.9,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_b8225688-d0a",
+      "user_id": "U_986f9025",
+      "merchant_id": "M_e4347d51",
+      "amount": 5711.0,
+      "timestamp": "2026-06-16T17:33:13.325773",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_d4a02e53",
+      "location": {
+        "lat": 57.0682575,
+        "lon": 59.398044
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 7,
+        "amount_total_1h": 9430.13,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_7c0e8cd8-857",
+      "user_id": "U_c074718e",
+      "merchant_id": "M_46fde062",
+      "amount": 4953.14,
+      "timestamp": "2026-06-19T17:33:13.325794",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_709b7d97",
+      "location": {
+        "lat": -69.200721,
+        "lon": -26.600866
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 8,
+        "amount_total_1h": 15772.14,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1461,
+        "anomaly_type": null,
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_b1a6b1f1-620",
+      "user_id": "U_51d87c64",
+      "merchant_id": "M_236c7b87",
+      "amount": 1308.32,
+      "timestamp": "2026-06-21T17:33:13.325811",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_10714d51",
+      "location": {
+        "lat": 21.365253,
+        "lon": 38.828247
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 7,
+        "amount_total_1h": 7527.32,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_db52ca58-050",
+      "user_id": "U_6b8e869f",
+      "merchant_id": "M_95863a76",
+      "amount": 3108.71,
+      "timestamp": "2026-07-13T17:33:13.325832",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_6160a6b4",
+      "location": {
+        "lat": 38.038272,
+        "lon": -176.834568
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 10,
+        "amount_total_1h": 19667.58,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_db52ca58-050 analyzed. Risk level: HIGH.",
+        "quality_score": 0.8,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_bf5d2fdf-89c",
+      "user_id": "U_c0e3befd",
+      "merchant_id": "M_f41402b1",
+      "amount": 4805.84,
+      "timestamp": "2026-05-26T17:33:13.325847",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_9a6ec2f5",
+      "location": {
+        "lat": -30.7995955,
+        "lon": 82.116207
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 5,
+        "amount_total_1h": 11623.77,
+        "geo_velocity_kmh": 23.9
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_bf5d2fdf-89c analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.74,
+        "anomaly_flags": [
+          "device_mismatch"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_b963f37f-678",
+      "user_id": "U_7c5308bf",
+      "merchant_id": "M_ab3b4d37",
+      "amount": 2932.56,
+      "timestamp": "2026-06-08T17:33:13.325863",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_eb67146a",
+      "location": {
+        "lat": -55.740176,
+        "lon": 154.071663
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 1,
+        "amount_total_1h": 21997.95,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_22bd3388-6db",
+      "user_id": "U_64de82e6",
+      "merchant_id": "M_06f028ff",
+      "amount": 2179.08,
+      "timestamp": "2026-07-08T17:33:13.325877",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_0cdf742b",
+      "location": {
+        "lat": -20.164822,
+        "lon": 23.529838
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02",
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 5,
+        "amount_total_1h": 15312.91,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2494,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_d4f8fd72-f38",
+      "user_id": "U_53ac2ab9",
+      "merchant_id": "M_610e6a64",
+      "amount": 243.49,
+      "timestamp": "2026-05-30T17:33:13.325894",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_14f7ce8d",
+      "location": {
+        "lat": 36.24703,
+        "lon": -169.59368
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 2,
+        "amount_total_1h": 12868.98,
+        "geo_velocity_kmh": 78.79
+      }
+    },
+    {
+      "txn_id": "TXN_a6d964a3-f51",
+      "user_id": "U_fff9f585",
+      "merchant_id": "M_a66fd7f7",
+      "amount": 2878.37,
+      "timestamp": "2026-07-17T17:33:13.325911",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_f319c125",
+      "location": {
+        "lat": -23.620394,
+        "lon": -72.96905
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 10,
+        "amount_total_1h": 9768.82,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_37cc863b-f2a",
+      "user_id": "U_2702878b",
+      "merchant_id": "M_ab61a7b1",
+      "amount": 4954.81,
+      "timestamp": "2026-05-25T17:33:13.325925",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_c4536f1d",
+      "location": {
+        "lat": 9.024544,
+        "lon": -89.91889
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 7,
+        "amount_total_1h": 16131.95,
+        "geo_velocity_kmh": 44.08
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_37cc863b-f2a analyzed. Risk level: LOW.",
+        "quality_score": 0.76,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_1bac5c15-4fa",
+      "user_id": "U_bf780e3f",
+      "merchant_id": "M_d1bdb8c0",
+      "amount": 2973.03,
+      "timestamp": "2026-06-15T17:33:13.325941",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_4fdc6e1b",
+      "location": {
+        "lat": 64.564256,
+        "lon": 21.491389
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 6,
+        "amount_total_1h": 16107.46,
+        "geo_velocity_kmh": 61.24
+      },
+      "l2_result": {
+        "gnn_score": 0.49,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_1bac5c15-4fa analyzed. Risk level: LOW.",
+        "quality_score": 0.68,
+        "anomaly_flags": [
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_b27b3d90-1a1",
+      "user_id": "U_32c5bd89",
+      "merchant_id": "M_d4a057a7",
+      "amount": 4783.55,
+      "timestamp": "2026-07-14T17:33:13.325959",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_af2b99b4",
+      "location": {
+        "lat": 71.171765,
+        "lon": -115.009059
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 4,
+        "amount_total_1h": 16407.39,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.3538,
+        "anomaly_type": null,
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_8186a576-11a",
+      "user_id": "U_c85aca46",
+      "merchant_id": "M_6daa2e68",
+      "amount": 886.33,
+      "timestamp": "2026-06-01T17:33:13.325973",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_d97dc9cd",
+      "location": {
+        "lat": 22.7586595,
+        "lon": 83.175037
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 4,
+        "amount_total_1h": 14243.59,
+        "geo_velocity_kmh": 38.11
+      },
+      "l2_result": {
+        "gnn_score": 0.2136,
+        "anomaly_type": null,
+        "risk_paths_found": 3,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_2d174fc9-6f7",
+      "user_id": "U_5cb85aed",
+      "merchant_id": "M_75b17a55",
+      "amount": 3851.06,
+      "timestamp": "2026-06-24T17:33:13.325988",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_a6846099",
+      "location": {
+        "lat": -17.50031,
+        "lon": 150.665424
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 1,
+        "amount_total_1h": 24693.1,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2966,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 0,
+        "connected_entities": 2
+      }
+    },
+    {
+      "txn_id": "TXN_ef43613c-d4a",
+      "user_id": "U_d36357b6",
+      "merchant_id": "M_52828d80",
+      "amount": 1540.22,
+      "timestamp": "2026-07-16T17:33:13.326011",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_7367c28d",
+      "location": {
+        "lat": -24.5384075,
+        "lon": 69.488458
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 6,
+        "amount_total_1h": 16955.2,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2779,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 4
+      }
+    },
+    {
+      "txn_id": "TXN_364d7c87-7cd",
+      "user_id": "U_6105716b",
+      "merchant_id": "M_d9d80b8d",
+      "amount": 2212.01,
+      "timestamp": "2026-07-18T17:33:13.326027",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_57207246",
+      "location": {
+        "lat": -14.9297475,
+        "lon": 140.058281
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 3,
+        "amount_total_1h": 8767.84,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2078,
+        "anomaly_type": null,
+        "risk_paths_found": 3,
+        "connected_entities": 4
+      }
+    },
+    {
+      "txn_id": "TXN_680bac63-b85",
+      "user_id": "U_8e485223",
+      "merchant_id": "M_30e912f2",
+      "amount": 5119.77,
+      "timestamp": "2026-07-04T17:33:13.326041",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_3d85de89",
+      "location": {
+        "lat": 37.8002705,
+        "lon": 166.766476
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 8,
+        "amount_total_1h": 9110.49,
+        "geo_velocity_kmh": 70.05
+      },
+      "l2_result": {
+        "gnn_score": 0.543,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 1,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_4e6384bb-3e4",
+      "user_id": "U_cafda613",
+      "merchant_id": "M_38ba8abc",
+      "amount": 1798.51,
+      "timestamp": "2026-06-08T17:33:13.326057",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_79279973",
+      "location": {
+        "lat": 58.571764,
+        "lon": 105.036542
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 6,
+        "amount_total_1h": 10368.03,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.4819,
+        "anomaly_type": null,
+        "risk_paths_found": 1,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_314d3441-b8a",
+      "user_id": "U_b3ee4d3b",
+      "merchant_id": "M_405bfdc9",
+      "amount": 5219.79,
+      "timestamp": "2026-07-12T17:33:13.326077",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_892e6161",
+      "location": {
+        "lat": -40.2992165,
+        "lon": -77.167223
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 3,
+        "amount_total_1h": 18810.81,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.5318,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 3,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_fb02bebb-487",
+      "user_id": "U_46c8adfe",
+      "merchant_id": "M_c29cfc0c",
+      "amount": 3090.57,
+      "timestamp": "2026-06-09T17:33:13.326093",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_4bd6cee6",
+      "location": {
+        "lat": -28.9354525,
+        "lon": 13.746548
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 10,
+        "amount_total_1h": 17003.52,
+        "geo_velocity_kmh": 53.62
+      }
+    },
+    {
+      "txn_id": "TXN_4ac9778d-8da",
+      "user_id": "U_b540b30e",
+      "merchant_id": "M_0ba6eab9",
+      "amount": 6969.15,
+      "timestamp": "2026-07-22T17:33:13.326108",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_a34b6cf6",
+      "location": {
+        "lat": 41.769247,
+        "lon": -124.923679
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 9,
+        "amount_total_1h": 13309.79,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_4ac9778d-8da analyzed. Risk level: HIGH.",
+        "quality_score": 0.53,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_40a26c60-0d2",
+      "user_id": "U_48ca7651",
+      "merchant_id": "M_5738811d",
+      "amount": 6127.04,
+      "timestamp": "2026-06-16T17:33:13.326123",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_1d34d08e",
+      "location": {
+        "lat": -72.459506,
+        "lon": 35.128168
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 1,
+        "amount_total_1h": 10268.87,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.5101,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_4dc82a1e-f2f",
+      "user_id": "U_a1235a8c",
+      "merchant_id": "M_2631d00b",
+      "amount": 2961.67,
+      "timestamp": "2026-06-19T17:33:13.326138",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_1e52d770",
+      "location": {
+        "lat": 59.8065885,
+        "lon": 43.431725
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 3,
+        "amount_total_1h": 21281.73,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.4308,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 7
+      }
+    },
+    {
+      "txn_id": "TXN_4c1f55ab-715",
+      "user_id": "U_9e50aa42",
+      "merchant_id": "M_61607459",
+      "amount": 3572.74,
+      "timestamp": "2026-07-10T17:33:13.326152",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_6dc7cac7",
+      "location": {
+        "lat": -8.025116,
+        "lon": 125.28062
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 10,
+        "amount_total_1h": 17803.29,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_43bfd931-360",
+      "user_id": "U_f5c9b047",
+      "merchant_id": "M_c342bd2b",
+      "amount": 4886.04,
+      "timestamp": "2026-07-13T17:33:13.326166",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_3d67cde9",
+      "location": {
+        "lat": -43.3422805,
+        "lon": 116.34858
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 1,
+        "amount_total_1h": 9709.22,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2462,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 2
+      }
+    },
+    {
+      "txn_id": "TXN_49c13de7-3b4",
+      "user_id": "U_68949b8d",
+      "merchant_id": "M_784c2f29",
+      "amount": 3598.88,
+      "timestamp": "2026-06-13T17:33:13.326181",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_dc0f2fcf",
+      "location": {
+        "lat": 31.878106,
+        "lon": -141.785658
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 6,
+        "amount_total_1h": 10339.27,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1554,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_398d1ca6-8b6",
+      "user_id": "U_96fc734d",
+      "merchant_id": "M_32a447b2",
+      "amount": 4791.96,
+      "timestamp": "2026-06-03T17:33:13.326206",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_44007d5a",
+      "location": {
+        "lat": -51.8187375,
+        "lon": -141.662135
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03",
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 7,
+        "amount_total_1h": 12559.24,
+        "geo_velocity_kmh": 35.2
+      }
+    },
+    {
+      "txn_id": "TXN_1fd5a423-706",
+      "user_id": "U_4ebfa5c3",
+      "merchant_id": "M_91b78d8e",
+      "amount": 1336.76,
+      "timestamp": "2026-05-25T17:33:13.326221",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_b321bf21",
+      "location": {
+        "lat": 18.0475575,
+        "lon": -33.83894
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 9,
+        "amount_total_1h": 8672.1,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_9a8cfa3c-528",
+      "user_id": "U_7010f719",
+      "merchant_id": "M_e3b137fc",
+      "amount": 5358.73,
+      "timestamp": "2026-06-11T17:33:13.326234",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_3a9aca5e",
+      "location": {
+        "lat": 64.4038345,
+        "lon": 135.209223
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 4,
+        "amount_total_1h": 10354.66,
+        "geo_velocity_kmh": 68.59
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_9a8cfa3c-528 analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.74,
+        "anomaly_flags": [
+          "device_mismatch",
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_2cd94cbb-c19",
+      "user_id": "U_c3c75611",
+      "merchant_id": "M_9384ec2b",
+      "amount": 2925.69,
+      "timestamp": "2026-06-14T17:33:13.326251",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_7135f221",
+      "location": {
+        "lat": -15.3329125,
+        "lon": -82.563759
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 3,
+        "amount_total_1h": 14730.86,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_5553b2fe-688",
+      "user_id": "U_a2814044",
+      "merchant_id": "M_175ba98d",
+      "amount": 3058.95,
+      "timestamp": "2026-07-08T17:33:13.326265",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_db946570",
+      "location": {
+        "lat": -46.828907,
+        "lon": -2.938005
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 10,
+        "amount_total_1h": 20538.06,
+        "geo_velocity_kmh": 37.83
+      },
+      "l2_result": {
+        "gnn_score": -0.213,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 1,
+        "connected_entities": 8
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_5553b2fe-688 analyzed. Risk level: HIGH.",
+        "quality_score": 0.63,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_746f7891-096",
+      "user_id": "U_49c8a43f",
+      "merchant_id": "M_d045dd1c",
+      "amount": 3066.08,
+      "timestamp": "2026-07-15T17:33:13.326283",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_52c21221",
+      "location": {
+        "lat": -58.882533,
+        "lon": 36.989831
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 3,
+        "amount_total_1h": 9153.46,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.6117,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_746f7891-096 analyzed. Risk level: HIGH.",
+        "quality_score": 0.55,
+        "anomaly_flags": [
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_300568d2-0de",
+      "user_id": "U_fcf56188",
+      "merchant_id": "M_8ae769ed",
+      "amount": 3246.5,
+      "timestamp": "2026-05-24T17:33:13.326299",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_c1a6423b",
+      "location": {
+        "lat": 43.813222,
+        "lon": 155.763762
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 1,
+        "txn_count_1h": 5,
+        "amount_total_1h": 15845.93,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.4646,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 3,
+        "connected_entities": 6
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_300568d2-0de analyzed. Risk level: LOW.",
+        "quality_score": 0.48,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_b2c08394-e17",
+      "user_id": "U_341c6494",
+      "merchant_id": "M_ed7bf656",
+      "amount": 1194.91,
+      "timestamp": "2026-06-19T17:33:13.326315",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_f920264c",
+      "location": {
+        "lat": 79.120316,
+        "lon": 146.885486
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 4,
+        "amount_total_1h": 12567.1,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_762172ed-1d0",
+      "user_id": "U_8d605936",
+      "merchant_id": "M_fe049059",
+      "amount": 3255.59,
+      "timestamp": "2026-07-22T17:33:13.326335",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_d50755d9",
+      "location": {
+        "lat": -48.6686915,
+        "lon": 87.563311
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 9,
+        "amount_total_1h": 10931.77,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.0652,
+        "anomaly_type": null,
+        "risk_paths_found": 3,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_3e652603-78e",
+      "user_id": "U_82456fb4",
+      "merchant_id": "M_d5b077e0",
+      "amount": 3209.06,
+      "timestamp": "2026-07-06T17:33:13.326350",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_6232b17a",
+      "location": {
+        "lat": -38.833419,
+        "lon": 141.788396
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 10,
+        "amount_total_1h": 14582.17,
+        "geo_velocity_kmh": 22.09
+      }
+    },
+    {
+      "txn_id": "TXN_57021049-6a3",
+      "user_id": "U_22f235f2",
+      "merchant_id": "M_c5ce099c",
+      "amount": 5199.3,
+      "timestamp": "2026-07-11T17:33:13.326364",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_44656d6b",
+      "location": {
+        "lat": -89.3113935,
+        "lon": -28.151977
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04",
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 4,
+        "amount_total_1h": 14314.03,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2257,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 2
+      }
+    },
+    {
+      "txn_id": "TXN_89e06ab3-725",
+      "user_id": "U_96418ced",
+      "merchant_id": "M_7d5911c6",
+      "amount": 4905.33,
+      "timestamp": "2026-05-28T17:33:13.326379",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_8d4a75b8",
+      "location": {
+        "lat": 55.8758975,
+        "lon": 22.513106
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 4,
+        "txn_count_1h": 8,
+        "amount_total_1h": 18899.41,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.1784,
+        "anomaly_type": "VELOCITY_ANOMALY",
+        "risk_paths_found": 2,
+        "connected_entities": 8
+      }
+    },
+    {
+      "txn_id": "TXN_db23aa8c-3bc",
+      "user_id": "U_de9e3757",
+      "merchant_id": "M_3d225c30",
+      "amount": 5291.96,
+      "timestamp": "2026-05-31T17:33:13.326394",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_517400f8",
+      "location": {
+        "lat": 36.9635945,
+        "lon": 24.671914
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 5,
+        "amount_total_1h": 18231.55,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_2051acef-097",
+      "user_id": "U_cada4f80",
+      "merchant_id": "M_26f05fcf",
+      "amount": 1215.66,
+      "timestamp": "2026-05-25T17:33:13.326408",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_54fd9ad3",
+      "location": {
+        "lat": -63.058584,
+        "lon": 56.387597
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 4,
+        "txn_count_1h": 6,
+        "amount_total_1h": 17626.82,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_2051acef-097 analyzed. Risk level: LOW.",
+        "quality_score": 0.83,
+        "anomaly_flags": [
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_f81dbaa1-c81",
+      "user_id": "U_68f45bce",
+      "merchant_id": "M_2784378f",
+      "amount": 5103.43,
+      "timestamp": "2026-06-14T17:33:13.326432",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_b15516bc",
+      "location": {
+        "lat": 16.698617,
+        "lon": 168.878398
+      },
+      "mcc_code": "fashion",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-03"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 5,
+        "txn_count_1h": 3,
+        "amount_total_1h": 10048.42,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2629,
+        "anomaly_type": null,
+        "risk_paths_found": 0,
+        "connected_entities": 7
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_f81dbaa1-c81 analyzed. Risk level: HIGH.",
+        "quality_score": 0.55,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_b7fddd71-a07",
+      "user_id": "U_da330aa1",
+      "merchant_id": "M_61484bb3",
+      "amount": 4755.9,
+      "timestamp": "2026-06-13T17:33:13.326449",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_df547e50",
+      "location": {
+        "lat": 55.2278805,
+        "lon": -160.726818
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 2,
+        "amount_total_1h": 4782.85,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.427,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 7
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_b7fddd71-a07 analyzed. Risk level: HIGH.",
+        "quality_score": 0.67,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_6f18c108-172",
+      "user_id": "U_a193c4b2",
+      "merchant_id": "M_ff574e2b",
+      "amount": 4726.27,
+      "timestamp": "2026-06-02T17:33:13.326465",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_a23d4c2f",
+      "location": {
+        "lat": -63.0202935,
+        "lon": 58.198108
+      },
+      "mcc_code": "electronics",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 4,
+        "amount_total_1h": 15289.61,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2553,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 0,
+        "connected_entities": 2
+      }
+    },
+    {
+      "txn_id": "TXN_5ff595ea-5bc",
+      "user_id": "U_e746ccb9",
+      "merchant_id": "M_cbd00ef2",
+      "amount": 964.9,
+      "timestamp": "2026-05-31T17:33:13.326480",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_87fa841a",
+      "location": {
+        "lat": 20.609298,
+        "lon": 123.830315
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 8,
+        "amount_total_1h": 13623.71,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_5ff595ea-5bc analyzed. Risk level: HIGH.",
+        "quality_score": 0.64,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_3da70577-aee",
+      "user_id": "U_2b840c67",
+      "merchant_id": "M_deef580f",
+      "amount": 2768.26,
+      "timestamp": "2026-05-30T17:33:13.326497",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_24a35cf2",
+      "location": {
+        "lat": -27.67239,
+        "lon": 67.577975
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 3,
+        "txn_count_1h": 4,
+        "amount_total_1h": 8252.38,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_3da70577-aee analyzed. Risk level: HIGH.",
+        "quality_score": 0.99,
+        "anomaly_flags": [
+          "geo_anomaly",
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_ad77e82f-49a",
+      "user_id": "U_415d174a",
+      "merchant_id": "M_cdfc6ee0",
+      "amount": 2588.48,
+      "timestamp": "2026-05-23T17:33:13.326513",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_711533f3",
+      "location": {
+        "lat": 2.7620645,
+        "lon": 135.450156
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 1,
+        "txn_count_1h": 1,
+        "amount_total_1h": 14950.87,
+        "geo_velocity_kmh": 72.56
+      },
+      "l2_result": {
+        "gnn_score": 0.1909,
+        "anomaly_type": "MERCHANT_COLLUSION",
+        "risk_paths_found": 3,
+        "connected_entities": 6
+      }
+    },
+    {
+      "txn_id": "TXN_627b41a1-ffd",
+      "user_id": "U_6c9f82b9",
+      "merchant_id": "M_d865d69a",
+      "amount": 2700.87,
+      "timestamp": "2026-07-07T17:33:13.326528",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_3cb98350",
+      "location": {
+        "lat": 12.3716985,
+        "lon": 127.048659
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 2,
+        "txn_count_1h": 8,
+        "amount_total_1h": 11700.32,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.2402,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 2,
+        "connected_entities": 5
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_627b41a1-ffd analyzed. Risk level: MEDIUM.",
+        "quality_score": 0.77,
+        "anomaly_flags": [
+          "device_mismatch",
+          "velocity_spike"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_464458b4-655",
+      "user_id": "U_fe2110d0",
+      "merchant_id": "M_fa5a91ca",
+      "amount": 4676.99,
+      "timestamp": "2026-07-13T17:33:13.326545",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_af908e3c",
+      "location": {
+        "lat": -76.834786,
+        "lon": 145.562007
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-04"
+        ],
+        "geo_rules": [
+          "G-RULE-01"
+        ],
+        "txn_count_5m": 2,
+        "txn_count_1h": 6,
+        "amount_total_1h": 18803.0,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_464458b4-655 analyzed. Risk level: LOW.",
+        "quality_score": 0.52,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_5a31b4cc-cd4",
+      "user_id": "U_e776b886",
+      "merchant_id": "M_cc8218da",
+      "amount": 3519.66,
+      "timestamp": "2026-05-23T17:33:13.326560",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_9ef2b93e",
+      "location": {
+        "lat": -22.7228815,
+        "lon": 173.895392
+      },
+      "mcc_code": "travel",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 6,
+        "amount_total_1h": 18875.94,
+        "geo_velocity_kmh": 0
+      }
+    },
+    {
+      "txn_id": "TXN_70d9c9f8-c9e",
+      "user_id": "U_a0d4de3d",
+      "merchant_id": "M_a5769411",
+      "amount": 3867.0,
+      "timestamp": "2026-05-29T17:33:13.326575",
+      "payment_method": "UPI",
+      "device_fingerprint": "DEV_bb7bee03",
+      "location": {
+        "lat": -54.7244115,
+        "lon": -131.610014
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 7,
+        "amount_total_1h": 11632.38,
+        "geo_velocity_kmh": 0
+      },
+      "l2_result": {
+        "gnn_score": 0.451,
+        "anomaly_type": "MULE_RING",
+        "risk_paths_found": 0,
+        "connected_entities": 5
+      }
+    },
+    {
+      "txn_id": "TXN_f8b38a8b-e05",
+      "user_id": "U_bf5ae7e6",
+      "merchant_id": "M_21d53971",
+      "amount": 4455.16,
+      "timestamp": "2026-06-13T17:33:13.326590",
+      "payment_method": "MASTERCARD",
+      "device_fingerprint": "DEV_e9da484a",
+      "location": {
+        "lat": -16.8439965,
+        "lon": -91.660885
+      },
+      "mcc_code": "food",
+      "txn_type": "P2M",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-02"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 9,
+        "amount_total_1h": 8781.43,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_f8b38a8b-e05 analyzed. Risk level: HIGH.",
+        "quality_score": 0.66,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_1346d1a9-f68",
+      "user_id": "U_4b8e63d4",
+      "merchant_id": "M_cde22f1c",
+      "amount": 3749.7,
+      "timestamp": "2026-07-02T17:33:13.326610",
+      "payment_method": "VISA",
+      "device_fingerprint": "DEV_39c1e262",
+      "location": {
+        "lat": 16.679335,
+        "lon": 119.204934
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [],
+        "geo_rules": [
+          "G-RULE-03"
+        ],
+        "txn_count_5m": 3,
+        "txn_count_1h": 10,
+        "amount_total_1h": 10152.59,
+        "geo_velocity_kmh": 0
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_1346d1a9-f68 analyzed. Risk level: LOW.",
+        "quality_score": 0.94,
+        "anomaly_flags": [
+          "geo_anomaly"
+        ]
+      }
+    },
+    {
+      "txn_id": "TXN_bfbf397b-ac3",
+      "user_id": "U_6502d6a2",
+      "merchant_id": "M_1fa382e8",
+      "amount": 1184.16,
+      "timestamp": "2026-06-06T17:33:13.326626",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_618ae305",
+      "location": {
+        "lat": 81.409263,
+        "lon": 19.433392
+      },
+      "mcc_code": "food",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-02"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 8,
+        "amount_total_1h": 10519.28,
+        "geo_velocity_kmh": 20.84
+      },
+      "l3_result": {
+        "summary": "Transaction TXN_bfbf397b-ac3 analyzed. Risk level: HIGH.",
+        "quality_score": 0.55,
+        "anomaly_flags": []
+      }
+    },
+    {
+      "txn_id": "TXN_a2a9d4d8-102",
+      "user_id": "U_f1738856",
+      "merchant_id": "M_9c2e58de",
+      "amount": 4833.55,
+      "timestamp": "2026-06-26T17:33:13.326647",
+      "payment_method": "RUPAY",
+      "device_fingerprint": "DEV_b379cb1e",
+      "location": {
+        "lat": -8.881444,
+        "lon": 168.557775
+      },
+      "mcc_code": "grocery",
+      "txn_type": "P2P",
+      "decision": "ALLOW",
+      "l1_result": {
+        "velocity_rules": [
+          "V-RULE-01",
+          "V-RULE-03"
+        ],
+        "geo_rules": [],
+        "txn_count_5m": 5,
+        "txn_count_1h": 4,
+        "amount_total_1h": 21235.41,
+        "geo_velocity_kmh": 0
+      }
+    }
+  ],
+  "chargebacks": [
+    {
+      "dispute_id": "CB_a491f0b2-ea1",
+      "payment_id": "pay_9132b63e-f16",
+      "transaction_id": "TXN_9132b63e-f16",
+      "network": "VISA",
+      "reason_code": "12.4",
+      "reason_description": "Incorrect Account Number",
+      "dispute_type": "processing",
+      "amount": 4958.08,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-19T17:33:13.325072",
+      "respond_by": "2026-09-20T17:33:13.325073",
+      "transaction": {
+        "txn_id": "TXN_9132b63e-f16",
+        "user_id": "U_ce177b4e",
+        "merchant_id": "M_10f1bc81",
+        "amount": 4958.08,
+        "timestamp": "2026-06-18T17:33:13.325046",
+        "payment_method": "VISA",
+        "device_fingerprint": "DEV_366eb16f",
+        "location": {
+          "lat": 85.942977,
+          "lon": 88.022742
+        },
+        "mcc_code": "grocery",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-03",
+            "V-RULE-02"
+          ],
+          "geo_rules": [],
+          "txn_count_5m": 1,
+          "txn_count_1h": 6,
+          "amount_total_1h": 21946.9,
+          "geo_velocity_kmh": 0
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_7394988f-847",
+      "payment_id": "pay_b683d2e6-337",
+      "transaction_id": "TXN_b683d2e6-337",
+      "network": "UPI",
+      "reason_code": "13.3",
+      "reason_description": "Not as Described",
+      "dispute_type": "service",
+      "amount": 1477.33,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-10T17:33:13.325216",
+      "respond_by": "2026-08-28T17:33:13.325217",
+      "transaction": {
+        "txn_id": "TXN_b683d2e6-337",
+        "user_id": "U_f6e07cc0",
+        "merchant_id": "M_c1590f53",
+        "amount": 1477.33,
+        "timestamp": "2026-06-10T17:33:13.325199",
+        "payment_method": "UPI",
+        "device_fingerprint": "DEV_abf3ad39",
+        "location": {
+          "lat": 84.4503125,
+          "lon": 20.478606
+        },
+        "mcc_code": "grocery",
+        "txn_type": "P2P",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01",
+            "V-RULE-04"
+          ],
+          "geo_rules": [
+            "G-RULE-01"
+          ],
+          "txn_count_5m": 1,
+          "txn_count_1h": 9,
+          "amount_total_1h": 17276.99,
+          "geo_velocity_kmh": 53.48
+        },
+        "l2_result": {
+          "gnn_score": 0.1501,
+          "anomaly_type": "VELOCITY_ANOMALY",
+          "risk_paths_found": 2,
+          "connected_entities": 8
+        },
+        "l3_result": {
+          "summary": "Transaction TXN_b683d2e6-337 analyzed. Risk level: HIGH.",
+          "quality_score": 0.43,
+          "anomaly_flags": [
+            "geo_anomaly"
+          ]
+        }
+      },
+      "expected_outcome": "won"
+    },
+    {
+      "dispute_id": "CB_6601ddd0-317",
+      "payment_id": "pay_eb1fa9f2-d10",
+      "transaction_id": "TXN_eb1fa9f2-d10",
+      "network": "UPI",
+      "reason_code": "13.1",
+      "reason_description": "Services Not Provided",
+      "dispute_type": "service",
+      "amount": 4123.85,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-20T17:33:13.325612",
+      "respond_by": "2026-08-28T17:33:13.325613",
+      "transaction": {
+        "txn_id": "TXN_eb1fa9f2-d10",
+        "user_id": "U_61ee411a",
+        "merchant_id": "M_787f2425",
+        "amount": 4123.85,
+        "timestamp": "2026-06-29T17:33:13.325597",
+        "payment_method": "UPI",
+        "device_fingerprint": "DEV_d20eac17",
+        "location": {
+          "lat": -28.9053005,
+          "lon": -60.31883
+        },
+        "mcc_code": "fashion",
+        "txn_type": "P2P",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [],
+          "geo_rules": [],
+          "txn_count_5m": 3,
+          "txn_count_1h": 1,
+          "amount_total_1h": 11361.05,
+          "geo_velocity_kmh": 0
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_dc8aee30-be6",
+      "payment_id": "pay_b8225688-d0a",
+      "transaction_id": "TXN_b8225688-d0a",
+      "network": "VISA",
+      "reason_code": "12.4",
+      "reason_description": "Incorrect Account Number",
+      "dispute_type": "processing",
+      "amount": 5711.0,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-15T17:33:13.325786",
+      "respond_by": "2026-08-31T17:33:13.325787",
+      "transaction": {
+        "txn_id": "TXN_b8225688-d0a",
+        "user_id": "U_986f9025",
+        "merchant_id": "M_e4347d51",
+        "amount": 5711.0,
+        "timestamp": "2026-06-16T17:33:13.325773",
+        "payment_method": "VISA",
+        "device_fingerprint": "DEV_d4a02e53",
+        "location": {
+          "lat": 57.0682575,
+          "lon": 59.398044
+        },
+        "mcc_code": "travel",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01"
+          ],
+          "geo_rules": [
+            "G-RULE-03"
+          ],
+          "txn_count_5m": 4,
+          "txn_count_1h": 7,
+          "amount_total_1h": 9430.13,
+          "geo_velocity_kmh": 0
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_6a702e2f-774",
+      "payment_id": "pay_b1a6b1f1-620",
+      "transaction_id": "TXN_b1a6b1f1-620",
+      "network": "MASTERCARD",
+      "reason_code": "10.5",
+      "reason_description": "Fraud - Visa Fraud Monitoring Program",
+      "dispute_type": "fraud",
+      "amount": 1308.32,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-20T17:33:13.325824",
+      "respond_by": "2026-08-29T17:33:13.325825",
+      "transaction": {
+        "txn_id": "TXN_b1a6b1f1-620",
+        "user_id": "U_51d87c64",
+        "merchant_id": "M_236c7b87",
+        "amount": 1308.32,
+        "timestamp": "2026-06-21T17:33:13.325811",
+        "payment_method": "MASTERCARD",
+        "device_fingerprint": "DEV_10714d51",
+        "location": {
+          "lat": 21.365253,
+          "lon": 38.828247
+        },
+        "mcc_code": "grocery",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01",
+            "V-RULE-04"
+          ],
+          "geo_rules": [
+            "G-RULE-01"
+          ],
+          "txn_count_5m": 1,
+          "txn_count_1h": 7,
+          "amount_total_1h": 7527.32,
+          "geo_velocity_kmh": 0
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_c64ee6e3-89c",
+      "payment_id": "pay_2d174fc9-6f7",
+      "transaction_id": "TXN_2d174fc9-6f7",
+      "network": "UPI",
+      "reason_code": "10.4",
+      "reason_description": "Fraud - Card Not Present",
+      "dispute_type": "fraud",
+      "amount": 3851.06,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-10T17:33:13.326003",
+      "respond_by": "2026-08-28T17:33:13.326004",
+      "transaction": {
+        "txn_id": "TXN_2d174fc9-6f7",
+        "user_id": "U_5cb85aed",
+        "merchant_id": "M_75b17a55",
+        "amount": 3851.06,
+        "timestamp": "2026-06-24T17:33:13.325988",
+        "payment_method": "UPI",
+        "device_fingerprint": "DEV_a6846099",
+        "location": {
+          "lat": -17.50031,
+          "lon": 150.665424
+        },
+        "mcc_code": "grocery",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01",
+            "V-RULE-03"
+          ],
+          "geo_rules": [
+            "G-RULE-02"
+          ],
+          "txn_count_5m": 1,
+          "txn_count_1h": 1,
+          "amount_total_1h": 24693.1,
+          "geo_velocity_kmh": 0
+        },
+        "l2_result": {
+          "gnn_score": 0.2966,
+          "anomaly_type": "VELOCITY_ANOMALY",
+          "risk_paths_found": 0,
+          "connected_entities": 2
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_bef59fe6-ff2",
+      "payment_id": "pay_4e6384bb-3e4",
+      "transaction_id": "TXN_4e6384bb-3e4",
+      "network": "UPI",
+      "reason_code": "12.4",
+      "reason_description": "Incorrect Account Number",
+      "dispute_type": "processing",
+      "amount": 1798.51,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-14T17:33:13.326069",
+      "respond_by": "2026-08-28T17:33:13.326070",
+      "transaction": {
+        "txn_id": "TXN_4e6384bb-3e4",
+        "user_id": "U_cafda613",
+        "merchant_id": "M_38ba8abc",
+        "amount": 1798.51,
+        "timestamp": "2026-06-08T17:33:13.326057",
+        "payment_method": "UPI",
+        "device_fingerprint": "DEV_79279973",
+        "location": {
+          "lat": 58.571764,
+          "lon": 105.036542
+        },
+        "mcc_code": "electronics",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [],
+          "geo_rules": [
+            "G-RULE-03"
+          ],
+          "txn_count_5m": 3,
+          "txn_count_1h": 6,
+          "amount_total_1h": 10368.03,
+          "geo_velocity_kmh": 0
+        },
+        "l2_result": {
+          "gnn_score": 0.4819,
+          "anomaly_type": null,
+          "risk_paths_found": 1,
+          "connected_entities": 7
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_43b9da13-ec8",
+      "payment_id": "pay_49c13de7-3b4",
+      "transaction_id": "TXN_49c13de7-3b4",
+      "network": "UPI",
+      "reason_code": "12.2",
+      "reason_description": "Incorrect Transaction Code",
+      "dispute_type": "processing",
+      "amount": 3598.88,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-13T17:33:13.326198",
+      "respond_by": "2026-08-28T17:33:13.326199",
+      "transaction": {
+        "txn_id": "TXN_49c13de7-3b4",
+        "user_id": "U_68949b8d",
+        "merchant_id": "M_784c2f29",
+        "amount": 3598.88,
+        "timestamp": "2026-06-13T17:33:13.326181",
+        "payment_method": "UPI",
+        "device_fingerprint": "DEV_dc0f2fcf",
+        "location": {
+          "lat": 31.878106,
+          "lon": -141.785658
+        },
+        "mcc_code": "grocery",
+        "txn_type": "P2P",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01"
+          ],
+          "geo_rules": [
+            "G-RULE-03"
+          ],
+          "txn_count_5m": 2,
+          "txn_count_1h": 6,
+          "amount_total_1h": 10339.27,
+          "geo_velocity_kmh": 0
+        },
+        "l2_result": {
+          "gnn_score": 0.1554,
+          "anomaly_type": "MULE_RING",
+          "risk_paths_found": 0,
+          "connected_entities": 6
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_288b78b5-b5b",
+      "payment_id": "pay_b2c08394-e17",
+      "transaction_id": "TXN_b2c08394-e17",
+      "network": "VISA",
+      "reason_code": "13.2",
+      "reason_description": "Merchandise Not Received",
+      "dispute_type": "service",
+      "amount": 1194.91,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-20T17:33:13.326327",
+      "respond_by": "2026-09-17T17:33:13.326328",
+      "transaction": {
+        "txn_id": "TXN_b2c08394-e17",
+        "user_id": "U_341c6494",
+        "merchant_id": "M_ed7bf656",
+        "amount": 1194.91,
+        "timestamp": "2026-06-19T17:33:13.326315",
+        "payment_method": "VISA",
+        "device_fingerprint": "DEV_f920264c",
+        "location": {
+          "lat": 79.120316,
+          "lon": 146.885486
+        },
+        "mcc_code": "travel",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-02"
+          ],
+          "geo_rules": [
+            "G-RULE-01"
+          ],
+          "txn_count_5m": 1,
+          "txn_count_1h": 4,
+          "amount_total_1h": 12567.1,
+          "geo_velocity_kmh": 0
+        }
+      },
+      "expected_outcome": "under_review"
+    },
+    {
+      "dispute_id": "CB_74f93d17-e91",
+      "payment_id": "pay_2051acef-097",
+      "transaction_id": "TXN_2051acef-097",
+      "network": "MASTERCARD",
+      "reason_code": "FRAUD",
+      "reason_description": "Fraudulent Transaction",
+      "dispute_type": "fraud",
+      "amount": 1215.66,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-15T17:33:13.326421",
+      "respond_by": "2026-09-08T17:33:13.326422",
+      "transaction": {
+        "txn_id": "TXN_2051acef-097",
+        "user_id": "U_cada4f80",
+        "merchant_id": "M_26f05fcf",
+        "amount": 1215.66,
+        "timestamp": "2026-05-25T17:33:13.326408",
+        "payment_method": "MASTERCARD",
+        "device_fingerprint": "DEV_54fd9ad3",
+        "location": {
+          "lat": -63.058584,
+          "lon": 56.387597
+        },
+        "mcc_code": "electronics",
+        "txn_type": "P2P",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-01"
+          ],
+          "geo_rules": [],
+          "txn_count_5m": 4,
+          "txn_count_1h": 6,
+          "amount_total_1h": 17626.82,
+          "geo_velocity_kmh": 0
+        },
+        "l3_result": {
+          "summary": "Transaction TXN_2051acef-097 analyzed. Risk level: LOW.",
+          "quality_score": 0.83,
+          "anomaly_flags": [
+            "velocity_spike"
+          ]
+        }
+      },
+      "expected_outcome": "lost"
+    },
+    {
+      "dispute_id": "CB_f1b64afe-d31",
+      "payment_id": "pay_f8b38a8b-e05",
+      "transaction_id": "TXN_f8b38a8b-e05",
+      "network": "MASTERCARD",
+      "reason_code": "13.3",
+      "reason_description": "Not as Described",
+      "dispute_type": "service",
+      "amount": 4455.16,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-12T17:33:13.326603",
+      "respond_by": "2026-09-11T17:33:13.326604",
+      "transaction": {
+        "txn_id": "TXN_f8b38a8b-e05",
+        "user_id": "U_bf5ae7e6",
+        "merchant_id": "M_21d53971",
+        "amount": 4455.16,
+        "timestamp": "2026-06-13T17:33:13.326590",
+        "payment_method": "MASTERCARD",
+        "device_fingerprint": "DEV_e9da484a",
+        "location": {
+          "lat": -16.8439965,
+          "lon": -91.660885
+        },
+        "mcc_code": "food",
+        "txn_type": "P2M",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [],
+          "geo_rules": [
+            "G-RULE-02"
+          ],
+          "txn_count_5m": 3,
+          "txn_count_1h": 9,
+          "amount_total_1h": 8781.43,
+          "geo_velocity_kmh": 0
+        },
+        "l3_result": {
+          "summary": "Transaction TXN_f8b38a8b-e05 analyzed. Risk level: HIGH.",
+          "quality_score": 0.66,
+          "anomaly_flags": []
+        }
+      },
+      "expected_outcome": "won"
+    },
+    {
+      "dispute_id": "CB_78b2b549-3bd",
+      "payment_id": "pay_bfbf397b-ac3",
+      "transaction_id": "TXN_bfbf397b-ac3",
+      "network": "RUPAY",
+      "reason_code": "12.1",
+      "reason_description": "Late Presentment",
+      "dispute_type": "processing",
+      "amount": 1184.16,
+      "currency": "INR",
+      "status": "open",
+      "created_at": "2026-08-20T17:33:13.326639",
+      "respond_by": "2026-09-04T17:33:13.326640",
+      "transaction": {
+        "txn_id": "TXN_bfbf397b-ac3",
+        "user_id": "U_6502d6a2",
+        "merchant_id": "M_1fa382e8",
+        "amount": 1184.16,
+        "timestamp": "2026-06-06T17:33:13.326626",
+        "payment_method": "RUPAY",
+        "device_fingerprint": "DEV_618ae305",
+        "location": {
+          "lat": 81.409263,
+          "lon": 19.433392
+        },
+        "mcc_code": "food",
+        "txn_type": "P2P",
+        "decision": "ALLOW",
+        "l1_result": {
+          "velocity_rules": [
+            "V-RULE-02"
+          ],
+          "geo_rules": [],
+          "txn_count_5m": 5,
+          "txn_count_1h": 8,
+          "amount_total_1h": 10519.28,
+          "geo_velocity_kmh": 20.84
+        },
+        "l3_result": {
+          "summary": "Transaction TXN_bfbf397b-ac3 analyzed. Risk level: HIGH.",
+          "quality_score": 0.55,
+          "anomaly_flags": []
+        }
+      },
+      "expected_outcome": "lost"
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-08-21T17:33:13.326655",
+    "num_transactions": 100,
+    "num_chargebacks": 12,
+    "chargeback_rate": 0.12,
+    "seed": 42
+  }
+}
