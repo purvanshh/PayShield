@@ -183,6 +183,18 @@ class FakeRedis:
     async def hgetall(self, key):
         return dict(self._store.hashes.get(key, {}))
 
+    async def hget(self, key, field):
+        return self._store.hashes.get(key, {}).get(field)
+
+    async def hset(self, name, key, value):
+        self._store.hashes.setdefault(name, {})[key] = value
+        return 1
+
+    async def hincrby(self, key, field, amount=1):
+        hash_store = self._store.hashes.setdefault(key, {})
+        hash_store[field] = str(int(hash_store.get(field, 0)) + amount)
+        return int(hash_store[field])
+
     async def exists(self, key):
         return (
             key in self._store.strings
