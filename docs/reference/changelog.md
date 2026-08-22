@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-22 — Track 02: AI Risk Manager
+
+- **Chargeback evidence responder** (`/v1/chargeback/respond` + GET + `/submit`):
+  reconstruction-only evidence collector (audit chain + Redis mirrors),
+  rule-based ACCEPT/REJECT/PARTIAL disposition, network-aware urgency
+  (UPI 7d / Visa·MC 30d / Amex 20d / RuPay 15d), LLM narrative with a
+  deterministic fallback + Jinja2 template, single-point Razorpay payload
+  builder, MockTransport-testable client with realistic fixtures, signed
+  webhook endpoint, admin-gated human-in-the-loop submission
+- **Return-risk scorer** (`/v1/return/score` + `/update` + `/profile/{user_id}`):
+  Redis feature engine with provenance tags, 8 config-driven rules
+  (whitelisted-scope eval, per-rule graceful degradation), weighted
+  composite with capped rule adjustments, transparent per-feature
+  breakdown, honest confidence, merchant-actionable recommendations
+- **Measured (synthetic, seed 42, 10k orders, chronological hold-out)**: PR-AUC
+  **0.9806**, ROC-AUC 0.9846, precision **1.0000** @ HIGH cut (recall 0.3675),
+  precision **0.9444 / recall 0.9125 / F1 0.9282** @ MEDIUM+ cut
+- **Synthetic datasets**: archetype-driven return generator (5 user + 5
+  merchant archetypes, v1 fixture) and chargeback generator (L1/L2/L3
+  point-in-time evidence, Visa/MC reason codes, per-network deadlines);
+  both with committed fixtures + stats reports
+- **Demo assets**: `docs/DEMO_SCRIPT.md`, `docs/DEMO_DATA.md` (verified
+  outputs), recording checklist, judge Q&A playbook, video structure,
+  `scripts/seed_demo_data.py` (six curated scenarios)
+- **Quality**: 537 tests (up from 412), 76.4% suite coverage; new modules
+  at 91% coverage, ruff-clean; compliance rerun in the compose runtime env:
+  PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100 (see
+  `COMPLIANCE_DELTA_TRACK2.md`)
+
 ## 2026-08-15 — GNN v1.1.0: Improved Model, Live Serving & Continuous Improvement
 
 - **GNN v1.1.0 registered** (`models/registry/v1.1.0`, `latest` → v1.1.0): test PR-AUC **0.4125** (+108% vs v1.0.0's 0.198, 4.0× the edge-free MLP baseline 0.1028), AUC-ROC 0.7668, FPR@90% recall 0.4877, p99 0.70 ms CPU — winner picked by an 8-trial Optuna sweep (hidden 128, 3 layers, dropout 0.3, pos_weight 10, lr 4.3e-3, batch 16; 371,843 params)

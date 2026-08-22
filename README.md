@@ -1,10 +1,83 @@
-# PayShield — Real-Time UPI Fraud Detection Engine
+# PayShield — AI Risk Manager (Razorpay AI Buildathon Track 02)
 
-**Multi-layer fraud scoring · Graph-powered investigation · 14-agent orchestration · Production-ready ops**
+**Multi-layer fraud scoring · Graph-powered investigation · Chargeback evidence responder · Return-risk scorer · 14-agent orchestration · Production-ready ops**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg)](https://fastapi.tiangolo.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## Track 02: AI Risk Manager
+
+PayShield now covers the full lifecycle of merchant loss — **reactive
+fraud detection**, **proactive return-risk scoring** and **remedial
+chargeback response** — sharing one tamper-evident audit chain:
+
+```
+[Transaction]  →  /v1/score              → FALSE + "was this fraud?"   (reactive)
+[Order]        →  /v1/return/score       → "will this come back?"      (proactive)
+[Dispute]      →  /v1/chargeback/respond → "can we win this contest?"  (remedial)
+```
+
+### 1. Chargeback Evidence Responder — `POST /v1/chargeback/respond`
+
+Rebuilds a dispute rebuttal from evidence **already captured at transaction
+time** (L1 rule snapshots, L2 GNN score, L3 investigation), overlays
+merchant delivery proof, generates the narrative with the existing LLM
+stack and hands the merchant a ready-to-submit Razorpay payload. Submission
+is never automatic — `chargeback:admin` only.
+
+- Network-aware deadlines (UPI 7d / Visa·MC 30d / Amex 20d / RuPay 15d)
+- Honest completeness + confidence (weak cases degrade to conservative
+  PARTIAL with explicit warnings)
+- Signed webhook endpoint (`/webhooks/razorpay/chargeback`) with HMAC
+  verification and auto-rebuttal caching
+- Mock-mode Razorpay client with realistic fixtures (reason codes,
+  `open → under_review → won/lost` transitions)
+
+### 2. Return-Risk Scorer — `POST /v1/return/score`
+
+Checkout-time assessment with a **transparent feature breakdown** — every
+value, weight and contribution is in the response, tuned via YAML
+(`configs/feature_registry_return.yaml`), gated by 8 config-driven rules
+(`configs/return_risk_rules.yaml`, reloadable without a deploy).
+
+**Measured on 10,000 synthetic orders** (500 users × 5 archetypes, seed 42,
+chronological per-user hold-out — profiles never see future returns):
+
+| Metric | Value |
+|---|---|
+| PR-AUC | **0.9806** |
+| ROC-AUC | 0.9846 |
+| Precision @ HIGH cut (prepaid gate) | 1.0000 · recall 0.3675 |
+| Precision @ MEDIUM+ cut (flag for review) | **0.9444 · recall 0.9125 · F1 0.9282** |
+
+Both operating points are reported at the shipped tier boundaries — the
+HIGH gate is intentionally conservative (zero false positives) while the
+FLAG_FOR_REVIEW tier catches 91% of high-risk users at 94% precision.
+Run it yourself: `python scripts/benchmark_return_risk.py`.
+
+### Track 2 quick start
+
+```bash
+# 1. Start everything
+docker compose -f docker/docker-compose.yml up
+
+# 2. Seed the six curated demo scenarios (verified outputs in docs/DEMO_DATA.md)
+python scripts/seed_demo_data.py
+
+# 3. Benchmarks (hermetic — no services needed)
+python scripts/benchmark_return_risk.py
+
+# 4. End-to-end flow tests
+python -m pytest tests/integration/test_chargeback_flow.py -v
+```
+
+**Demo script:** [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) ·
+**Data & verified outputs:** [`docs/DEMO_DATA.md`](docs/DEMO_DATA.md) ·
+**Judge Q&A:** [`docs/JUDGE_QA.md`](docs/JUDGE_QA.md) ·
+**Architecture:** [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md)
+
+---
 
 ## Why PayShield
 
