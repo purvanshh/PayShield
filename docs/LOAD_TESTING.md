@@ -19,7 +19,7 @@ make up
 python scripts/seed_demo_data.py
 
 # 2. load run (100 users is the target; start at 50, then 100)
-locust -f tests/load/test_return_risk_load.py \
+locust -f tests/load/return_risk_loadfile.py \
     --host=http://localhost:8000 \
     --users=100 --spawn-rate=10 --run-time=5m \
     --html=reports/load_test_report.html
