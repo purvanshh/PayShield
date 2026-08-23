@@ -93,22 +93,25 @@ class ReturnRiskFeatureEngine:
         self, user_id: str, timestamp: datetime
     ) -> dict[str, Any]:
         user_key = f"return_risk:user:{user_id}"
-        data = await self.redis.hgetall(user_key)
+        data = await self._safe_redis(self.redis.hgetall(user_key), default=None)
 
-        if not data:
-            # New user: neutral features, never zero-risk-by-default
+        if data is None or not data:
+            # New user (or unreadable store): neutral features, never
+            # zero-risk-by-default. ``default_redis_error`` marks the
+            # degraded path so responses can carry an honest warning.
+            source = "default_redis_error" if data is None else "default_new_user"
             return {
-                "user_return_rate_30d": {"value": 0.0, "source": "default_new_user"},
-                "user_return_rate_90d": {"value": 0.0, "source": "default_new_user"},
-                "user_return_rate_lifetime": {"value": 0.0, "source": "default_new_user"},
-                "user_total_orders": {"value": 0, "source": "default_new_user"},
-                "user_total_returns": {"value": 0, "source": "default_new_user"},
-                "user_serial_returner_flag": {"value": False, "source": "default_new_user"},
-                "user_return_velocity_7d": {"value": 0, "source": "default_new_user"},
-                "user_cod_refusal_rate": {"value": 0.0, "source": "default_new_user"},
-                "user_cod_orders": {"value": 0, "source": "default_new_user"},
-                "user_avg_return_value": {"value": 0.0, "source": "default_new_user"},
-                "user_return_reason_distribution": {"value": {}, "source": "default_new_user"},
+                "user_return_rate_30d": {"value": 0.0, "source": source},
+                "user_return_rate_90d": {"value": 0.0, "source": source},
+                "user_return_rate_lifetime": {"value": 0.0, "source": source},
+                "user_total_orders": {"value": 0, "source": source},
+                "user_total_returns": {"value": 0, "source": source},
+                "user_serial_returner_flag": {"value": False, "source": source},
+                "user_return_velocity_7d": {"value": 0, "source": source},
+                "user_cod_refusal_rate": {"value": 0.0, "source": source},
+                "user_cod_orders": {"value": 0, "source": source},
+                "user_avg_return_value": {"value": 0.0, "source": source},
+                "user_return_reason_distribution": {"value": {}, "source": source},
                 "user_is_new": {"value": True, "source": "inferred"},
             }
 
@@ -148,14 +151,27 @@ class ReturnRiskFeatureEngine:
         self, merchant_id: str, category: str, timestamp: datetime
     ) -> dict[str, Any]:
         merchant_key = f"return_risk:merchant:{merchant_id}"
-        data = await self.redis.hgetall(merchant_key)
+        data = await self._safe_redis(self.redis.hgetall(merchant_key), default=None)
 
         if not data:
+            degraded = data is None
             return {
-                "merchant_return_rate_30d": {"value": DEFAULT_MERCHANT_RETURN_RATE, "source": "default"},
-                "merchant_return_fraud_rate": {"value": 0.0, "source": "default"},
-                "merchant_avg_resolution_time": {"value": DEFAULT_RESOLUTION_HOURS, "source": "default"},
-                "merchant_category_return_rate": {"value": self._category_baseline(category), "source": "lookup_table"},
+                "merchant_return_rate_30d": {
+                    "value": DEFAULT_MERCHANT_RETURN_RATE,
+                    "source": "default_redis_error" if degraded else "default",
+                },
+                "merchant_return_fraud_rate": {
+                    "value": 0.0,
+                    "source": "default_redis_error" if degraded else "default",
+                },
+                "merchant_avg_resolution_time": {
+                    "value": DEFAULT_RESOLUTION_HOURS,
+                    "source": "default_redis_error" if degraded else "default",
+                },
+                "merchant_category_return_rate": {
+                    "value": self._category_baseline(category),
+                    "source": "lookup_table",
+                },
             }
 
         return {
@@ -189,6 +205,23 @@ class ReturnRiskFeatureEngine:
         except Exception:  # nosec B110 - zset read failure falls back to lookup table
             pass
         return self._category_baseline(category)
+
+    @staticmethod
+    async def _safe_redis(awaitable, default):
+        """Await a redis call, degrading to ``default`` on any failure.
+
+        The risk scorer is a checkout-time decision path: a Redis outage
+        must degrade to neutral defaults (with provenance tags) — never
+        raise, never retry-loop. Callers distinguish degradation via the
+        ``default_redis_error`` feature source.
+        """
+        try:
+            result = awaitable
+            if hasattr(result, "__await__"):
+                result = await result
+            return result
+        except Exception:  # nosec B112 - store outage degrades, never raises
+            return default
 
     @staticmethod
     def _category_baseline(category: str) -> float:
@@ -227,7 +260,9 @@ class ReturnRiskFeatureEngine:
     async def _count_returns_in_window(self, user_id: str, days: int) -> int:
         key = f"return_risk:user:{user_id}:returns"
         cutoff_ts = (datetime.utcnow() - timedelta(days=days)).timestamp()
-        returns = await self.redis.zrangebyscore(key, cutoff_ts, float("inf"))
+        returns = await self._safe_redis(
+            self.redis.zrangebyscore(key, cutoff_ts, float("inf")), default=[]
+        )
         return len(returns)
 
     @staticmethod
