@@ -1,0 +1,41 @@
+{
+  "fashion": {
+    "description": "Fashion apparel merchant (Myntra/Flipkart-style). High category return baseline, mid AOV.",
+    "aov": 2500.0,
+    "return_rate": 0.18,
+    "return_logistics": 120.0,
+    "restocking": 80.0,
+    "service_cost": 45.0,
+    "gateway_fee_pct": 0.02,
+    "cac": 180.0,
+    "churn_after_false_block": 0.15,
+    "ltv": 3000.0,
+    "diversion_effectiveness": 0.70
+  },
+  "electronics": {
+    "description": "Consumer-electronics merchant. Low volume, high AOV, buy-now-later-return dynamics.",
+    "aov": 8000.0,
+    "return_rate": 0.12,
+    "return_logistics": 180.0,
+    "restocking": 120.0,
+    "service_cost": 60.0,
+    "gateway_fee_pct": 0.02,
+    "cac": 250.0,
+    "churn_after_false_block": 0.12,
+    "ltv": 6000.0,
+    "diversion_effectiveness": 0.70
+  },
+  "grocery": {
+    "description": "Grocery merchant. High frequency, tiny AOV, low category return rate.",
+    "aov": 800.0,
+    "return_rate": 0.04,
+    "return_logistics": 80.0,
+    "restocking": 40.0,
+    "service_cost": 25.0,
+    "gateway_fee_pct": 0.02,
+    "cac": 40.0,
+    "churn_after_false_block": 0.20,
+    "ltv": 900.0,
+    "diversion_effectiveness": 0.65
+  }
+}
