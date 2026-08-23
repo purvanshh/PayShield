@@ -1,9 +1,8 @@
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
-from agents.base import BaseAgent, AgentConfig
+from agents.base import AgentConfig, BaseAgent
 from agents.message import AgentMessage
 
 logger = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ class ReflectionReport:
             "findings": self.findings,
             "recommendations": self.recommendations,
             "weaknesses": self.weaknesses,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
 
@@ -76,7 +75,7 @@ class ReflectionAgent(BaseAgent):
         )
 
     async def analyze_period(self, period_hours: int = 24) -> ReflectionReport:
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(hours=period_hours)
 
         report = ReflectionReport(
@@ -149,6 +148,27 @@ class ReflectionAgent(BaseAgent):
             })
         return config_changes
 
+    def analyze_risk_suite(
+        self,
+        return_records: list[dict] | None = None,
+        chargeback_records: list[dict] | None = None,
+        drift_detected: bool = False,
+    ) -> dict:
+        """Nightly reflection over the Track 2 risk suite.
+
+        Delegates to ``agents.risk_suite_reflection`` so the analysis is
+        deterministic: tier precision vs actual returns, response-type
+        outcome matrix, and the resulting recommendation payload
+        (threshold adjustment, contest strategy, retraining trigger).
+        """
+        from agents.risk_suite_reflection import build_risk_suite_reflection
+
+        return build_risk_suite_reflection(
+            return_records=return_records or [],
+            chargeback_records=chargeback_records or [],
+            drift_detected=drift_detected,
+        )
+
     def _get_feedback_data(self, start: datetime, end: datetime) -> list[dict]:
         entries: list[dict] = []
 
@@ -168,8 +188,9 @@ class ReflectionAgent(BaseAgent):
                 pass
 
         try:
-            from store.postgres import get_engine
             from sqlalchemy import text
+
+            from store.postgres import get_engine
             engine = get_engine()
             async def _db_fetch():
                 async with engine.connect() as conn:

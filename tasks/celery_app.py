@@ -37,6 +37,10 @@ celery_app.config_from_object(
                 "schedule": 86400.0,
                 "args": (24,),
             },
+            "nightly-risk-suite-reflection": {
+                "task": "tasks.reflection_task.run_risk_suite_reflection",
+                "schedule": 86400.0,
+            },
             "daily-pci-dss-check": {
                 "task": "tasks.compliance_task.run_pci_dss_check",
                 "schedule": 86400.0,
