@@ -17,6 +17,20 @@ async LLM investigation (Celery + Ollama).
 - [Changelog](reference/changelog.md)
 - [FAQ](reference/faq.md)
 
+## Track 2 — AI Risk Manager
+
+- [Track 2 Architecture](TRACK2_ARCHITECTURE.md) — the three-act risk suite
+- [API Reference (Track 2)](API_REFERENCE.md) — every new endpoint with schemas/errors
+- [Design Decisions](DESIGN_DECISIONS.md) — the "why" behind the choices
+- [Demo Script](DEMO_SCRIPT.md) · [Demo Data](DEMO_DATA.md) — verified walkthrough
+- [Judge Q&A](JUDGE_QA.md) · [Panel Prep](PANEL_PREP.md) — rehearsed answers
+- [Live Panel Demo](LIVE_PANEL_DEMO.md)
+- [Security Audit](SECURITY_AUDIT.md) · [Load Testing](LOAD_TESTING.md) ·
+  [Performance](PERFORMANCE_OPTIMIZATION.md)
+- [Chaos Engineering](CHAOS_ENGINEERING.md) · [A/B Testing](AB_TESTING.md) ·
+  [Drift Monitoring](DRIFT_MONITORING.md)
+- [Troubleshooting](TROUBLESHOOTING.md) · [Submission Checklist](SUBMISSION_CHECKLIST.md)
+
 ## System Overview
 
 PayShield processes real-time UPI transactions through a three-layer pipeline:
