@@ -2,10 +2,9 @@ import enum
 import hashlib
 import json
 import logging
-import time
 import uuid
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -91,9 +90,9 @@ class ABTestFramework:
             challenger_version=challenger_version,
             traffic_split=traffic_split,
             status=ExperimentStatus.SHADOW if traffic_split == 0.0 else ExperimentStatus.CANARY,
-            start_date=datetime.now(timezone.utc).isoformat(),
+            start_date=datetime.now(UTC).isoformat(),
             created_by=created_by,
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
         )
 
         if traffic_split > 0.0:
@@ -115,7 +114,7 @@ class ABTestFramework:
         if exp:
             exp.status = status
             if status in (ExperimentStatus.PROMOTED, ExperimentStatus.ROLLED_BACK, ExperimentStatus.FAILED):
-                exp.end_date = datetime.now(timezone.utc).isoformat()
+                exp.end_date = datetime.now(UTC).isoformat()
                 if exp == self._active_experiment:
                     self._active_experiment = None
             logger.info(f"Experiment {experiment_id} status updated to {status}")
@@ -296,7 +295,7 @@ class ReturnRiskABExperiment:
     def __init__(self, redis, experiment_id: str = ""):
         self.redis = redis
         self.experiment_id = experiment_id or (
-            f"rr_exp_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+            f"rr_exp_{datetime.now(UTC).strftime('%Y%m%d')}"
         )
 
     async def create_experiment(
@@ -308,7 +307,7 @@ class ReturnRiskABExperiment:
         experiment = {
             "experiment_id": self.experiment_id,
             "status": "running",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "traffic_split": traffic_split,
             "champion": {"weights": champion_weights, "traffic_pct": round(1.0 - traffic_split, 4)},
             "challenger": {"weights": challenger_weights, "traffic_pct": traffic_split},
