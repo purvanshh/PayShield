@@ -207,11 +207,10 @@ class TestRazorpayTimeout:
 class TestLLMTimeoutCap:
     async def test_slow_llm_is_capped_and_falls_back(self):
         """A stalled LLM must never hold the rebuttal path hostage."""
+        import asyncio
         import time
 
         from chargeback.narrative_generator import NarrativeGenerator
-
-        import asyncio
 
         class SleepyLLM:
             async def generate(self, prompt, max_tokens=None, temperature=None):
