@@ -10,7 +10,6 @@ in-memory Redis (no services), proving the coherent story the demo tells:
 5. verification: the rebuttal is cached + the profile reflects the update
 """
 
-import json
 from datetime import datetime, timedelta
 
 import pytest
