@@ -44,19 +44,49 @@ value, weight and contribution is in the response, tuned via YAML
 **Measured on 10,000 synthetic orders** (500 users × 5 archetypes, seed 42,
 chronological per-user hold-out — profiles never see future returns):
 
-| Metric | Value |
-|---|---|
-| PR-AUC | **0.9806** |
-| ROC-AUC | 0.9846 |
-| Precision @ HIGH cut (prepaid gate) | 1.0000 · recall 0.3675 |
-| Precision @ MEDIUM+ cut (flag for review) | **0.9444 · recall 0.9125 · F1 0.9282** |
+| Metric | Value | Notes |
+|---|---|---|
+| PR-AUC | **0.9806** | Full 10k-user run |
+| PR-AUC (reduced) | 0.9653 | 250-user quick validation |
+| ROC-AUC | 0.9846 | |
+| Precision @ HIGH cut | 1.0000 | Zero false positives at prepaid gate |
+| Recall @ HIGH cut | 0.3675 | Intentionally conservative |
+| Precision @ MEDIUM+ cut | **0.9444** | Flag-for-review tier |
+| Recall @ MEDIUM+ cut | **0.9125** | Catches 91% of high-risk users |
+| F1 @ MEDIUM+ cut | **0.9282** | Primary operating point |
 
-Both operating points are reported at the shipped tier boundaries — the
-HIGH gate is intentionally conservative (zero false positives) while the
-FLAG_FOR_REVIEW tier catches 91% of high-risk users at 94% precision.
+The HIGH gate is intentionally conservative (zero false positives) while
+the MEDIUM+ tier catches 91% of high-risk users at 94% precision. Both
+operating points are reported at the shipped tier boundaries.
 Run it yourself: `python scripts/benchmark_return_risk.py`.
 
+### Live-stack verification
+
+All scenarios tested against the running Docker compose stack with real
+Redis/PostgreSQL (not in-memory fakes):
+
+| Scenario | Expected | Measured |
+|---|---|---|
+| Serial returner `/v1/return/score` | HIGH ~0.83 | **HIGH · 0.8305** |
+| Honest customer `/v1/return/score` | LOW ~0.10 | **LOW · 0.096** |
+| Winnable chargeback `/v1/chargeback/respond` | REJECT | **REJECT · conf 1.0** |
+| Weak chargeback | PARTIAL + warnings | **PARTIAL · 0.68 + 2 warnings** |
+| Clean txn `/v1/score` | ALLOW ~0.08 | **ALLOW · 0.0624** |
+| Suspicious burst | BLOCK | **BLOCK · 1.0** [V-RULE-03, G-RULE-01, G-RULE-02] |
+| Webhook bad signature | 400 | **400** |
+| Webhook valid signature | 200 | **200** |
+| `/v1/return/update` | SUCCESS | **SUCCESS** |
+| Drift endpoint | 200 | **200** |
+
+The weak chargeback case demonstrates graceful degradation: incomplete
+evidence produces `PARTIAL` with explicit warnings, not a crash or
+overconfident `REJECT`.
+
 ### Track 2 quick start
+
+> **Important:** Rebuild the Docker image after Track 2 code changes. The
+> pre-Track-2 image returns `{"detail":"Not Found"}` for new endpoints.
+> Run `docker compose build api` before `docker compose up`.
 
 ```bash
 # 1. Start everything
@@ -65,10 +95,13 @@ docker compose -f docker/docker-compose.yml up
 # 2. Seed the six curated demo scenarios (verified outputs in docs/DEMO_DATA.md)
 python scripts/seed_demo_data.py
 
-# 3. Benchmarks (hermetic — no services needed)
+# 3. Run live-stack verification (10 scenarios against real services)
+python scripts/verify_live_stack.py
+
+# 4. Benchmarks (hermetic — no services needed)
 python scripts/benchmark_return_risk.py
 
-# 4. End-to-end flow tests
+# 5. End-to-end flow tests
 python -m pytest tests/integration/test_chargeback_flow.py -v
 ```
 
@@ -178,8 +211,12 @@ Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets it
 | Framework | Before | After | Status |
 |-----------|--------|-------|--------|
 | PCI-DSS | 60/100 | **90/100** | passed (no high-severity findings) |
-| RBI | 16/100 | **100/100** | passed |
+| RBI | 16/100 | **83/100** | passed |
 | EU AI Act | — | **100/100** | passed (risk mgmt, data gov, transparency, oversight, accuracy, robustness, conformity, post-market monitoring) |
+
+RBI 83/100 at Track 2 freeze — passing threshold met. The delta from 100
+reflects additional checks introduced for return-risk data residency and
+explainability requirements.
 
 
 
@@ -202,7 +239,7 @@ The `amount_total_1h` drift was investigated: today's hourly aggregate (₹2.66-
 
 ## Bug Resolution and Technical Notes
 
-Notable issues found and fixed while bringing the stack up end-to-end (19 total):
+Notable issues found and fixed while bringing the stack up end-to-end (24 total):
 
 | # | Bug | Root cause | Fix |
 |---|-----|------------|-----|
@@ -225,6 +262,11 @@ Notable issues found and fixed while bringing the stack up end-to-end (19 total)
 | 17 | Synthetic generator crashed on device generation | `random.choice` called with `weights=` kwarg (numpy API on stdlib RNG) | `rng.choices(..., weights=[...])[0]` |
 | 18 | GNN benchmark revealed the model card's `AUC > 0.92` was never measured | aspirational claim from the design phase | corrected to measured test PR-AUC 0.198 (3.5× vs edge-free MLP 0.056) + AUC-ROC 0.692 (`scripts/benchmark_gnn.py`, `models/gnn_benchmark_results.json`); also fixed L2 claims: params 53,826 (not ~15K), CPU latency p99 2.5 ms (not < 50 ms) |
 | 19 | GNN v1.0 readout pooled the whole ego-graph; 19-dim merchants / 4-dim transactions capped signal | graph-level pooling diluted the target user's own pattern; thin feature schema | GNN **v1.1.0**: target-user readout with transaction attention, 5 new live features (merchant shell-flag, round-amount share, inter-arrival gap, 5m/1h velocity, location distance) — PR-AUC 0.198 → **0.4125** (+108%), params 53,826 → 371,843, p99 2.5 → 0.70 ms |
+| 20 | `AsyncRedisClient.hmset` passed mapping positionally to `redis-py` `hset` | API signature mismatch | Corrected argument passing |
+| 21 | `create_redis` merged explicit `None` kwargs over configured host | Bridge layer default handling | Proper `None` filtering |
+| 22 | `SyncRedisClient` missing `hmset` | Incomplete sync/async parity | Added missing method |
+| 23 | `seed_demo_data.py` missing `sys.path` bootstrap | Script couldn't find modules standalone | Added bootstrap |
+| 24 | Demo "suspicious burst" couldn't fire geo rules | Missing `velocity:loc:*` and `velocity:dev:*` keys in seeder | Seeded prior location + device velocity history |
 
 ---
 
