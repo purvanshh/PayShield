@@ -19,7 +19,7 @@
 | `/v1/score` p99 | 63.31 ms (tail = Redis feature reads + audit append; L1 rules p99 0.27 ms) |
 | L2 GNN inference (CPU, per ego-graph, v1.1.0) | p50 0.60 ms / p90 0.62 ms / p99 0.70 ms (`scripts/benchmark_gnn.py`, measured 2026-08-15) |
 | LLM investigation (async) | ~35 s on CPU (qwen2.5:3b) — off the scoring path |
-| Compliance | PCI-DSS 90/100, RBI 100/100 |
+| Compliance | PCI-DSS 90/100, RBI 83/100 (passing) |
 
 Reproduce: `python scripts/benchmark_latency.py` · `python scripts/benchmark_gnn.py`.
 

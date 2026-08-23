@@ -113,7 +113,7 @@ A: Yes — no automated contest submission (admin gate), no reverse lookup or
 records events merchants already caused.
 
 **Q: What about EU AI Act / RBI specifics?**
-A: Measured: PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100 with the
+A: Measured: PCI-DSS 90/100, RBI 83/100 (passing), EU AI Act 100/100 with the
 configured runtime env (`COMPLIANCE_DELTA_TRACK2.md`). Controls map to
 concrete code: RBAC per route, HMAC-verified webhook, feature breakdown in
 every score response, weights/rules public YAML, confidence with graceful

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-24 — Live-stack verification & Redis client hardening
+
+- **Live-stack verification** (`scripts/verify_live_stack.py`): 10-scenario
+  checker against the running Docker stack (health, serial/honest return
+  scores, winnable/weak chargebacks, clean/suspicious scoring, webhook
+  signatures, return update, drift endpoint) — 11/11 passing against real
+  services.
+- **Five latent bugs fixed** (only surfaced against real Redis — the unit
+  suite uses in-memory fakes; full detail in
+  `TECHNICAL_DEBT_REGISTER.md` TD-101…TD-105):
+  - `POST /v1/return/update` returned 500 — `AsyncRedisClient.hmset` passed
+    the mapping positionally to redis-py `hset` (API signature mismatch).
+  - Seeding/worker scripts silently used `localhost` — `create_redis`
+    merged explicit `None` kwargs over configured defaults.
+  - `SyncRedisClient` missing `hmset` (sync/async parity gap).
+  - `scripts/seed_demo_data.py` missing `sys.path` bootstrap.
+  - Demo "suspicious burst" couldn't fire geo rules — missing
+    `velocity:loc:*` / `velocity:dev:*` seeds.
+- **Verified benchmark update**: full 10k-order run PR-AUC 0.9806 plus a
+  250-user quick validation at 0.9653; both operating points (HIGH gate
+  precision 1.0000 / MEDIUM+ precision 0.9444, recall 0.9125, F1 0.9282)
+  documented in the README.
+
 ## 2026-08-22 — Track 02: AI Risk Manager
 
 - **Chargeback evidence responder** (`/v1/chargeback/respond` + GET + `/submit`):
@@ -26,7 +49,7 @@
   `scripts/seed_demo_data.py` (six curated scenarios)
 - **Quality**: 537 tests (up from 412), 76.4% suite coverage; new modules
   at 91% coverage, ruff-clean; compliance rerun in the compose runtime env:
-  PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100 (see
+  PCI-DSS 90/100, RBI 83/100 (passing), EU AI Act 100/100 (see
   `COMPLIANCE_DELTA_TRACK2.md`)
 
 ## 2026-08-15 — GNN v1.1.0: Improved Model, Live Serving & Continuous Improvement

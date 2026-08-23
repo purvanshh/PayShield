@@ -51,7 +51,7 @@ PayShield processes real-time UPI transactions through a three-layer pipeline:
 - Prometheus/Grafana observability (4-panel dashboard, 5 alert rules)
 - PSI drift detection driven by the feature registry (monitoring: true entries, drift_key aliases, binary-aware binning)
 - Automated retrain + improvement gate (`make retrain`, epsilon 0.005 PR-AUC, weekly CI workflow)
-- 412 tests (344 unit + 68 integration)
+- 573 tests (hermetic; no external services required)
 
 ## Tech Stack
 

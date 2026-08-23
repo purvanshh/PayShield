@@ -167,7 +167,7 @@ PSI, and use that number in the caption. (Rehearsal runs 2026-08-01: **3.70** an
 ```bash
 head -30 TECHNICAL_DEBT_REGISTER.md
 ```
-**Caption:** *"19 bugs fixed. 12 debt items tracked. RBI 100/100. This is how I ship."*
+**Caption:** *"24 bugs fixed. 12 debt items tracked. RBI 83/100 (passing). This is how I ship."*
 
 ---
 

@@ -33,6 +33,27 @@
 | — | Test coverage below gates | 392 tests, 74% total (gates: score 91%, ensemble 90%, graph 99%) | P5 |
 | — | EU AI Act checker incomplete | 13 controls, 100/100 score | P10 |
 
+## Resolved Debt — Track 2 (live-stack verification, 2026-08-24)
+
+Five issues surfaced only against the **real Docker stack** — the unit suite
+used in-memory Redis fakes, so none were caught by tests. They were found by
+running the containers (`docker compose up`), seeding demo data, and driving
+the live endpoints; all fixed and covered by regression checks where possible.
+
+| # | Bug / Finding | Root cause | Resolution | Commit |
+|---|------------|-----------|-----------|--------|
+| TD-101 | `/v1/return/update` returned **500** against real Redis (`redis.exceptions.DataError: Invalid input of type 'dict'`) | `AsyncRedisClient.hmset` passed the mapping **positionally** to redis-py `hset`, which reads it as the `key` arg | Pass the mapping by keyword (`hset(name, mapping=…)`) — the test double's `hset` was also updated to accept the `mapping=` kwarg. The return-risk write path (`update_user_profile`) was completely broken in production; hidden because FakeRedis's `hmset` was correct | `203c25b` |
+| TD-102 | Seeding/worker scripts silently connected to `localhost` instead of the compose `redis` host inside containers | `create_redis` merged explicit `None` kwargs from `infrastructure.redis_bridge` over the configured `settings.redis.*` defaults, so `host=None` won | Non-`None` kwargs now override; `None` falls back to configured defaults — scripts hit the right host everywhere | `203c25b` |
+| TD-103 | `SyncRedisClient` lacked `hmset`, so bulk hash writes were impossible via the sync client | Incomplete sync/async parity (the async client already had it) | Added `hmset(name, mapping, ttl=None)` to the sync client (same semantics as async) | `203c25b` |
+| TD-104 | `scripts/seed_demo_data.py` crashed (`ModuleNotFoundError: No module named 'infrastructure'`) when run standalone | The script had no repo-root `sys.path` bootstrap (unlike the other Track 2 scripts) | Added the standard `sys.path.insert(0, parent)` bootstrap | `6509ebf` |
+| TD-105 | The "suspicious burst" demo scenario couldn't fire its documented geo rules (`G-RULE-01/02`) | The seeder never wrote the prior-location key (`velocity:loc:U_FRAUD_001`) or the shared-device velocity history (`velocity:dev:DEV_SHARED_001`) | Seed the prior location (Mumbai, 20 min prior) and device burst; verified live: `BLOCK · 1.0 · [V-RULE-03, G-RULE-01, G-RULE-02]` | `6509ebf` |
+
+**Follow-up lesson (TDD gap):** these bugs all lived in the *real* Redis
+client layer while the test double mirrored a different, more permissive
+interface. The suite is being hardened with parity-focussed tests for the
+client doubles (`tests/unit/test_redis_clients.py`) so a fake can no longer
+be more correct than the real client it stands in for.
+
 ## Priority Definitions
 
 | Priority | Mean Time to Fix | Examples |

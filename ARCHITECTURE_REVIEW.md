@@ -66,7 +66,7 @@ L1 statistical filter (sub-millisecond rule evaluation), L2 graph neural network
 - **CORS**: Env-driven `FRONTEND_URL` (no wildcard), security headers middleware (CSP, HSTS)
 - **Encryption**: AES-256 at rest via `ENCRYPTION_KEY`, TLS in transit
 - **Audit**: Hash-chained, tamper-evident JSONL log with PII masking; async queue-backed (`<1ms` append)
-- **Compliance**: PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100 (13 controls, programmatic checkers)
+- **Compliance**: PCI-DSS 90/100, RBI 83/100 (passing), EU AI Act 100/100 (13 controls, programmatic checkers)
 
 ## L2 Conditional Fusion Architecture
 

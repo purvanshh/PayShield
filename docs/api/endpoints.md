@@ -150,8 +150,8 @@ POST /v1/feedback
 | `GET` | `/admin/compliance/evidence` | List compliance evidence archives |
 | `POST` | `/admin/compliance/evidence/collect` | Trigger evidence collection |
 
-Current scores (2026-07-31): **PCI-DSS 90/100** (passed), **RBI 100/100**
-(passed) — see `COMPLIANCE_DELTA.md`.
+Current scores (2026-08-24): **PCI-DSS 90/100** (passed), **RBI 83/100**
+(passing) — see `COMPLIANCE_DELTA.md` / `COMPLIANCE_DELTA_TRACK2.md`.
 
 ## Admin & Operations
 
