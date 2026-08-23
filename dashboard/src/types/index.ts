@@ -61,3 +61,62 @@ export interface ApiError {
   status: number;
   code: string;
 }
+
+export interface FeatureContribution {
+  value: number | string | boolean;
+  weight: number;
+  contribution: number;
+  normalized_value?: number | null;
+  source?: string;
+}
+
+export interface RuleTrigger {
+  rule_id: string;
+  name: string;
+  condition?: string;
+  triggered: boolean;
+  action?: string;
+  severity?: number;
+}
+
+export interface ReturnScoreData {
+  order_id: string;
+  return_risk_score: number;
+  risk_tier: "LOW" | "MEDIUM" | "HIGH";
+  confidence: number;
+  feature_breakdown: Record<string, FeatureContribution>;
+  rules_triggered: RuleTrigger[];
+  recommendations: string[];
+  user_profile: {
+    total_orders: number;
+    total_returns: number;
+    return_rate_30d: number;
+    serial_returner: boolean;
+    is_new_user: boolean;
+    [key: string]: unknown;
+  };
+}
+
+export interface AuditTrailEntry {
+  timestamp: string;
+  action: string;
+  agent: string;
+  detail?: string;
+}
+
+export interface ChargebackRespondData {
+  rebuttal_id: string;
+  dispute_id: string;
+  response_type: "ACCEPT" | "REJECT" | "PARTIAL";
+  confidence_score: number;
+  evidence_completeness: number;
+  narrative: {
+    summary: string;
+    full_report: string;
+    key_evidence: string[];
+    quality_score: number;
+  };
+  razorpay_payload: Record<string, unknown>;
+  audit_trail: AuditTrailEntry[];
+  warnings: string[];
+}
