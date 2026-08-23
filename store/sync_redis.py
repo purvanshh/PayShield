@@ -65,6 +65,14 @@ class SyncRedisClient:
         except Exception:
             pass
 
+    def hmset(self, name: str, mapping: dict, ttl: int | None = None):
+        try:
+            self._client.hset(name, mapping=mapping)
+            if ttl:
+                self._client.expire(name, ttl)
+        except Exception:
+            pass
+
     def hincrby(self, name: str, key: str, amount: int = 1) -> int:
         try:
             return self._client.hincrby(name, key, amount)

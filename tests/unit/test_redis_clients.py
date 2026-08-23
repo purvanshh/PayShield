@@ -45,9 +45,11 @@ class FakeAsyncClient:
     async def hgetall(self, key):
         return dict(self.store["h"].get(key, {}))
 
-    async def hset(self, name, *args):
+    async def hset(self, name, *args, mapping=None):
         self.store["h"].setdefault(name, {})
-        if len(args) == 2 and isinstance(args[1], str):
+        if mapping is not None:
+            self.store["h"][name].update(mapping)
+        elif len(args) == 2 and isinstance(args[1], str):
             self.store["h"][name][args[0]] = args[1]
         else:
             self.store["h"][name].update(args[0])

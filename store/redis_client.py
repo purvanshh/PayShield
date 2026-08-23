@@ -23,9 +23,13 @@ def create_redis(mode: Literal["async", "sync"] = "async", **kwargs):
         "port": settings.redis.port,
         "db": settings.redis.db,
     }
+    # Explicit ``None`` args (e.g. from infrastructure.redis_bridge) must not
+    # override the configured defaults - otherwise scripts would silently
+    # fall back to localhost inside a container where the host is ``redis``.
+    overrides = {k: v for k, v in kwargs.items() if v is not None}
     if mode == "sync":
-        return SyncRedisClient(**{**defaults, **kwargs})
-    return AsyncRedisClient(**{**defaults, **kwargs})
+        return SyncRedisClient(**{**defaults, **overrides})
+    return AsyncRedisClient(**{**defaults, **overrides})
 
 
 class AsyncRedisClient:
@@ -91,7 +95,9 @@ class AsyncRedisClient:
 
     async def hmset(self, name: str, mapping: dict, ttl: int | None = None):
         try:
-            await self.pool.circuit_breaker.call(self._client.hset, name, mapping)
+            # ``mapping`` must be passed by keyword - positional would be
+            # read as the single ``key`` arg and raise a DataError.
+            await self.pool.circuit_breaker.call(self._client.hset, name, mapping=mapping)
             if ttl:
                 await self.pool.circuit_breaker.call(self._client.expire, name, ttl)
         except RedisUnavailableError:
