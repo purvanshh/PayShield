@@ -86,6 +86,13 @@ async def score_return_risk(
         returned=False,
     )
 
+    try:
+        from observability.return_risk_drift import record_return_risk_samples
+
+        await record_return_risk_samples(redis, result["feature_breakdown"])
+    except Exception as e:
+        logger.debug("return-risk drift sampling skipped: %s", e)
+
     async_audit_logger.append(
         event_type="RETURN_RISK_SCORED",
         actor=request.user_id,

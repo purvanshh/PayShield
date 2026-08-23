@@ -173,3 +173,24 @@ async def drift_psi(
     except Exception as e:
         logger.error(f"Drift report failed: {e}")
         raise HTTPException(status_code=500, detail=f"Drift report failed: {e}")
+
+
+@router.get("/drift/return-risk")
+async def drift_return_risk(
+    redis=Depends(get_redis),
+    _=Depends(require_permission("metrics", "read")),
+):
+    """PSI drift report for the return-risk feature surface."""
+    try:
+        from observability.return_risk_drift import ReturnRiskDriftMonitor
+
+        report = await ReturnRiskDriftMonitor(redis).check()
+        logger.info(
+            "return-risk drift: %s (%d features)",
+            report["overall_status"],
+            len(report["features"]),
+        )
+        return report
+    except Exception as e:
+        logger.error(f"return-risk drift failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Return-risk drift failed: {e}")
