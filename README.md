@@ -68,7 +68,7 @@ Redis/PostgreSQL (not in-memory fakes):
 | Scenario | Expected | Measured |
 |---|---|---|
 | Serial returner `/v1/return/score` | HIGH ~0.83 | **HIGH · 0.8305** |
-| Honest customer `/v1/return/score` | LOW ~0.10 | **LOW · 0.096** |
+| Honest customer `/v1/return/score` | LOW ~0.10 | **LOW · 0.096**¹ |
 | Winnable chargeback `/v1/chargeback/respond` | REJECT | **REJECT · conf 1.0** |
 | Weak chargeback | PARTIAL + warnings | **PARTIAL · 0.68 + 2 warnings** |
 | Clean txn `/v1/score` | ALLOW ~0.08 | **ALLOW · 0.0624** |
@@ -81,6 +81,9 @@ Redis/PostgreSQL (not in-memory fakes):
 The weak chargeback case demonstrates graceful degradation: incomplete
 evidence produces `PARTIAL` with explicit warnings, not a crash or
 overconfident `REJECT`.
+
+¹ 0.096 is the pre-accumulation baseline. Live profiles may show ~0.10–0.22
+due to background-refresh increments from prior scoring calls — still LOW tier.
 
 ### Track 2 quick start
 
@@ -203,8 +206,12 @@ Why HeteroConv + GraphSAGE instead of a simpler baseline? Each edge type gets it
 | **L3** | LLM investigation (Celery + Ollama, async) | ✅ Production | qwen2.5:3b, ~35 s async, valid JSON reports with quality scores |
 | **Ops** | Prometheus metrics + Grafana dashboards | ✅ Production | `prometheus/payshield-fraud-dashboard.json`, hot-path instrumentation |
 | **Auth** | API keys + JWT refresh rotation + TOTP MFA | ✅ Production | Per-key/per-user rate limits (1000/hr), `/auth/totp` setup/verify |
-| **Compliance** | PCI-DSS 90/100, RBI 100/100, EU AI Act checks | ✅ Production | Programmatic checkers with evidence collection; fairness SPD/EOD audit |
+| **Compliance** | PCI-DSS 90/100, RBI 83/100, EU AI Act checks | ✅ Production | Programmatic checkers with evidence collection; fairness SPD/EOD audit |
 | **Audit** | Tamper-evident hash-chained JSONL + async queue | ✅ Production | PII masking, chain verification, <1ms hot-path append |
+| **Chargeback** | Evidence collector + rebuttal builder | ✅ Production | L1/L2/L3 evidence retrieval, LLM narrative, Razorpay payload |
+| **Chargeback** | Razorpay client (mock + real) | ✅ Production | Mock mode for testing, real API for production |
+| **Return Risk** | Feature engine + scorer | ✅ Production | 7 weighted features, transparent breakdown, Redis-backed |
+| **Return Risk** | Rules engine (YAML config) | ✅ Production | 8 config-driven rules, reloadable without deploy |
 
 ### Compliance (programmatic checkers — see `COMPLIANCE_DELTA.md`)
 
@@ -581,7 +588,7 @@ PayShield/
 ├── alembic/                   # PostgreSQL migrations
 ├── docs/                      # Technical documentation (architecture, guides, ops)
 ├── notebooks/                 # Jupyter notebooks (EDA, fraud patterns, model ablation)
-├── scripts/                   # 43 utility scripts (benchmarks, training, data ops)
+├── scripts/                   # 44 utility scripts (benchmarks, training, data ops, live verification)
 ├── tests/                     # Test suite
 │   ├── unit/                  # 13 unit test files
 │   ├── integration/           # API + graph integration tests
@@ -715,7 +722,7 @@ make chaos-test   # Run all chaos experiments
 make compliance-check   # Run all compliance checkers
 make compliance-report  # Generate quarterly report
 ```
-Current scores (see `COMPLIANCE_DELTA.md` for the full before/after): **PCI-DSS 90/100** (passed), **RBI 100/100** (passed).
+Current scores (see `COMPLIANCE_DELTA.md` for the full before/after): **PCI-DSS 90/100** (passed), **RBI 83/100** (passing).
 
 ### Drift Monitoring
 ```bash
