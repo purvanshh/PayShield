@@ -1,3 +1,5 @@
+# ruff: noqa: ARG002 -- stub mirrors the L2 service interface
+
 """Grand integration test: transaction -> return risk -> chargeback (Phase 46).
 
 Runs all three systems in sequence against the in-process ASGI app with an
