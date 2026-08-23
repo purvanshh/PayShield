@@ -19,8 +19,10 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 
 - Seeded: `U_FRAUD_001` (80% return rate), `DEV_SHARED_001` shared by 3
   ring users, 12 × ₹95,000 velocity events in 5 minutes, Mumbai→Delhi jump.
-- Verified L1: `decision=BLOCK`, `rules=['V-RULE-04', 'V-RULE-03', 'G-RULE-01']`
-  (device flood + amount 5× median + impossible geo velocity).
+- Verified L1 (live stack): `decision=BLOCK`, `fraud_probability=1.0`,
+  `rules=['V-RULE-03', 'G-RULE-01', 'G-RULE-02']` (amount 5× median +
+  impossible geo velocity). The geo rules require a prior known location,
+  seeded under `velocity:loc:U_FRAUD_001`.
 - Demo line: *"rules explain *what* broke; the graph layer (not shown here)
   would explain *who else* shares that device."*
 

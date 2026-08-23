@@ -21,8 +21,12 @@ Usage: python scripts/seed_demo_data.py [--redis-url]
 import argparse
 import json
 import logging
+import sys
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -205,6 +209,16 @@ def _seed_velocity_histories(redis, *_):
             "velocity:user:U_FRAUD_001",
             entry(now - 60 - i * 20, 95000.0, "M_FASHION_001", "U_FRAUD_001", "DEV_SHARED_001"),
         )
+        # device flood: the shared device also sees the burst (V-RULE-04)
+        redis.lpush(
+            "velocity:dev:DEV_SHARED_001",
+            entry(now - 60 - i * 20, 95000.0, "M_FASHION_001", f"U_RING_{i % 3}", "DEV_SHARED_001"),
+        )
+    # geo jump: prior known location is Mumbai (G-RULE-01 fires against Delhi)
+    redis.set(
+        "velocity:loc:U_FRAUD_001",
+        json.dumps({"lat": 19.0760, "lon": 72.8777, "ts": now - 1200}),
+    )
 
 
 # --------------------------------------------------------------------------- #
