@@ -272,3 +272,41 @@ class TestGraphPagination:
         data = resp.json()
         assert data["has_more"] is False
         assert len(data["nodes"]) == 11
+
+
+class TestReturnRiskExperiments:
+    async def test_experiment_endpoints_require_admin(self, client):
+        resp = await client.post(
+            "/admin/experiments/return-risk",
+            json={
+                "champion_weights": {"user_return_rate_30d": 0.25},
+                "challenger_weights": {"user_return_rate_30d": 0.30},
+            },
+            headers={"X-API-Key": "payshield-dev-key-2026"},
+        )
+        assert resp.status_code in (403, 401)
+
+    async def test_admin_can_create_and_evaluate(self, client):
+        from api.auth import auth_manager
+
+        auth_manager.register_api_key("psk-rr-ab-admin", role="admin", name="rr-ab")
+        body = {
+            "champion_weights": {"user_return_rate_30d": 0.25},
+            "challenger_weights": {"user_return_rate_30d": 0.30},
+            "traffic_split": 0.1,
+        }
+        created = await client.post(
+            "/admin/experiments/return-risk", json=body, headers={"X-API-Key": "psk-rr-ab-admin"}
+        )
+        assert created.status_code == 200
+        exp_id = created.json()["experiment_id"]
+
+        evaluated = await client.post(
+            f"/admin/experiments/return-risk/{exp_id}/evaluate",
+            json={"champion": [1, 0, 0, 0, 0], "challenger": [1, 1, 1, 1, 0]},
+            headers={"X-API-Key": "psk-rr-ab-admin"},
+        )
+        assert evaluated.status_code == 200
+        data = evaluated.json()
+        assert data["recommendation"] == "promote"
+        assert data["improvement"] == 0.6

@@ -1,4 +1,5 @@
 import enum
+import hashlib
 import json
 import logging
 import time
@@ -274,3 +275,124 @@ class RuleABTesting:
 
     def get_stats(self, rule_id: str) -> dict:
         return self._shadow_rules.get(rule_id, {})
+
+
+class ReturnRiskABExperiment:
+    """Champion/challenger testing for return-risk feature weights.
+
+    Deterministic merchant bucketing (sha256 of merchant_id, not ``hash``
+    which is process-random), so a given merchant always sees the same arm.
+    State lives in Redis under ``ab:return_risk:{experiment_id}``.
+
+    Production wiring: the scorer's ``weights`` should be replaced by
+    ``get_weights_for_request(merchant_id)`` at score time; the evaluate
+    step consumes outcome data pushed by the reflection task.
+    """
+
+    CHAMPION_KEY = "champion"
+    CHALLENGER_KEY = "challenger"
+    EVALUATION_THRESHOLD = 0.05  # 5 percentage-point improvement to promote
+
+    def __init__(self, redis, experiment_id: str = ""):
+        self.redis = redis
+        self.experiment_id = experiment_id or (
+            f"rr_exp_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+        )
+
+    async def create_experiment(
+        self,
+        champion_weights: dict[str, float],
+        challenger_weights: dict[str, float],
+        traffic_split: float = 0.10,
+    ) -> dict[str, Any]:
+        experiment = {
+            "experiment_id": self.experiment_id,
+            "status": "running",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "traffic_split": traffic_split,
+            "champion": {"weights": champion_weights, "traffic_pct": round(1.0 - traffic_split, 4)},
+            "challenger": {"weights": challenger_weights, "traffic_pct": traffic_split},
+        }
+        await self.redis.set(
+            f"ab:return_risk:{self.experiment_id}", json.dumps(experiment), ttl=28 * 86400
+        )
+        return experiment
+
+    async def get_weights_for_request(self, merchant_id: str) -> dict[str, float]:
+        experiment = await self._get_experiment()
+        if not experiment or experiment.get("status") != "running":
+            return self._default_weights()
+
+        bucket = int(
+            hashlib.sha256(merchant_id.encode()).hexdigest()[:8], 16
+        ) % 100
+        challenger_pct = int(float(experiment["challenger"]["traffic_pct"]) * 100)
+        if bucket < challenger_pct:
+            await self._bump("challenger_requests")
+            return dict(experiment["challenger"]["weights"])
+        await self._bump("champion_requests")
+        return dict(experiment["champion"]["weights"])
+
+    async def evaluate_experiment(self, outcomes: dict[str, list[float]]) -> dict[str, Any]:
+        """Evaluate observed precision per arm.
+
+        ``outcomes``: {"champion": [0/1...], "challenger": [0/1...]} labels,
+        or per-arm precision rates directly.
+        """
+        experiment = await self._get_experiment()
+        if not experiment:
+            return {"experiment_id": self.experiment_id, "error": "experiment not found"}
+
+        champion_precision = self._precision(outcomes.get("champion", []))
+        challenger_precision = self._precision(outcomes.get("challenger", []))
+        improvement = challenger_precision - champion_precision
+        significant = abs(improvement) > self.EVALUATION_THRESHOLD
+        return {
+            "experiment_id": self.experiment_id,
+            "champion_precision": round(champion_precision, 4),
+            "challenger_precision": round(challenger_precision, 4),
+            "improvement": round(improvement, 4),
+            "significant": significant,
+            "recommendation": "promote" if significant and improvement > 0 else "keep",
+        }
+
+    async def get_experiment(self) -> dict[str, Any] | None:
+        return await self._get_experiment()
+
+    # ------------------------------------------------------------------ #
+
+    async def _get_experiment(self) -> dict[str, Any] | None:
+        raw = await self.redis.get(f"ab:return_risk:{self.experiment_id}")
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
+
+    async def _bump(self, arm: str) -> None:
+        try:
+            await self.redis.hincrby(f"ab:return_risk:{self.experiment_id}:traffic", arm, 1)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _precision(labels: list[float]) -> float:
+        if not labels:
+            return 0.0
+        return sum(1 for v in labels if float(v) == 1.0) / len(labels)
+
+    @staticmethod
+    def _default_weights() -> dict[str, float]:
+        from return_risk.feature_engine import FeatureRegistry
+
+        weights = FeatureRegistry().composite_weights
+        return weights or {
+            "user_return_rate_30d": 0.25,
+            "user_serial_returner_flag": 0.20,
+            "merchant_return_rate_30d": 0.15,
+            "txn_category_return_baseline": 0.15,
+            "txn_amount_risk": 0.10,
+            "user_cod_refusal_rate": 0.10,
+            "user_return_velocity_7d": 0.05,
+        }

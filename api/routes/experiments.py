@@ -1,8 +1,11 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from api.dependencies import get_redis
+from api.rbac import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -132,3 +135,81 @@ async def rollback_experiment(experiment_id: str):
         return {"status": "rolled_back", "experiment_id": experiment_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+# --------------------------------------------------------------------------- #
+# Track 2: champion/challenger experiments for return-risk weights            #
+# --------------------------------------------------------------------------- #
+
+
+class ReturnRiskExperimentCreateRequest(BaseModel):
+    champion_weights: dict[str, float]
+    challenger_weights: dict[str, float]
+    traffic_split: float = Field(default=0.10, gt=0, le=0.5)
+
+
+class ReturnRiskExperimentResponse(BaseModel):
+    experiment_id: str
+    status: str
+    traffic_split: float
+    champion_weights: dict[str, float]
+    challenger_weights: dict[str, float]
+    created_at: str
+
+
+class ReturnRiskEvaluationRequest(BaseModel):
+    champion: list[float]
+    challenger: list[float]
+
+
+class ReturnRiskEvaluationResponse(BaseModel):
+    experiment_id: str
+    champion_precision: float
+    challenger_precision: float
+    improvement: float
+    significant: bool
+    recommendation: str
+
+
+@router.post("/return-risk", response_model=ReturnRiskExperimentResponse)
+async def create_return_risk_experiment(
+    req: ReturnRiskExperimentCreateRequest,
+    redis=Depends(get_redis),
+    _=Depends(require_permission("model", "promote")),
+):
+    """Start a champion/challenger experiment on return-risk weights."""
+    from ml.ab_testing import ReturnRiskABExperiment
+
+    experiment = ReturnRiskABExperiment(redis)
+    data = await experiment.create_experiment(
+        champion_weights=req.champion_weights,
+        challenger_weights=req.challenger_weights,
+        traffic_split=req.traffic_split,
+    )
+    return ReturnRiskExperimentResponse(
+        experiment_id=data["experiment_id"],
+        status=data["status"],
+        traffic_split=data["traffic_split"],
+        champion_weights=data["champion"]["weights"],
+        challenger_weights=data["challenger"]["weights"],
+        created_at=data["created_at"],
+    )
+
+
+@router.post(
+    "/return-risk/{experiment_id}/evaluate", response_model=ReturnRiskEvaluationResponse
+)
+async def evaluate_return_risk_experiment(
+    experiment_id: str,
+    req: ReturnRiskEvaluationRequest,
+    redis=Depends(get_redis),
+    _=Depends(require_permission("model", "promote")),
+):
+    """Evaluate a return-risk weight experiment from observed outcomes."""
+    from ml.ab_testing import ReturnRiskABExperiment
+
+    experiment = ReturnRiskABExperiment(redis, experiment_id=experiment_id)
+    evaluation = await experiment.evaluate_experiment(
+        outcomes={"champion": req.champion, "challenger": req.challenger}
+    )
+    return ReturnRiskEvaluationResponse(**evaluation)
