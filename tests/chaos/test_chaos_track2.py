@@ -202,3 +202,25 @@ class TestRazorpayTimeout:
         with pytest.raises(RazorpayAPIError):
             await client.contest_chargeback("CB_002", rebuttal)
         await client.close()
+
+
+class TestLLMTimeoutCap:
+    async def test_slow_llm_is_capped_and_falls_back(self):
+        """A stalled LLM must never hold the rebuttal path hostage."""
+        import time
+
+        from chargeback.narrative_generator import NarrativeGenerator
+
+        import asyncio
+
+        class SleepyLLM:
+            async def generate(self, prompt, max_tokens=None, temperature=None):
+                await asyncio.sleep(30)  # would block 30s without the guard
+
+        generator = NarrativeGenerator(llm_client=SleepyLLM(), llm_timeout=0.2)
+        start = time.perf_counter()
+        narrative = await generator.generate(_bundle(), "10.4", "fraud", "REJECT")
+        elapsed = time.perf_counter() - start
+        assert elapsed < 2.0
+        assert narrative.quality_score == 0.5
+        assert narrative.summary

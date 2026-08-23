@@ -10,6 +10,7 @@ resilient:
   back to the deterministic narrative.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -38,11 +39,16 @@ class NarrativeGenerator:
         model_name: str = "llama3.1:8b",
         temperature: float = 0.3,
         max_tokens: int = 800,
+        llm_timeout: float = 2.0,
     ):
         self.llm_client = llm_client
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
+        # hard cap on the LLM call: the narrative is a presentation layer,
+        # tail latency must never be owned by the model (deterministic
+        # fallback takes over on TimeoutError)
+        self.llm_timeout = llm_timeout
         self._env = Environment(
             loader=FileSystemLoader(str(template_dir)),
             autoescape=select_autoescape(
@@ -201,7 +207,7 @@ class NarrativeGenerator:
                 return self.fallback(evidence, reason_code, reason_description)
             raw = generate(prompt, temperature=self.temperature, max_tokens=self.max_tokens)
             if isawaitable(raw):
-                raw = await raw
+                raw = await asyncio.wait_for(raw, timeout=self.llm_timeout)
             if isinstance(raw, dict):
                 raw = json.dumps(raw)
             narrative = self.parse(raw) if isinstance(raw, str) else None

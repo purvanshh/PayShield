@@ -1,0 +1,16 @@
+{
+  "environment": "in-process (no ASGI/network) hermetic run",
+  "iterations": 150,
+  "results": {
+    "return_risk_score_ms": {
+      "p50": 0.11,
+      "p95": 0.14,
+      "p99": 0.19
+    },
+    "chargeback_build_ms": {
+      "p50": 0.04,
+      "p95": 0.08,
+      "p99": 0.12
+    }
+  }
+}
