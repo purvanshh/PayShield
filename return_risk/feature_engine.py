@@ -207,7 +207,7 @@ class ReturnRiskFeatureEngine:
         return self._category_baseline(category)
 
     @staticmethod
-    async def _safe_redis(awaitable, default):
+    async def _safe_redis(awaitable: Any, default: Any) -> Any:
         """Await a redis call, degrading to ``default`` on any failure.
 
         The risk scorer is a checkout-time decision path: a Redis outage
