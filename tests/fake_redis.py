@@ -262,6 +262,24 @@ class FakeSyncRedis:
     def get(self, key):
         return self._store.strings.get(key)
 
+    def delete(self, *keys):
+        deleted = 0
+        for key in keys:
+            present = (
+                key in self._store.strings
+                or key in self._store.lists
+                or key in self._store.zsets
+                or key in self._store.sets
+                or key in self._store.hashes
+            )
+            self._store.strings.pop(key, None)
+            self._store.lists.pop(key, None)
+            self._store.zsets.pop(key, None)
+            self._store.sets.pop(key, None)
+            self._store.hashes.pop(key, None)
+            deleted += int(present)
+        return deleted
+
     def set(self, key, value, ttl=None):
         self._store.strings[key] = value
         return True

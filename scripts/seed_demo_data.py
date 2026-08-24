@@ -189,7 +189,24 @@ def _seed_merchants(redis, audit_writer):  # noqa: ARG001 - uniform seed step si
 
 
 def _seed_velocity_histories(redis, *_):
-    """Velocity lists used by /v1/score so rule firings are deterministic."""
+    """Velocity lists used by /v1/score so rule firings are deterministic.
+
+    Reset (not append) the demo surfaces first: re-seeding must restore the
+    exact curated scenario. ``delete`` guards idempotent re-seeding and the
+    per-txn recording dedupe keys so re-scored demo txns never double-count.
+    """
+    demo_keys = [
+        "velocity:user:U_CLEAN_001",
+        "velocity:user:U_FRAUD_001",
+        "velocity:dev:DEV_CLEAN_001",
+        "velocity:dev:DEV_SHARED_001",
+        "velocity:loc:U_FRAUD_001",
+        "velocity:dedup:TXN_LIVE_CLEAN",
+        "velocity:dedup:TXN_LIVE_SUSP",
+    ]
+    if hasattr(redis, "delete"):
+        for demo_key in demo_keys:
+            redis.delete(demo_key)
 
     def entry(ts, amount, merchant, user, device):
         return json.dumps(

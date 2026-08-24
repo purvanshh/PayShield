@@ -51,6 +51,27 @@ class TestDemoDataSeeder:
         events = [json.loads(e) for e in suspicious]
         assert all(e["amount"] == 95000.0 for e in events)
 
+    def test_reseeding_resets_velocity_history(self):
+        seed_demo_data(redis=self.redis, audit_writer=None)
+        # simulate accumulation from repeated /v1/score calls on the live path
+        stale = json.dumps(
+            {
+                "ts": time.time() - 300,
+                "amount": 2500.0,
+                "merchant": "M_FASHION_001",
+                "user": "U_CLEAN_001",
+                "device": "DEV_CLEAN_001",
+            }
+        )
+        self.redis.lpush("velocity:user:U_CLEAN_001", stale)
+        self.redis.set("velocity:dedup:TXN_LIVE_CLEAN", "1")
+        assert len(self.redis.lrange("velocity:user:U_CLEAN_001", 0, -1)) == 4
+
+        seed_demo_data(redis=self.redis, audit_writer=None)
+        clean = self.redis.lrange("velocity:user:U_CLEAN_001", 0, -1)
+        assert len(clean) == 3  # reset to the exact curated scenario
+        assert self.redis.get("velocity:dedup:TXN_LIVE_CLEAN") is None
+
     def test_seeds_audit_chain(self, tmp_path):
         from store.audit_log import AuditLogWriter
 
