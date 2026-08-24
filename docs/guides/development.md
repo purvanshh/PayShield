@@ -24,7 +24,7 @@ payshield/
 │   └── connection_pool.py    # Redis pool + circuit breaker
 ├── compliance/         # Programmatic compliance checkers
 │   ├── pci_dss.py, rbi_localization.py, eu_ai_act.py
-├── agents/             # 14-agent framework (12 concrete + router + state)
+├── agents/             # 4-agent orchestration + agent/archived (see docs/architecture/AGENTS.md)
 ├── ml/                 # ML lifecycle (train, registry, A/B testing, inference)
 ├── llm/                # Ollama LLM integration (client, prompts, parser, investigator)
 ├── tasks/              # Celery async tasks

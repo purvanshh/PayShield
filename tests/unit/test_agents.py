@@ -5,17 +5,19 @@ import pytest
 from agents import (
     AgentMessage,
     AgentState,
-    CollectiveIntelligenceAgent,
-    CriticAgent,
     MessagePriority,
     MessageRouter,
     MessageType,
-    MitigationAgent,
-    PlannerAgent,
     ProfileAgent,
     TransactionAnalysisAgent,
 )
-from agents.collective_agent import AgentAccuracyTracker
+from agents.archived import (
+    CollectiveIntelligenceAgent,
+    CriticAgent,
+    MitigationAgent,
+    PlannerAgent,
+)
+from agents.archived.collective_agent import AgentAccuracyTracker
 from agents.message import AgentMessage as MessageCls
 
 

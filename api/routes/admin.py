@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -95,19 +96,44 @@ async def current_model(
 
 @router.get("/agents/health")
 async def agent_health(
+    redis=Depends(get_redis),
     _=Depends(require_permission("agent", "manage")),
 ):
-    agents_status = {}
-    try:
-        from agents.monitoring_agent import MonitoringAgent
-        from agents.base import AgentConfig
-        monitor = MonitoringAgent(AgentConfig(agent_id="admin_query", agent_type="MONITORING"))
-        for agent_id in ["profile_agent", "transaction_agent", "collective_agent",
-                         "mitigation_agent", "memory_agent", "human_review_agent", "monitoring_agent"]:
-            agents_status[agent_id] = monitor._check_agent_health(agent_id)
-    except Exception as e:
-        logger.warning(f"Agent health check failed: {e}")
-        agents_status = {"error": str(e)}
+    """Health snapshot of the four live agents.
+
+    Live agents record a heartbeat marker in Redis when they run
+    (``agent:heartbeat:{agent_id}``); the endpoint reflects the last known
+    status. Agents that never ran show ``not_started`` rather than a fake
+    HEALTHY.
+    """
+    from datetime import timezone
+
+    live_agents = [
+        "transaction_agent",
+        "profile_agent",
+        "reflection_agent",
+        "human_review_agent",
+    ]
+    agents_status: dict[str, dict[str, Any]] = {}
+    now_ts = datetime.now(timezone.utc).timestamp()
+    for agent_id in live_agents:
+        try:
+            raw = await redis.get(f"agent:heartbeat:{agent_id}")
+            if raw is None:
+                agents_status[agent_id] = {"status": "not_started", "last_seen": None}
+                continue
+            try:
+                import json
+
+                heartbeat = json.loads(raw)
+                last_seen = float(heartbeat.get("ts", 0))
+            except Exception:
+                last_seen = 0.0
+            alive = (now_ts - last_seen) < 3600
+            agents_status[agent_id] = {"status": "HEALTHY" if alive else "STALE", "last_seen": last_seen}
+        except Exception as e:
+            logger.warning("agent health check failed for %s: %s", agent_id, e)
+            agents_status[agent_id] = {"status": "error", "detail": str(e)}
     return {
         "agents": agents_status,
         "count": len(agents_status),

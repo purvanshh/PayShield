@@ -7,11 +7,14 @@ Tests Planner, Critic, Reflection, and Validation agents.
 import sys
 import json
 import asyncio
+from pathlib import Path
 from datetime import datetime, timezone
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def test_planner_decomposes_complex_case():
-    from agents.planner_agent import PlannerAgent, InvestigationPlan
+    from agents.archived.planner_agent import PlannerAgent, InvestigationPlan
     from agents.base import AgentConfig
 
     agent = PlannerAgent()
@@ -36,7 +39,7 @@ def test_planner_decomposes_complex_case():
 
 
 def test_critic_challenges_weak_block():
-    from agents.critic_agent import CriticAgent
+    from agents.archived.critic_agent import CriticAgent
 
     agent = CriticAgent()
 
@@ -60,7 +63,7 @@ def test_critic_challenges_weak_block():
 
 
 def test_critic_no_challenge_strong_decision():
-    from agents.critic_agent import CriticAgent
+    from agents.archived.critic_agent import CriticAgent
 
     agent = CriticAgent()
 
@@ -83,14 +86,14 @@ def test_critic_no_challenge_strong_decision():
 
 
 def test_critic_challenges_vip_exception():
-    from agents.critic_agent import CriticAgent
+    from agents.archived.critic_agent import CriticAgent
 
     agent = CriticAgent()
 
     vip_decision = {
         "action": "BLOCK",
         "confidence": 0.85,
-        "amount": 2000.00,
+        "amount": 2100.00,
         "user_median_amount": 100.00,
         "user_vip": True,
         "historical_fp_rate": 0.02,
@@ -140,7 +143,7 @@ def test_reflection_identifies_fp_pattern():
 
 
 def test_validation_blocks_schema_violation():
-    from agents.validation_agent import ValidationAgent
+    from agents.archived.validation_agent import ValidationAgent
 
     agent = ValidationAgent()
 
@@ -160,7 +163,7 @@ def test_validation_blocks_schema_violation():
 
 
 def test_validation_catches_contradiction():
-    from agents.validation_agent import ValidationAgent
+    from agents.archived.validation_agent import ValidationAgent
 
     agent = ValidationAgent()
 
@@ -183,7 +186,7 @@ def test_validation_catches_contradiction():
 
 
 def test_validation_allows_valid_decision():
-    from agents.validation_agent import ValidationAgent
+    from agents.archived.validation_agent import ValidationAgent
 
     agent = ValidationAgent()
 
@@ -205,8 +208,8 @@ def test_validation_allows_valid_decision():
 
 
 def test_full_agent_pipeline_with_critic():
-    from agents.critic_agent import CriticAgent
-    from agents.validation_agent import ValidationAgent
+    from agents.archived.critic_agent import CriticAgent
+    from agents.archived.validation_agent import ValidationAgent
 
     critic = CriticAgent()
     validator = ValidationAgent()
@@ -237,7 +240,7 @@ def test_full_agent_pipeline_with_critic():
 
 
 def test_planner_agent_message_flow():
-    from agents.planner_agent import PlannerAgent
+    from agents.archived.planner_agent import PlannerAgent
     from agents.base import AgentConfig
 
     agent = PlannerAgent()

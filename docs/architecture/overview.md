@@ -120,24 +120,20 @@ Transaction → Feature Extraction (Redis-backed velocity/geo) → L1 Statistica
 - Tolerant parser: trailing commas, nested braces, key-value fallback
 
 ### Agent System
-14 agent modules — 12 concrete agents + `MessageRouter` + `OrchestratorState`:
+Four live agents plus shared infrastructure (`MessageRouter`,
+`OrchestratorState`). Development-only agents are archived under
+`agents/archived/` — see `docs/architecture/AGENTS.md`:
 
 | Agent | Role |
 |-------|------|
-| `transaction_agent` | Analyzes a single transaction: features, rules, anomaly flags |
-| `profile_agent` | Maintains user risk profiles from transaction history |
-| `planner_agent` | Breaks complex investigations into ordered sub-tasks |
-| `memory_agent` | Stores/retrieves investigation context across sessions |
-| `human_review_agent` | Ingests analyst feedback into the decision loop |
+| `transaction_agent` | Extracts order features + evaluates rules |
+| `profile_agent` | Maintains user return/order history |
 | `reflection_agent` | Nightly FP clustering + drift detection + auto-tune recommendations |
-| `critic_agent` | Challenges decisions, tracks challenge accuracy vs. feedback |
-| `mitigation_agent` | Executes automated block/chill/rollback actions with confirmation |
-| `collective_agent` | Coordinated multi-agent assessment (swarm voting, not a router) |
-| `monitoring_agent` | Heartbeats, performance reports, agent health checks |
-| `validation_agent` | Schema + rule validation on agent messages |
-| `BaseAgent` | Abstract contract: config, message loop, error handling |
+| `human_review_agent` | Ingests analyst feedback into the decision loop |
 
-Stubs: `planner_agent` (only `COMPLEX_INVESTIGATION_REQUEST`), `collective_agent` (assessment + feedback, no live swarm consensus), `critic_agent` (accuracy tracking not wired to live scoring).
+Archived (kept for transparency): `planner_agent`, `collective_agent`,
+`critic_agent`, `mitigation_agent`, `monitoring_agent`, `validation_agent`,
+`memory_agent`.
 
 ### Celery Tasks
 - Transaction processing (high priority)
