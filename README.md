@@ -132,11 +132,53 @@ curl -X POST http://localhost:8000/v1/return/score \
 
 # 6. End-to-end flow tests
 python -m pytest tests/integration/test_chargeback_flow.py -v
+
+# 7. Open the operator UI — login admin / admin by default
+open http://localhost:3000
 ```
 
 > **Important:** rebuild the API image after code changes — `docker compose build api` before `docker compose up`.
 
 **Demo script:** [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) · **Verified data:** [`docs/DEMO_DATA.md`](docs/DEMO_DATA.md) · **Judge Q&A:** [`docs/JUDGE_QA.md`](docs/JUDGE_QA.md) · **Architecture:** [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md)
+
+---
+
+## Operator UI
+
+The frontend is a **Vite + React + TypeScript** SPA styled with Tailwind
+(Material-3 dark palette: warm gold `#e5c484` on near-black `#16130f`, grain
+overlay, Geist + Instrument Serif type), served by nginx at
+**http://localhost:3000** — SPA routing configured, so deep links work.
+
+**Sign-in**
+- Unauthenticated visitors are redirected straight to the login screen.
+- Username/password **`admin` / `admin`** by default (`ADMIN_USERNAME` /
+  `ADMIN_PASSWORD` env — `api/routes/auth.py`). After sign-in the login screen
+  never reappears; **Sign Out** lives in the sidebar.
+
+**Top navigation (primary workflows)** — Fraud · Return Risk · Chargeback.
+
+**Sidebar (risk operations)** — complements the top nav instead of duplicating it:
+
+| Surface | Route | What it shows |
+|---|---|---|
+| Cost Model | `/cost-model` | The ₹27,45,990/month savings story, computed live from the `docs/cost_model` assumptions (scenario + sensitivity tables) |
+| Drift Monitor | `/drift` | Live PSI across the return-risk feature surface (`GET /admin/drift/return-risk`) |
+| A/B Experiments | `/experiments` | Champion/challenger verdict with Welch p-value — models promote only on significance |
+| Agents | `/agents` | Health of the four live orchestration agents (`GET /admin/agents/health`) |
+| Support | `/support` | FAQ, contact channels, system snapshot |
+| Transactions | `/transactions` | Full risk ledger — the "View All" destination from the fraud dashboard |
+
+**Functional surfaces**
+- **Notifications** (bell) → live panel of recent anomalies with unread badge,
+  mark-all-read, and "view all activity".
+- **New Analysis** (sidebar) → modal that starts a workflow: fraud transaction,
+  return-risk order, or chargeback dispute.
+- **Legal** → Privacy / Terms / Security Disclosure / Regulatory pages
+  (placeholder content) from the footer.
+
+**Development:** `cd dashboard && npm install && npm run dev` →
+http://localhost:5173 (`VITE_API_URL` defaults to `http://localhost:8000`).
 
 ---
 
@@ -268,7 +310,7 @@ The estimator itself was fixed during development (PSI=43.4 → 3.86 on a real s
 
 ## Appendix C — Bug Resolution and Technical Notes
 
-**24 issues** found & fixed while bringing the stack up end-to-end. Three of them are told as full stories (root cause, debugging trail, lesson) in [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md). The complete table:
+**29 issues** found & fixed while bringing the stack up end-to-end. Three of them are told as full stories (root cause, debugging trail, lesson) in [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md). The complete table:
 
 | # | Bug | Root cause | Fix |
 |---|-----|------------|-----|
@@ -296,6 +338,11 @@ The estimator itself was fixed during development (PSI=43.4 → 3.86 on a real s
 | 22 | `SyncRedisClient` missing `hmset` | incomplete sync/async parity | added the method |
 | 23 | `seed_demo_data.py` missing `sys.path` bootstrap | script couldn't find modules standalone | added bootstrap |
 | 24 | Demo "suspicious burst" couldn't fire geo rules | missing `velocity:loc:*` / `velocity:dev:*` keys in seeder | seeded prior location + device velocity |
+| 25 | `AlertBroadcaster` crashed at startup: `'AsyncRedisClient' object has no attribute 'pubsub'` | `AsyncRedisClient` wrapper didn't delegate `pubsub()` to the raw redis-py client | added `pubsub()` delegation (`store/redis_client.py`) — live WebSocket alerts restored |
+| 26 | Dashboard stuck on "Request failed (403)" after token expiry | axios interceptor handled only 401, not 403 (expired JWT surfaces as 403) | interceptor now refreshes on 401 and clears session + redirects to `/login` on both 401/403 |
+| 27 | `scripts/ablation.py` crashed: `NameError: pd` | `pd.DataFrame` referenced without importing pandas | added `import pandas as pd` |
+| 28 | Makefile warned "overriding commands for target `benchmark`" | duplicate `benchmark:` target — second definition silently overrode the first | renamed the optimizer benchmark to `benchmark-opt` |
+| 29 | PyJWT `InsecureKeyLengthWarning` (29-byte secret < 32 for HS256) | hardcoded short dev JWT secret | extended default to 37 bytes; rotate via `JWT_SECRET` env in prod |
 
 ---
 
@@ -332,6 +379,7 @@ PayShield/
 ├── data/synthetic/            # return-risk + UPI transaction generators
 ├── observability/             # PSI drift monitoring, Prometheus metrics
 ├── ml/                        # model lifecycle, champion/challenger A/B
+├── dashboard/                 # Operator UI — Vite + React + TS + Tailwind (see Operator UI)
 ├── scripts/                   # benchmarks, demos, verification, seeding
 ├── tests/                     # unit + integration + e2e + load
 └── Makefile                   # 30+ targets (test, lint, train, retrain, deploy)

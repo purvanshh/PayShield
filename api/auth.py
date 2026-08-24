@@ -18,7 +18,7 @@ except ImportError:
     pyjwt = None
     _has_jwt = False
 
-JWT_SECRET = os.getenv("JWT_SECRET", "payshield-jwt-secret-dev-2026")
+JWT_SECRET = os.getenv("JWT_SECRET", "payshield-jwt-secret-dev-2026-32bytes")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_DAYS", "7"))

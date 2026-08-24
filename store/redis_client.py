@@ -209,5 +209,14 @@ class AsyncRedisClient:
     async def pipeline(self):
         return self._client.pipeline()
 
+    def pubsub(self):
+        """Expose the raw redis pubsub for AlertBroadcaster.
+
+        The wrapper doesn't own the pubsub lifecycle (subscribe/listen/close
+        are called by the broadcaster), so we delegate to the underlying
+        redis.asyncio client directly.
+        """
+        return self._client.pubsub()
+
     async def close(self):
         await self.pool.close()

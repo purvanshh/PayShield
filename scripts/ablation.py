@@ -2,6 +2,7 @@ import argparse
 import time
 
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, average_precision_score

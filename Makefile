@@ -146,7 +146,7 @@ compliance-evidence:
 health-report:
 	python scripts/system_health_report.py
 
-benchmark:
+benchmark-opt:
 	python scripts/benchmark_optimization.py
 
 arch-review:

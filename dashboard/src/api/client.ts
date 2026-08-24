@@ -24,9 +24,9 @@ client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       const refreshToken = localStorage.getItem("refresh_token");
-      if (refreshToken) {
+      if (refreshToken && error.response?.status === 401) {
         try {
           const res = await axios.post(`${API_URL}/v1/auth/refresh`, { refresh_token: refreshToken });
           localStorage.setItem("auth_token", res.data.access_token);
@@ -37,10 +37,14 @@ client.interceptors.response.use(
         } catch {
           localStorage.removeItem("auth_token");
           localStorage.removeItem("refresh_token");
+          localStorage.removeItem("payshield-auth");
           window.location.href = "/login";
         }
       } else {
+        // 403 with no refresh, or refresh failure → re-authenticate
         localStorage.removeItem("auth_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("payshield-auth");
         window.location.href = "/login";
       }
     }
