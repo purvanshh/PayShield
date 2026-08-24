@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-on-surface font-body-md antialiased;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    display: inline-block;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Apex Noir grain overlay */
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .border-subtle {
+    border: 1px solid rgba(244, 241, 234, 0.1);
+  }
+
+  .radial-progress {
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+
+  .dash-array {
+    stroke-dasharray: 283;
+    transition: stroke-dashoffset 1s ease-out;
+  }
+
+  @keyframes staggerReveal {
+    0% {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .ledger-row {
+    opacity: 0;
+    animation: staggerReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .ledger-row:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  .ledger-row:nth-child(2) {
+    animation-delay: 0.25s;
+  }
+  .ledger-row:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes counterFlip {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-counter {
+    animation: counterFlip 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}

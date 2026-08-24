@@ -77,6 +77,7 @@ export interface RuleTrigger {
   triggered: boolean;
   action?: string;
   severity?: number;
+  description?: string;
 }
 
 export interface ReturnScoreData {
