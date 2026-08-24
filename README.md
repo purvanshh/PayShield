@@ -22,7 +22,7 @@ Measured on **10,000 synthetic orders** (500 users × 5 archetypes, seed 42) wit
 | Recall @ HIGH gate | 0.3675 | Intentionally conservative (prepaid-only) |
 | ROC-AUC | 0.9846 | |
 
-Every precision/recall point is translated into **merchant money** — see [`docs/COST_MODEL.md`](docs/COST_MODEL.md): at the MEDIUM+ point the scorer **prevents ~1,086 returns per month** for a 10k-order fashion merchant and cuts return cost by **54.6%** (₹50.31L → ₹22.84L).
+Every precision/recall point is translated into **merchant money** — see [`docs/COST_MODEL.md`](docs/COST_MODEL.md): at the MEDIUM+ point the scorer **prevents ~1,086 returns per month** for a 10k-order fashion merchant, cuts return cost by **54.6%** (₹50.31L → ₹22.84L), and nets **~₹2,75,000 saved per 1,000 orders**.
 
 Run it yourself — hermetic, no services needed:
 
@@ -112,6 +112,9 @@ python scripts/verify_live_stack.py
 
 # 4. Benchmarks (hermetic — no services needed)
 python scripts/benchmark_return_risk.py
+python docs/cost_model/calculator.py
+python scripts/simulate_ab_test.py
+python scripts/demo_graceful_failure.py
 
 # 5. Score an order
 curl -X POST http://localhost:8000/v1/return/score \
@@ -182,6 +185,7 @@ The return-risk scorer is designed to sit **inside a Razorpay merchant flow** as
 | **Razorpay integration (adapter + webhooks)** | [`docs/RAZORPAY_INTEGRATION.md`](docs/RAZORPAY_INTEGRATION.md) |
 | **Three hard bugs, told as stories** | [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md) |
 | **Graceful failure design** | [`docs/GRACEFUL_FAILURE.md`](docs/GRACEFUL_FAILURE.md) |
+| **A/B experiment simulation** | [`scripts/simulate_ab_test.py`](scripts/simulate_ab_test.py) |
 | **Return-risk feature/rule reference** | [`docs/reference/return_risk_redis_schema.md`](docs/reference/return_risk_redis_schema.md) · [`docs/reference/return_risk_patterns.md`](docs/reference/return_risk_patterns.md) |
 | **Full architecture** | [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md) |
 | **Return-risk model card** | [`models/return_risk_benchmark_results.json`](models/return_risk_benchmark_results.json) |
