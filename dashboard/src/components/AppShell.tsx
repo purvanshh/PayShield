@@ -5,8 +5,8 @@ import { NotificationsButton } from "./Notifications";
 import { useAuthStore } from "../store/authStore";
 
 const SECTION_LINKS = [
-  { to: "/fraud", label: "Fraud", end: false },
   { to: "/return-risk", label: "Return Risk", end: false },
+  { to: "/fraud", label: "Fraud", end: false },
   { to: "/chargeback", label: "Chargeback", end: false },
 ];
 
