@@ -7,7 +7,7 @@ a manual item unchecked.
 
 ## Code & repo
 
-- [x] **repo** — 568 tests pass (`pytest tests/ -q`), hermetic
+- [x] **repo** — 589 tests pass (`pytest tests/ -q`), hermetic
 - [x] **repo** — Track 2 logic strict-typed (`mypy chargeback/ return_risk/ --strict`)
 - [x] **repo** — ruff clean on track-2 code (repo-wide B008 convention is
       pre-existing and matches `api/routes/score.py`)
@@ -17,7 +17,19 @@ a manual item unchecked.
 - [x] **repo** — compliance checkers pass in the compose env
       (`COMPLIANCE_DELTA_TRACK2.md`: PCI 90/100 · RBI 83/100 passing ·
       EU 100/100)
-- [x] **repo** — README leads with Track 2; changelog current
+- [x] **repo** — README leads with the return-risk scorer hero narrative;
+      fraud + chargeback demoted to Platform Extensions
+- [x] **repo** — cost model: `docs/cost_model/calculator.py` reproduces the
+      headline ₹27,45,990/month savings (54.6%); unit-pinned
+- [x] **repo** — Razorpay integration: `integrations/razorpay_adapter.py`,
+      signed webhook handler + test-mode client; 11 tests
+- [x] **repo** — A/B simulation: `scripts/simulate_ab_test.py` (Welch t-test,
+      promote/keep recommendation)
+- [x] **repo** — graceful-failure demo: `scripts/demo_graceful_failure.py`
+      (3 scenarios against the real scorer)
+- [x] **repo** — agents slimmed to the 4 live paths; dev-only agents archived
+      under `agents/archived/` with status + re-enable notes
+- [x] **repo** — stories: `docs/THREE_HARD_BUGS.md`
 - [x] **repo** — tag `v1.2.0-track2` exists (local)
 - [ ] **/manual/** — repo public on GitHub; `git push origin feature/track2-risk-manager`
 - [ ] **/manual/** — push the tag (`git push origin v1.2.0-track2`)
