@@ -1,6 +1,6 @@
 # PayShield — Return-Risk Scorer for Razorpay Merchants
 
-**PayShield is a production-grade return-risk scoring system for Indian e-commerce merchants, built on Razorpay's infrastructure.** It scores every order *before it ships*, catches 91% of high-risk returns at 94% precision, and saves a fashion merchant ~₹27 lakh/month by preventing returns instead of absorbing them. Fraud detection and chargeback response ship as platform extensions on the same audit chain.
+**PayShield is a production-grade return-risk scoring system for Indian e-commerce merchants, built on Razorpay's infrastructure.** It scores every order *before it ships*, catches the high-risk tail at 98% precision, and saves a fashion merchant ~₹21 lakh/month by preventing returns instead of absorbing them. Fraud detection and chargeback response ship as platform extensions on the same audit chain.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg)](https://fastapi.tiangolo.com)
@@ -10,19 +10,23 @@
 
 ## The Numbers (30 seconds)
 
-Measured on **10,000 synthetic orders** (500 users × 5 archetypes, seed 42) with a **chronological per-user hold-out** — a user's profile is seeded only from their past orders, so no score ever uses future returns:
+Measured on a **10,000-order benchmark generated with priors calibrated against public Indian e-commerce distributions (Amazon India 2025 category margins)** — 500 users × 5 archetypes, seed 42, chronological per-user hold-out, so no score ever uses future returns:
 
 | Metric | Value | Meaning |
 |---|---|---|
-| **PR-AUC** | **0.9806** | Rank quality on the minority (return) class |
-| **Precision @ MEDIUM+** | **0.9444** | 1 in 18 flagged orders is a false block |
-| **Recall @ MEDIUM+** | **0.9125** | Catches 9 of 10 genuinely high-risk users |
-| **F1 @ MEDIUM+** | **0.9282** | Primary operating point |
-| Precision @ HIGH gate | 1.0000 | Zero false positives at the prepaid gate |
-| Recall @ HIGH gate | 0.3675 | Intentionally conservative (prepaid-only) |
-| ROC-AUC | 0.9846 | |
+| **PR-AUC** | **0.9311** | Rank quality on the minority (return) class |
+| **Precision @ MEDIUM+** | **0.9837** | ~1 in 60 flagged orders is a wrong review flag |
+| **Recall @ MEDIUM+** | **0.6050** | Catches the clearly-high tail (review gate, tuned per vertical) |
+| **F1 @ MEDIUM+** | **0.7492** | Primary operating point (review gate 0.50) |
+| Precision @ HIGH gate | 0.9837 | Prepaid gate |
+| Recall @ HIGH gate | 0.6050 | |
+| ROC-AUC | 0.9431 | |
 
-Every precision/recall point is translated into **merchant money** — see [`docs/COST_MODEL.md`](docs/COST_MODEL.md): at the MEDIUM+ point the scorer **prevents ~1,086 returns per month** for a 10k-order fashion merchant, cuts return cost by **54.6%** (₹50.31L → ₹22.84L), and nets **~₹2,75,000 saved per 1,000 orders**.
+The review gate (MEDIUM+) is config-driven (`configs/return_risk_rules.yaml`
+→ `operating_point.medium_review_threshold`): **0.50 for high-return-rate
+vertical (base rate ~32%+), 0.30–0.35 for low-return fashion (~14–18%)**.
+
+Every precision/recall point is translated into **merchant money** — see [`docs/COST_MODEL.md`](docs/COST_MODEL.md): a wrong MEDIUM flag costs ₹200 of operator time (review), a wrong HIGH block costs ₹3,180. At the review gate a 10k-order fashion merchant **prevents ~750 returns/month**, cuts return cost by **41.6%** (₹50.31L → ₹29.38L), and nets **~₹2,09,000 saved per 1,000 orders**.
 
 Run it yourself — hermetic, no services needed:
 
@@ -62,7 +66,7 @@ python docs/cost_model/calculator.py          # the same metrics in ₹
 
 The score is **fully transparent**: every feature carries a value, a normalised value, a weight and a contribution, plus a `source` tag (`redis_hash`, `computed`, `lookup_table`, `default_new_user`) — so a 0.83 can be explained down to the penny, and degraded data is visible, never hidden. Weights come from `configs/feature_registry_return.yaml`, tiers/rules from `configs/return_risk_rules.yaml` (reloadable without a deploy).
 
-The subtle design point: the **cost of a false block (₹3,180) exceeds the cost of a false allow (₹2,800)** in Indian e-commerce unit economics. The MEDIUM+ threshold is chosen to favour precision slightly over recall *because that is what minimizes expected merchant spend* — the threshold selection is a cost optimisation, not an accuracy aspiration.
+The subtle design point: a **wrong MEDIUM flag costs ₹200 of operator time** (the order still ships), while a **wrong HIGH/prepaid block costs ₹3,180** (lost order + CAC + churn). Because review is cheap and blocking is expensive, the gate is tuned to favour *precision at the review tier* — the threshold selection is a cost optimisation, not an accuracy aspiration, and the review gate is config-driven per merchant vertical.
 
 ---
 
@@ -72,8 +76,8 @@ All scenarios tested against the **running Docker stack** (real Redis/Postgres, 
 
 | Scenario | Endpoint | Expected | Measured |
 |---|---|---|---|
-| Serial returner | `POST /v1/return/score` | HIGH ~0.83 | **HIGH · 0.8305** |
-| Honest customer | `POST /v1/return/score` | LOW ~0.10 | **LOW · 0.096**¹ |
+| Serial returner | `POST /v1/return/score` | HIGH ~0.83 | **HIGH · 0.8551** |
+| Honest customer | `POST /v1/return/score` | LOW ~0.10 | **LOW · 0.1628**¹ |
 | Winnable chargeback | `POST /v1/chargeback/respond` | REJECT | **REJECT · conf 1.0** |
 | Weak chargeback | `POST /v1/chargeback/respond` | PARTIAL + warnings | **PARTIAL · 0.68 + 2 warnings** |
 | Clean transaction | `POST /v1/score` | ALLOW ~0.08 | **ALLOW · 0.0624** |
@@ -83,7 +87,7 @@ All scenarios tested against the **running Docker stack** (real Redis/Postgres, 
 | Return callback | `POST /v1/return/update` | SUCCESS | **SUCCESS** |
 | Drift report | `GET /admin/drift/return-risk` | 200 | **200** |
 
-¹ 0.096 is the pre-accumulation baseline; live profiles drift to ~0.10–0.22 after background-refresh increments — still LOW tier.
+¹ 0.1628 measured on a fresh seed; live profiles drift ~0.10–0.22 after background-refresh increments — still LOW tier.
 
 The weak-chargeback row is the graceful-degradation behaviour: incomplete evidence produces `PARTIAL` with explicit warnings, never a crash or an overconfident `REJECT`. Dedicated failure-mode demo: `python scripts/demo_graceful_failure.py`.
 
@@ -162,7 +166,7 @@ overlay, Geist + Instrument Serif type), served by nginx at
 
 | Surface | Route | What it shows |
 |---|---|---|
-| Cost Model | `/cost-model` | The ₹27,45,990/month savings story, computed live from the `docs/cost_model` assumptions (scenario + sensitivity tables) |
+| Cost Model | `/cost-model` | The ₹20,92,650/month savings story, computed live from the `docs/cost_model` assumptions (scenario + sensitivity tables) |
 | Drift Monitor | `/drift` | Live PSI across the return-risk feature surface (`GET /admin/drift/return-risk`) |
 | A/B Experiments | `/experiments` | Champion/challenger verdict with Welch p-value — models promote only on significance |
 | Agents | `/agents` | Health of the four live orchestration agents (`GET /admin/agents/health`) |

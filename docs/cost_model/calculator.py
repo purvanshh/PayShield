@@ -8,10 +8,14 @@ The arithmetic mirrors ``docs/COST_MODEL.md`` row-for-row so the numbers a
 panelist reads and the numbers the terminal prints are identical:
 
     caught            = round(recall × total_returns)          # flagged
-    false_blocks      = round(caught × (1 − precision))        # good flagged
-    true_caught       = caught − false_blocks                  # real catch
+    wrong_flags       = round(caught × (1 − precision))        # good flagged
+    true_caught       = caught − wrong_flags
     prevented         = round(true_caught × diversion_effectiveness)
     remaining_returns = total_returns − prevented
+
+Penalty for a wrong flag depends on the gate's action:
+- MEDIUM+ (review)  -> review_cost ₹200 (operator time, not the order value)
+- HIGH (block)      -> false_block_cost (full lost order + CAC + churn)
 
 Usage
 -----
@@ -34,20 +38,27 @@ from docs.cost_model.assumptions import CostAssumptions  # noqa: E402
 
 @dataclass(frozen=True)
 class OperatingPoint:
-    """A shipped threshold and its measured precision/recall.
+    """A shipped threshold, its measured precision/recall, and the action cost.
 
-    Measured on the 10k-order hold-out in ``scripts/benchmark_return_risk.py``.
+    ``action`` distinguishes a REVIEW flag (MEDIUM+ gate: costs operator time,
+    never the order value) from a BLOCK/prepaid gate (HIGH: a wrongly flagged
+    good order is lost). Measured on the 10k-order calibrated hold-out in
+    ``scripts/benchmark_return_risk.py``.
     """
 
     name: Literal["HIGH", "MEDIUM+", "LOW"]
     threshold: float
     precision: float
     recall: float
+    action: Literal["review", "block"] = "review"
 
 
 OPERATING_POINTS = {
-    "HIGH": OperatingPoint("HIGH", 0.70, 1.0000, 0.3675),
-    "MEDIUM+": OperatingPoint("MEDIUM+", 0.35, 0.9444, 0.9125),
+    # Calibrated benchmark (Amazon-margin generator, seed 42, 10k orders):
+    # POS rates ~40%, both gates select the same 25% of orders (bimodal score
+    # distribution with a gap between 0.50 and 0.70).
+    "HIGH": OperatingPoint("HIGH", 0.70, 0.9837, 0.6050, action="block"),
+    "MEDIUM+": OperatingPoint("MEDIUM+", 0.50, 0.9837, 0.6050, action="review"),
 }
 
 
@@ -58,22 +69,29 @@ def evaluate_scenario(
 ) -> dict[str, Any]:
     """Estimate monthly cost/savings at a given operating point.
 
-    Every intermediate quantity is returned so the story is auditable.
+    A wrong flag costs ``review_cost`` at the MEDIUM+ review gate but the full
+    ``false_block_cost`` at the HIGH/prepaid gate — a corrupted logistics/ops
+    model would over-charge every review as a lost order. Every intermediate
+    quantity is returned so the story is auditable.
     """
     total_returns = int(orders * assumptions.return_rate)
 
     caught = int(round(op.recall * total_returns))
-    # A flagged order is a false block with probability (1 − precision).
-    false_blocks = int(round(caught * (1.0 - op.precision)))
-    true_caught = caught - false_blocks
+    # A flagged order is a wrong flag with probability (1 − precision).
+    wrong_flags = int(round(caught * (1.0 - op.precision)))
+    true_caught = caught - wrong_flags
 
     prevented = int(round(true_caught * assumptions.diversion_effectiveness))
     remaining_returns = total_returns - prevented
 
+    wrong_flag_cost = (
+        assumptions.review_cost if op.action == "review" else assumptions.false_block_cost
+    )
+
     baseline_cost = total_returns * assumptions.false_allow_cost
     payshield_cost = (
         remaining_returns * assumptions.false_allow_cost
-        + false_blocks * assumptions.false_block_cost
+        + wrong_flags * wrong_flag_cost
     )
     savings = baseline_cost - payshield_cost
 
@@ -81,7 +99,7 @@ def evaluate_scenario(
         "orders": orders,
         "total_returns": total_returns,
         "caught": caught,
-        "false_blocks": false_blocks,
+        "false_blocks": wrong_flags,
         "true_caught": true_caught,
         "prevented": prevented,
         "remaining_returns": remaining_returns,
@@ -91,7 +109,7 @@ def evaluate_scenario(
         "annual_savings": savings * 12,
         "roi_pct": (savings / baseline_cost) * 100 if baseline_cost else 0.0,
         "cost_per_false_allow": assumptions.false_allow_cost,
-        "cost_per_false_block": assumptions.false_block_cost,
+        "flag_penalty_per_order": wrong_flag_cost,
         "assumptions": {
             "aov": assumptions.aov,
             "return_rate": assumptions.return_rate,
@@ -120,19 +138,20 @@ def _print_header() -> None:
 
 
 def _format_result(result: dict[str, Any], op: OperatingPoint) -> None:
-    print(f"\n=== {op.name} Gate (threshold {op.threshold}) ===")
+    print(f"\n=== {op.name} Gate (threshold {op.threshold}, action={op.action}) ===")
     print(f"Orders/month            : {result['orders']:,}")
     print(
         f"Expected returns        : {result['total_returns']:,} ({result['assumptions']['return_rate']:.0%})"
     )
     print(f"Flagged (recall)        : {result['caught']:,}")
-    print(f"  false blocks          : {result['false_blocks']:,}")
+    print(f"  wrong flags           : {result['false_blocks']:,}")
     print(f"  true catches          : {result['true_caught']:,}")
     print(f"Returns prevented       : {result['prevented']:,} (diversion @ 70%)")
     print(f"Remaining returns       : {result['remaining_returns']:,}")
     print("-" * 66)
     print(f"Cost per false allow    : ₹{result['cost_per_false_allow']:,.0f}")
-    print(f"Cost per false block    : ₹{result['cost_per_false_block']:,.0f}")
+    print(f"Wrong-flag penalty      : ₹{result['flag_penalty_per_order']:,.0f} "
+          f"({'review' if op.action == 'review' else 'block'})")
     print("Baseline (no model)      : ₹{:,}".format(result["baseline_cost"]))
     print("With PayShield           : ₹{:,}".format(result["payshield_cost"]))
     print(f"MONTHLY SAVINGS          : ₹{result['monthly_savings']:,.0f}")

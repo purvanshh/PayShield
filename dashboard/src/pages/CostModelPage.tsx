@@ -72,9 +72,11 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-// Measured MEDIUM+ operating point (10k-order hold-out).
-const OP_PRECISION = 0.9444;
-const OP_RECALL = 0.9125;
+// Measured MEDIUM+ review gate on the calibrated 10k-order hold-out
+// (configs/return_risk_rules.yaml operating_point.medium_review_threshold).
+const OP_PRECISION = 0.9837;
+const OP_RECALL = 0.605;
+const REVIEW_COST = 200; // a wrong MEDIUM flag costs operator time, not the order
 const ORDERS = 10_000;
 
 function evaluate(a: Scenario["assumptions"]) {
@@ -87,7 +89,7 @@ function evaluate(a: Scenario["assumptions"]) {
   const prevented = Math.round(trueCaught * a.diversion);
   const remaining = totalReturns - prevented;
   const baseline = totalReturns * falseAllow;
-  const payshield = remaining * falseAllow + falseBlocks * falseBlock;
+  const payshield = remaining * falseAllow + falseBlocks * REVIEW_COST;
   const savings = baseline - payshield;
   return {
     falseAllow,

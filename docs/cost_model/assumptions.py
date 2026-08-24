@@ -26,6 +26,7 @@ class CostAssumptions:
     churn_after_false_block: float = 0.15  # probability the blocked customer churns
     ltv: float = 3000.0  # expected lifetime value of a good customer
     diversion_effectiveness: float = 0.70  # share of diverted orders that don't return
+    review_cost: float = 200.0  # operator time to manually review one flag (not the order value)
 
     @property
     def gateway_fee(self) -> float:
