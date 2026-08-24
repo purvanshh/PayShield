@@ -147,5 +147,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"return_risk_router_skipped: {e}")
 
+    try:
+        from integrations.razorpay_webhook_handler import router as razorpay_webhook_router
+        app.include_router(razorpay_webhook_router, tags=["webhooks"])
+    except Exception as e:
+        logger.warning(f"razorpay_webhook_router_skipped: {e}")
+
 
 app = create_app()
