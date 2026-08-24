@@ -1,0 +1,59 @@
+{
+  "event": "refund.processed",
+  "payload": {
+    "order": {
+      "entity": {
+        "id": "order_MYNT2026_002",
+        "entity": "order",
+        "amount": 350000,
+        "amount_paid": 350000,
+        "amount_due": 0,
+        "currency": "INR",
+        "receipt": "MYNT-ORD-88099",
+        "status": "paid",
+        "attempts": 1,
+        "notes": {
+          "merchant_id": "M_FASHION_001",
+          "customer_id": "cust_returnsal",
+          "category": "fashion"
+        },
+        "created_at": 1784731000
+      }
+    },
+    "payment": {
+      "entity": {
+        "id": "pay_MYNT2026_002",
+        "entity": "payment",
+        "amount": 350000,
+        "currency": "INR",
+        "status": "refunded",
+        "order_id": "order_MYNT2026_002",
+        "method": "upi",
+        "captured": true,
+        "amount_refunded": 350000,
+        "refund_status": "refunded",
+        "description": "Returned fashion order",
+        "notes": {
+          "customer_id": "cust_returnsal",
+          "return_reason": "changed my mind"
+        },
+        "created_at": 1784731400
+      }
+    },
+    "refund": {
+      "entity": {
+        "id": "refund_MYNT2026_002",
+        "entity": "refund",
+        "amount": 350000,
+        "currency": "INR",
+        "payment_id": "pay_MYNT2026_002",
+        "status": "processed",
+        "speed_processed": "normal",
+        "speed_requested": "normal",
+        "notes": {},
+        "receipt": null,
+        "created_at": 1784732000
+      }
+    }
+  }
+}

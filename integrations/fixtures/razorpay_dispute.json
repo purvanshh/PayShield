@@ -1,0 +1,22 @@
+{
+  "event": "chargeback.created",
+  "payload": {
+    "chargeback": {
+      "entity": {
+        "id": "disp_2Vw9aZ0q3X",
+        "entity": "dispute",
+        "payment_id": "pay_CLEAN_001",
+        "amount": 4500,
+        "currency": "INR",
+        "status": "open",
+        "reason_code": "10.4",
+        "reason_description": "Fraud - Card Not Present",
+        "network": "VISA",
+        "response_deadline": "2026-09-20T00:00:00",
+        "created_at": 1784600000,
+        "respond_by": 1787100000,
+        "action": "action_8A9BcD2EfG"
+      }
+    }
+  }
+}

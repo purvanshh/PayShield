@@ -1,0 +1,49 @@
+{
+  "event": "order.paid",
+  "payload": {
+    "order": {
+      "entity": {
+        "id": "order_MYNT2026_001",
+        "entity": "order",
+        "amount": 550000,
+        "amount_paid": 550000,
+        "amount_due": 0,
+        "currency": "INR",
+        "receipt": "MYNT-ORD-88012",
+        "offer_id": null,
+        "status": "paid",
+        "attempts": 1,
+        "notes": {
+          "merchant_id": "M_FASHION_001",
+          "customer_id": "cust_serialsam",
+          "category": "fashion",
+          "cod": "true",
+          "payment_method": "cod",
+          "device_fingerprint": "DEV_SERIAL_014"
+        },
+        "created_at": 1784736000
+      }
+    },
+    "payment": {
+      "entity": {
+        "id": "pay_MYNT2026_001",
+        "entity": "payment",
+        "amount": 550000,
+        "currency": "INR",
+        "status": "captured",
+        "order_id": "order_MYNT2026_001",
+        "method": "cod",
+        "captured": true,
+        "international": false,
+        "amount_refunded": 0,
+        "refund_status": null,
+        "description": "Fashion order - 4 items",
+        "notes": {
+          "customer_id": "cust_serialsam",
+          "device_fingerprint": "DEV_SERIAL_014"
+        },
+        "created_at": 1784736020
+      }
+    }
+  }
+}
