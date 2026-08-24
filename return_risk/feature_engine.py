@@ -14,14 +14,17 @@ Every feature carries a ``source`` tag (``redis_hash``, ``computed``,
 or a judge - can always answer "where does this number come from?".
 """
 
+from __future__ import annotations  # PEP 563: forward-referenced FeatureRegistry in annotations
+
 # ruff: noqa: ARG002 -- interface parity: extraction profile mirrors the
 # plan's signature so every caller pipes (user, merchant, txn) consistently.
-
 import asyncio
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
+
+import numpy as np
 
 CATEGORY_BASELINES = {
     "fashion": 0.32,
@@ -35,15 +38,20 @@ CATEGORY_BASELINES = {
     "default": 0.15,
 }
 
-DEFAULT_MERCHANT_RETURN_RATE = 0.15
+DEFAULT_PRIOR = 0.15  # population return-rate prior for histories we haven't seen
+DEFAULT_MERCHANT_RETURN_RATE = DEFAULT_PRIOR
 DEFAULT_RESOLUTION_HOURS = 72.0
+AMOUNT_SATURATION_INR = 50_000.0  # log-amount normalisation saturates at ₹50k
 
 
 class ReturnRiskFeatureEngine:
     """Extracts return-risk features from the Redis feature store."""
 
-    def __init__(self, redis: Any):
+    def __init__(self, redis: Any, registry: FeatureRegistry | None = None):
         self.redis = redis
+        registry = registry or FeatureRegistry()
+        self.default_prior = registry.default_prior
+        self.category_prior = {**CATEGORY_BASELINES, **registry.default_priors}
 
     # ------------------------------------------------------------------ #
     # extraction                                                          #
@@ -99,11 +107,14 @@ class ReturnRiskFeatureEngine:
             # New user (or unreadable store): neutral features, never
             # zero-risk-by-default. ``default_redis_error`` marks the
             # degraded path so responses can carry an honest warning.
+            # Return-rate features default to the population prior (the
+            # market baseline, not zero) so first-time buyers are treated as
+            # average-risk rather than risk-free.
             source = "default_redis_error" if data is None else "default_new_user"
             return {
-                "user_return_rate_30d": {"value": 0.0, "source": source},
-                "user_return_rate_90d": {"value": 0.0, "source": source},
-                "user_return_rate_lifetime": {"value": 0.0, "source": source},
+                "user_return_rate_30d": {"value": self.default_prior, "source": source},
+                "user_return_rate_90d": {"value": self.default_prior, "source": source},
+                "user_return_rate_lifetime": {"value": self.default_prior, "source": source},
                 "user_total_orders": {"value": 0, "source": source},
                 "user_total_returns": {"value": 0, "source": source},
                 "user_serial_returner_flag": {"value": False, "source": source},
@@ -157,7 +168,7 @@ class ReturnRiskFeatureEngine:
             degraded = data is None
             return {
                 "merchant_return_rate_30d": {
-                    "value": DEFAULT_MERCHANT_RETURN_RATE,
+                    "value": self.default_prior,
                     "source": "default_redis_error" if degraded else "default",
                 },
                 "merchant_return_fraud_rate": {
@@ -169,7 +180,7 @@ class ReturnRiskFeatureEngine:
                     "source": "default_redis_error" if degraded else "default",
                 },
                 "merchant_category_return_rate": {
-                    "value": self._category_baseline(category),
+                    "value": self._category_prior(category),
                     "source": "lookup_table",
                 },
             }
@@ -189,10 +200,10 @@ class ReturnRiskFeatureEngine:
                 ),
                 "source": "redis_hash",
             },
-            "merchant_category_return_rate": {
-                "value": await self._merchant_category_rate(merchant_id, category),
-                "source": "redis_zset",
-            },
+"merchant_category_return_rate": {
+                    "value": await self._merchant_category_rate(merchant_id, category),
+                    "source": "redis_zset",
+                },
         }
 
     async def _merchant_category_rate(self, merchant_id: str, category: str) -> float:
@@ -204,7 +215,7 @@ class ReturnRiskFeatureEngine:
                 return float(score)
         except Exception:  # nosec B110 - zset read failure falls back to lookup table
             pass
-        return self._category_baseline(category)
+        return self._category_prior(category)
 
     @staticmethod
     async def _safe_redis(awaitable: Any, default: Any) -> Any:
@@ -227,6 +238,10 @@ class ReturnRiskFeatureEngine:
     def _category_baseline(category: str) -> float:
         return float(CATEGORY_BASELINES.get(category, CATEGORY_BASELINES["default"]))
 
+    def _category_prior(self, category: str) -> float:
+        """Per-category return prior (registry overrides the built-in table)."""
+        return float(self.category_prior.get(category, self.category_prior["default"]))
+
     def _compute_transaction_features(
         self,
         category: str,
@@ -237,10 +252,13 @@ class ReturnRiskFeatureEngine:
     ) -> dict[str, Any]:
         # category baseline prefers the merchant's own per-category rate
         merchant_rate = merchant_features.get("merchant_category_return_rate", {})
-        category_baseline = float(merchant_rate.get("value", self._category_baseline(category)))
+        category_baseline = float(merchant_rate.get("value", self._category_prior(category)))
 
         amount_float = float(amount)
-        amount_risk = min(1.0, amount_float / 10000.0)
+        # Log-normalised amount risk: a ₹50k order is 1.0, but high-AOV
+        # markets no longer saturate every order to a constant 1.0 the way
+        # the old linear `amount/10000` did.
+        amount_risk = float(min(1.0, np.log1p(amount_float) / np.log1p(AMOUNT_SATURATION_INR)))
 
         hour = timestamp.hour
         time_risk = 0.3 if hour >= 23 or hour <= 5 else 0.0
@@ -327,7 +345,7 @@ class ReturnRiskFeatureEngine:
 
 
 class FeatureRegistry:
-    """Loads ``configs/feature_registry_return.yaml`` (registry + weights)."""
+    """Loads ``configs/feature_registry_return.yaml`` (registry + weights + priors)."""
 
     def __init__(self, path: str = "configs/feature_registry_return.yaml"):
         from pathlib import Path
@@ -336,6 +354,8 @@ class FeatureRegistry:
         self.composite_weights: dict[str, float] = {}
         self.features: list[dict[str, Any]] = []
         self.version: str = "1.0.0"
+        self.default_prior: float = DEFAULT_PRIOR
+        self.default_priors: dict[str, float] = {}
         self._load()
 
     def _load(self) -> None:
@@ -348,6 +368,10 @@ class FeatureRegistry:
         self.version = str(data.get("version", "1.0.0"))
         self.composite_weights = data.get("composite_weights", {})
         self.features = data.get("features", [])
+        self.default_prior = float(data.get("default_prior", DEFAULT_PRIOR))
+        self.default_priors = {
+            str(key): float(value) for key, value in (data.get("default_priors") or {}).items()
+        }
 
     def by_kind(self, kind: str) -> list[dict[str, Any]]:
         return [f for f in self.features if f.get("kind") == kind]

@@ -113,6 +113,12 @@ async def _run(args) -> dict:
         merchant_rates[merchant["merchant_id"]] = merchant["return_rate"]
 
     scorer = _make_scorer(redis)
+    # Review gate is config-driven: configs/return_risk_rules.yaml sets
+    # ``operating_point.medium_review_threshold`` (0.50 on high-return
+    # verticals, 0.30-0.35 on low-return ones).
+    medium_threshold = float(
+        scorer.rules_engine.operating_point.get("medium_review_threshold", 0.30)
+    )
     print("[3/5] Scoring held-out orders...")
     scores, truths, preds = [], [], []
     for order in test_orders:
@@ -145,9 +151,9 @@ async def _run(args) -> dict:
         "positive_rate": float(round(sum(y_true) / max(1, len(y_true)), 4)),
     }
 
-    y_pred_medium = (y_scores > 0.3).astype(int)  # MEDIUM+ = flag/review action
+    y_pred_medium = (y_scores > medium_threshold).astype(int)  # MEDIUM+ = flag/review action
     metrics["medium_or_higher"] = {
-        "threshold": 0.30,
+        "threshold": round(medium_threshold, 2),
         "precision": round(float(precision_score(y_true, y_pred_medium, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, y_pred_medium, zero_division=0)), 4),
         "f1": round(float(f1_score(y_true, y_pred_medium, zero_division=0)), 4),
@@ -158,13 +164,13 @@ async def _run(args) -> dict:
     )
     medium = metrics["medium_or_higher"]
     print(
-        f"  MEDIUM+(op 0.3): P={medium['precision']:.4f} R={medium['recall']:.4f} "
+        f"  MEDIUM+(op {medium_threshold:.2f}): P={medium['precision']:.4f} R={medium['recall']:.4f} "
         f"F1={medium['f1']:.4f}"
     )
 
     analysis = _false_positive_analysis(test_orders, labels, y_pred, y_scores)
     tier_distribution = Counter(
-        "HIGH" if s > 0.7 else "MEDIUM" if s > 0.3 else "LOW" for s in scores
+        "HIGH" if s > 0.7 else "MEDIUM" if s > medium_threshold else "LOW" for s in scores
     )
     print("[5/5] Saving results...")
     results = {
@@ -177,8 +183,9 @@ async def _run(args) -> dict:
             "positive_rate": metrics["positive_rate"],
         },
         "metrics": metrics,
-        "thresholds_note": "HIGH tier threshold 0.7 (block/prepaid); "
-        "MEDIUM+ decision 0.3 (flag for review) - both reported honestly",
+        "thresholds_note": f"HIGH tier threshold 0.7 (block/prepaid); "
+        f"MEDIUM+ review gate {medium_threshold:.2f} (config-driven "
+        f"operating_point.medium_review_threshold) - both reported honestly",
         "tier_distribution_on_test": dict(tier_distribution),
         "false_positive_analysis": analysis,
         "config": {"feature_weights": scorer.weights, "risk_tiers": scorer.risk_tiers},

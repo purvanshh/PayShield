@@ -1,10 +1,11 @@
 """ReturnRiskFeatureEngine tests (Phase 13)."""
 
 import json
+import math
 from datetime import datetime
 from decimal import Decimal
 
-from return_risk.feature_engine import CATEGORY_BASELINES, ReturnRiskFeatureEngine
+from return_risk.feature_engine import CATEGORY_BASELINES, DEFAULT_PRIOR, ReturnRiskFeatureEngine
 from tests.fake_redis import FakeRedis
 
 NOW = datetime(2026, 8, 21, 12, 0, 0)
@@ -15,7 +16,7 @@ class TestFeatureEngine:
         self.redis = FakeRedis()
         self.engine = ReturnRiskFeatureEngine(self.redis)
 
-    async def test_new_user_gets_neutral_defaults(self):
+    async def test_new_user_gets_prior_defaults(self):
         features = await self.engine.extract_features(
             user_id="U_NEW", merchant_id="M_A", category="fashion",
             amount=Decimal("10000"), cod_flag=True, timestamp=NOW,
@@ -23,10 +24,28 @@ class TestFeatureEngine:
         assert features["user_is_new"]["value"] is True
         assert features["user_total_orders"]["value"] == 0
         assert features["user_return_rate_30d"]["source"] == "default_new_user"
+        # new users default to the population prior, not zero
+        assert features["user_return_rate_30d"]["value"] == DEFAULT_PRIOR
+        assert features["user_return_rate_lifetime"]["value"] == DEFAULT_PRIOR
         assert features["txn_category_return_baseline"]["value"] == CATEGORY_BASELINES["fashion"]
-        assert features["txn_amount_risk"]["value"] == 1.0  # capped at Rs.10k
+        # log-normalised amount risk: ₹10k is 0.85, not saturated
+        expected = round(math.log1p(10000) / math.log1p(50000), 4)
+        assert features["txn_amount_risk"]["value"] == expected
         assert features["txn_cod_flag"]["value"] is True
         assert features["txn_time_of_day_risk"]["value"] == 0.0
+
+    async def test_high_aov_no_longer_saturates_linearly(self):
+        low = await self.engine.extract_features(
+            user_id="U_A", merchant_id="M_A", category="electronics",
+            amount=Decimal("5000"), cod_flag=False, timestamp=NOW,
+        )
+        high = await self.engine.extract_features(
+            user_id="U_A", merchant_id="M_A", category="electronics",
+            amount=Decimal("45000"), cod_flag=False, timestamp=NOW,
+        )
+        # both orders stay strictly inside (0,1) and are separated
+        low_risk, high_risk = low["txn_amount_risk"]["value"], high["txn_amount_risk"]["value"]
+        assert 0.0 < low_risk < high_risk < 1.0
 
     async def test_user_features_from_redis_hash(self):
         await self.redis.hmset(

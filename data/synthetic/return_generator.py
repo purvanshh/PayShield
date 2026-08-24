@@ -2,16 +2,20 @@
 
 Generates realistic synthetic data for return-risk scoring, modelling the
 Indian e-commerce archetypes researched in
-``docs/reference/return_risk_patterns.md``:
+``docs/reference/return_risk_patterns.md`` and recalibrated against public
+Indian e-commerce distributions (Amazon India 2025 category/PLP margins):
 
-- five user archetypes: honest, casual returner, serial returner, fraud
-  returner and new user - each with plausible return rates, order
-  cadence, average order value and reason distributions;
-- five merchant archetypes with category-specific baselines;
-- orders with ground-truth return labels (plus ``high_risk`` per user type)
-  so precision/recall can be measured on a held-out split;
-- a Redis seeding helper that writes profiles in the exact shape
-  ``return_risk/feature_engine.py`` expects.
+- return rates per category sit in the 31-34% band seen in the Amazon report
+  (Books 33.9%, Electronics 33.1%, Clothing 32.5%, Beauty 31.8%,
+  Home & Kitchen 31.3%);
+- order value averages land around ~₹70-80k (Amazon AOV ≈ ₹74.5k);
+- payment mix keeps COD ≈ 25.5% (Amazon COD share);
+- order dates follow Amazon monthly seasonality (Aug/Dec peaks, Feb trough).
+
+Five user archetypes (honest, casual returner, serial returner, fraud
+returner, new user) keep their relative separation so precision/recall is
+still measurable, but the *center* of the distribution matches the Indian
+high-return market.
 """
 
 import random
@@ -23,50 +27,61 @@ from faker import Faker
 
 fake = Faker("en_IN")
 
+# Amazon India 2025 monthly order counts (MONTHLY_SALES_TRENDS) -> seasonality
+MONTHLY_COUNTS = {
+    "January": 1276, "February": 1183, "March": 1226, "April": 1203,
+    "May": 1267, "June": 1225, "July": 1306, "August": 1312,
+    "September": 1248, "October": 1233, "November": 1225, "December": 1296,
+}
+SEASONALITY = [c / sum(MONTHLY_COUNTS.values()) for c in MONTHLY_COUNTS.values()]
+
+COD_SHARE = 0.255  # Amazon India COD share of payments
+
 USER_TYPES = {
     "honest": {
-        "return_rate_mean": 0.08,
-        "return_rate_std": 0.03,
-        "order_frequency_days": 14,
-        "avg_order_value": 2500,
+        "return_rate_mean": 0.15,
+        "return_rate_std": 0.04,
+        "order_frequency_days": 30,
+        "avg_order_value": 65000,
         "return_reasons": {"DEFECTIVE": 0.4, "SIZE_ISSUE": 0.3, "CHANGED_MIND": 0.2, "OTHER": 0.1},
     },
     "casual_returner": {
-        "return_rate_mean": 0.25,
+        "return_rate_mean": 0.28,
         "return_rate_std": 0.05,
-        "order_frequency_days": 10,
-        "avg_order_value": 3500,
+        "order_frequency_days": 21,
+        "avg_order_value": 72000,
         "return_reasons": {"SIZE_ISSUE": 0.4, "CHANGED_MIND": 0.3, "DEFECTIVE": 0.2, "OTHER": 0.1},
     },
     "serial_returner": {
-        "return_rate_mean": 0.65,
-        "return_rate_std": 0.10,
-        "order_frequency_days": 7,
-        "avg_order_value": 4500,
+        "return_rate_mean": 0.48,
+        "return_rate_std": 0.08,
+        "order_frequency_days": 14,
+        "avg_order_value": 80000,
         "return_reasons": {"CHANGED_MIND": 0.5, "SIZE_ISSUE": 0.3, "DEFECTIVE": 0.1, "OTHER": 0.1},
     },
     "fraud_returner": {
-        "return_rate_mean": 0.85,
+        "return_rate_mean": 0.62,
         "return_rate_std": 0.08,
-        "order_frequency_days": 5,
-        "avg_order_value": 6000,
+        "order_frequency_days": 10,
+        "avg_order_value": 88000,
         "return_reasons": {"EMPTY_BOX": 0.3, "DAMAGED": 0.3, "WRONG_ITEM": 0.2, "CHANGED_MIND": 0.2},
     },
     "new_user": {
-        "return_rate_mean": 0.15,
+        "return_rate_mean": 0.24,
         "return_rate_std": 0.10,
-        "order_frequency_days": 30,
-        "avg_order_value": 2000,
+        "order_frequency_days": 45,
+        "avg_order_value": 40000,
         "return_reasons": {"SIZE_ISSUE": 0.5, "CHANGED_MIND": 0.3, "DEFECTIVE": 0.2},
     },
 }
 
+# Amazon India 2025 return rate per category (RETURNS_BY_CATEGORY)
 MERCHANT_TYPES = {
-    "fashion_retailer": {"category": "fashion", "return_rate": 0.30, "avg_value": 3000},
-    "electronics_store": {"category": "electronics", "return_rate": 0.12, "avg_value": 8000},
-    "grocery_chain": {"category": "groceries", "return_rate": 0.04, "avg_value": 800},
-    "home_decor": {"category": "home", "return_rate": 0.18, "avg_value": 2500},
-    "beauty_brand": {"category": "beauty", "return_rate": 0.15, "avg_value": 1500},
+    "fashion_retailer": {"category": "fashion", "return_rate": 0.325, "avg_value": 78000},
+    "electronics_store": {"category": "electronics", "return_rate": 0.331, "avg_value": 80000},
+    "grocery_chain": {"category": "groceries", "return_rate": 0.32, "avg_value": 30000},
+    "home_decor": {"category": "home", "return_rate": 0.313, "avg_value": 56000},
+    "beauty_brand": {"category": "beauty", "return_rate": 0.318, "avg_value": 50000},
 }
 
 
@@ -117,13 +132,17 @@ class ReturnRiskSyntheticGenerator:
         num_orders: int = 20,
         start_date: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """Order history for a single user-merchant pair (with return labels)."""
-        start_date = start_date or (datetime.utcnow() - timedelta(days=90))
+        """Order history for a single user-merchant pair (with return labels).
+
+        Dates follow Amazon monthly seasonality (Aug/Dec peaks) spread over a
+        one-year window and are returned sorted, so the chronological per-user
+        split used by the benchmark stays meaningful. COD share follows the
+        Indian market (≈25.5%).
+        """
+        start_date = start_date or (datetime.utcnow() - timedelta(days=365))
+        dates = self._seasonal_dates(num_orders, start_date)
         orders = []
-        for i in range(num_orders):
-            order_date = start_date + timedelta(
-                days=i * user["order_frequency_days"] + random.randint(-2, 2)
-            )
+        for order_date in dates:
             return_prob = max(0.0, min(1.0, user["return_rate"] + random.gauss(0, 0.05)))
             was_returned = random.random() < return_prob
             return_reason = None
@@ -139,7 +158,7 @@ class ReturnRiskSyntheticGenerator:
                     "merchant_id": merchant["merchant_id"],
                     "amount": round(random.gauss(user["avg_order_value"], user["avg_order_value"] * 0.2), 2),
                     "category": merchant["category"],
-                    "cod_flag": random.random() < 0.4,
+                    "cod_flag": random.random() < COD_SHARE,
                     "order_date": order_date.isoformat(),
                     "returned": was_returned,
                     "return_reason": return_reason,
@@ -149,6 +168,19 @@ class ReturnRiskSyntheticGenerator:
                 }
             )
         return orders
+
+    @staticmethod
+    def _seasonal_dates(num_orders: int, start: datetime) -> list[datetime]:
+        """Draw ``num_orders`` dates weighted by Amazon monthly seasonality."""
+        base = start.year * 12 + start.month - 1
+        dates = []
+        for _ in range(num_orders):
+            month_idx = random.choices(range(12), weights=SEASONALITY)[0]
+            year, month = divmod(base + month_idx, 12)
+            day = random.randint(1, 28)
+            dates.append(datetime(year, month + 1, day))
+        dates.sort()
+        return dates
 
     # ------------------------------------------------------------------ #
     # dataset                                                            #

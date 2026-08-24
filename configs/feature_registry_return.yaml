@@ -14,6 +14,25 @@
 
 version: "1.0.0"
 
+# Population return-rate prior used when no user/merchant history exists.
+# A fresh user defaults to the market baseline (not zero) so the two heaviest
+# features (user_return_rate_30d 0.25, user_serial_returner_flag 0.20) never
+# silently zero out for first-time buyers. Per-category priors feed
+# txn_category_return_baseline when a merchant has no zset override.
+# Verticals can override this per merchant (e.g. high-return Amazon-style
+# markets sit near 0.32, fashion ~0.14-0.18, groceries ~0.04).
+default_prior: 0.15
+default_priors:
+  fashion: 0.32
+  electronics: 0.12
+  groceries: 0.04
+  home: 0.18
+  beauty: 0.15
+  sports: 0.20
+  footwear: 0.25
+  furniture: 0.055
+  default: 0.15
+
 composite_weights:
   user_return_rate_30d: 0.25
   user_serial_returner_flag: 0.20

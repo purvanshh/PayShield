@@ -112,8 +112,12 @@ class TestRedisOutageReturnRisk:
             cod_flag=False,
             timestamp=datetime(2026, 8, 21, 10, 0),
         )
-        # no rules should fire for a completely flat profile
-        assert [r["rule_id"] for r in result["rules_triggered"] if r["triggered"]] == []
+        # No *history-driven* rule may fire on a completely flat, degraded
+        # profile. The generic New-User-High-Value rule (R-RULE-05) is allowed:
+        # at ₹3,000 the log-normalised amount_risk (0.74) crosses its bump
+        # while every user/merchant feature is still the default_redis_error
+        # prior. Everything else must stay silent.
+        assert [r["rule_id"] for r in result["rules_triggered"] if r["triggered"]] == ["R-RULE-05"]
 
 
 class TestLLMOutageChargeback:

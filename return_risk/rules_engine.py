@@ -54,6 +54,7 @@ class RulesEngine:
         self.rules_path = Path(rules_path)
         self.rules: list[ReturnRule] = []
         self.risk_tiers: dict[str, dict[str, Any]] = {}
+        self.operating_point: dict[str, Any] = {}
         self._load()
 
     def _load(self) -> None:
@@ -76,11 +77,13 @@ class RulesEngine:
             for r in data.get("rules", [])
         ]
         self.risk_tiers = data.get("risk_tiers", {})
+        self.operating_point = data.get("operating_point", {})
 
     def reload_rules(self) -> None:
         """Reload rules from the configured YAML file."""
         self.rules = []
         self.risk_tiers = {}
+        self.operating_point = {}
         self._load()
 
     def get_rule_by_id(self, rule_id: str) -> ReturnRule | None:

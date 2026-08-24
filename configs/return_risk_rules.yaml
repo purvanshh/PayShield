@@ -84,3 +84,18 @@ risk_tiers:
   HIGH:
     max_score: 1.00
     action: "REQUIRE_PREPAID"
+
+# Operating-point guidance (per-merchant-vertical, not global truth).
+# ``base_rate_adjustment`` tells downstream tools (benchmark, cost model) to
+# raise the review gate toward ``medium_review_threshold`` on populations with
+# an elevated return base rate.
+#
+# Why 0.50: on a high-return vertical (Amazon-style margins, base rate ~32%+)
+# a review gate of 0.30 flags ~75% of all orders and the ROI goes negative.
+# The operating-point sweep shows 0.50 keeps precision ~0.63 at ~18% flag
+# rate and turns ROI positive. On low-return verticals (fashion ~14-18%) a
+# gate near 0.30-0.35 maximizes savings. Recalibrate for every merchant.
+operating_point:
+  base_rate_adjustment: true
+  medium_review_threshold: 0.50
+  note: "Tune the review gate per merchant vertical — 0.50 for high-return, 0.30-0.35 for low-return populations"
