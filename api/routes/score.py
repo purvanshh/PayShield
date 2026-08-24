@@ -89,10 +89,20 @@ async def _record_and_build_features(
     user_key = f"velocity:user:{user_id}"
     dev_key = f"velocity:dev:{device}"
     loc_key = f"velocity:loc:{user_id}"
+    # Scored once per external txn id: re-scoring the same order (idempotent
+    # retries, dashboard replays, verification loops) must never double-count
+    # into the velocity windows or it fabricates bursts for honest users.
+    dedupe_key = f"velocity:dedup:{txn.txn_id}"
 
     entry = json.dumps(
         {"ts": now, "amount": amount, "merchant": merchant, "user": user_id, "device": device}
     )
+
+    try:
+        if await redis.exists(dedupe_key):
+            return await _derive_features(redis, txn, user_key, dev_key, loc_key, now)
+    except Exception as e:
+        logger.warning(f"velocity_dedupe_check_failed: {e}")
 
     try:
         pipe = await redis.pipeline()
@@ -102,9 +112,25 @@ async def _record_and_build_features(
         pipe.lpush(dev_key, entry)
         pipe.ltrim(dev_key, 0, 999)
         pipe.expire(dev_key, 7 * 86400)
+        pipe.setex(dedupe_key, 7 * 86400, "1")
         await pipe.execute()
     except Exception as e:
         logger.warning(f"feature_record_failed: {e}")
+
+    return await _derive_features(redis, txn, user_key, dev_key, loc_key, now)
+
+
+async def _derive_features(
+    redis,
+    txn: ScoreRequest,
+    user_key: str,
+    dev_key: str,
+    loc_key: str,
+    now: float,
+) -> tuple[dict, dict, GeoPoint | None, dict | None]:
+    """Compute velocity/geo features from recorded history (read-only)."""
+    merchant = txn.merchant_id
+    amount = txn.amount
 
     def parse_entries(raw: list[str]) -> list[dict]:
         out = []

@@ -279,6 +279,56 @@ class TestScorePathRobustness:
         cached = await redis.get(f"idempotent:{hashlib.sha256(b'TXN_REPLAY_01').hexdigest()}")
         assert cached is not None
 
+    async def test_re_scoring_same_txn_does_not_double_count(self, client):
+        ac, resources = client
+        redis = resources["redis"]
+        txn = score_module.ScoreRequest(**_txn_payload("TXN_DEDUPE_01", user_id="U_DEDUPE_01"))
+        await score_module._record_and_build_features(redis, txn)
+        await score_module._record_and_build_features(redis, txn)
+        entries = await redis.lrange("velocity:user:U_DEDUPE_01", 0, -1)
+        assert len(entries) == 1
+
+    async def test_re_scoring_clean_txn_stays_allow(self, client):
+        """Repeated /v1/score of the same clean order must not fabricate a burst.
+
+        The response-level idempotency cache is cleared between calls so the
+        second post re-runs the full scoring path; the velocity-dedupe marker
+        (kept) must prevent a double count.
+        """
+        ac, resources = client
+        redis = resources["redis"]
+
+        import hashlib as _hashlib
+        import json as _json
+
+        now = datetime.utcnow().timestamp()
+        for i, amount in enumerate([2100.0, 2500.0, 2490.0]):
+            await redis.lpush(
+                "velocity:user:U_CLEAN_DUP_001",
+                _json.dumps(
+                    {
+                        "ts": now - 1800 - i * 900,
+                        "amount": amount,
+                        "merchant": "M5502",
+                        "user": "U_CLEAN_DUP_001",
+                        "device": "DEV_CLEAN_DUP_01",
+                    }
+                ),
+            )
+
+        payload = _txn_payload("TXN_CLEAN_DUP_01", user_id="U_CLEAN_DUP_001")
+        first = (await ac.post("/v1/score", json=payload, headers=HEADERS)).json()
+        await redis.delete(
+            f"idempotent:{_hashlib.sha256(b'TXN_CLEAN_DUP_01').hexdigest()}"
+        )
+        second = (await ac.post("/v1/score", json=payload, headers=HEADERS)).json()
+        assert first["decision"] == "ALLOW"
+        assert second["decision"] == "ALLOW"
+        entries = await redis.lrange("velocity:user:U_CLEAN_DUP_001", 0, -1)
+        # 3 seeded history entries + exactly one legit record of this txn; a
+        # double count would make it 5.
+        assert len(entries) == 4
+
     async def test_feature_build_failure_falls_back(self, client, monkeypatch):
         ac, resources = client
         async def boom(*_a, **_k):
