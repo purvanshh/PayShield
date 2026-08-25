@@ -64,6 +64,80 @@ python docs/cost_model/calculator.py          # the same metrics in ₹
 
 ---
 
+## Feature Transparency
+
+Every score is built from **7 features**, each with a value, normalized value,
+weight and contribution. The merchant sees exactly *why* an order was flagged —
+nothing is hidden.
+
+| # | Feature | Source | What It Captures | Weight |
+|---|---------|--------|------------------|--------|
+| 1 | `user_return_rate_30d` | Redis hash (`return_risk:user`) | Fraction of orders returned in the last 30 days | 0.25 |
+| 2 | `user_serial_returner_flag` | Redis hash + computed | >50% lifetime return rate **and** ≥3 orders — the classic chronic returner | 0.20 |
+| 3 | `merchant_return_rate_30d` | Redis hash (`return_risk:merchant`) | Merchant-wide 30d return rate (category-class baseline) | 0.15 |
+| 4 | `txn_category_return_baseline` | Lookup table / Redis zset | Historical return rate for this category (fashion ~32%, electronics ~8–12%, grocery ~4–5%) | 0.15 |
+| 5 | `txn_amount_risk` | Computed | Log-normalised order value (`log1p(amount)/log1p(50000)`); high-AOV orders carry more exposure | 0.10 |
+| 6 | `user_cod_refusal_rate` | Redis hash | COD orders refused / total COD orders — the COD-abuse pattern | 0.10 |
+| 7 | `user_return_velocity_7d` | Redis zset (`:returns`) | Returns initiated in the last 7 days — burst / velocity signal | 0.05 |
+
+**Why these 7:** The weights sum to **1.0**. The top 2 features (return-rate +
+serial-returner flag) capture **45%** of the signal — intentional: a merchant
+sees a HIGH score and knows immediately "this customer returns half their
+orders." The remaining features add nuance (merchant/category baselines,
+unusual spend, COD abuse, return velocity) without obscuring the primary
+driver. Tiers and recommendation actions are the same config-driven surface
+(`configs/return_risk_rules.yaml`).
+
+**Source tags in the API response:** Every feature carries a `source` field —
+`redis_hash`, `computed`, `lookup_table`, `redis_zset` or `default_new_user` —
+so degraded data is visible, never hidden.
+
+---
+
+## Baseline Comparison
+
+PayShield must beat simple merchant heuristics convincingly — it does. All
+baselines and PayShield are measured on the **same** chronological per-user
+hold-out at gate **0.50** (`scripts/baseline_naive.py`):
+
+| Model | PR-AUC | Precision @ 0.50 | Recall @ 0.50 | F1 @ 0.50 |
+|---|---|---|---|---|
+| **PayShield (7 features + rules)** | **0.9311** | **0.9837** | **0.6050** | **0.7492** |
+| Naive: COD + high AOV (>₹75k) | 0.4482 | 0.4600 | 0.1309 | 0.2038 |
+| Naive: serial returner (>40% return rate) | 0.6272 | 0.5228 | 0.5861 | 0.5526 |
+| Naive: category risk only | 0.4320 | 0.0000 | 0.0000 | 0.0000 |
+
+The best naive baseline (flagging serial returners) reaches **PR-AUC 0.6272** —
+PayShield's **0.9311** is a **+0.30 gain** on ranking quality, and no naive rule
+gets close to PayShield's 0.9837 precision at the review gate. The naive rules
+either over-flag or can't even reach the gate; the 7-feature model captures
+signal beyond obvious heuristics.
+
+---
+
+## Confusion Matrix
+
+The actual output of `scripts/benchmark_return_risk.py` on the 2,000-order
+held-out test set at gate 0.50:
+
+```
+CONFUSION MATRIX (held-out test, n=2000, gate 0.50)
+                     Not Flagged   Flagged
+Actual No Return         1192         8   (TN=1192, FP=8)
+Actual Return             316       484   (FN=316, TP=484)
+
+Total flagged: 492 (24.6% of test)
+True catches: 484 of 800 actual returns (60.5%)
+False flags: 8 of 492 flagged orders (1.6%)
+```
+
+Precision 484/(484+8) = **0.9837** · recall 484/(484+316) = **0.6050** — the
+confusion matrix is the raw-count version of the operating point reported
+above. One in ~60 flagged orders is a mistake; the cost model prices that
+mistake at ₹200 of operator review time, not ₹3,180 of lost revenue.
+
+---
+
 ## The Architecture (30 seconds)
 
 ```

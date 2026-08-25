@@ -168,6 +168,23 @@ async def _run(args) -> dict:
         f"F1={medium['f1']:.4f}"
     )
 
+    # Confusion matrix at the config-driven review gate (held-out test set)
+    from sklearn.metrics import confusion_matrix
+
+    y_gate = (y_scores > medium_threshold).astype(int)
+    tn_c, fp_c, fn_c, tp_c = confusion_matrix(y_true, y_gate).ravel()
+    flagged = int(fp_c + tp_c)
+    total_returns = int(tp_c + fn_c)
+    print("\n" + "=" * 60)
+    print(f"CONFUSION MATRIX (held-out test, n={len(y_true)}, gate {medium_threshold:.2f})")
+    print("=" * 60)
+    print(f"{'':>20} Not Flagged   Flagged")
+    print(f"{'Actual No Return':<20}{tn_c:>9d}   {fp_c:>7d}   (TN={tn_c}, FP={fp_c})")
+    print(f"{'Actual Return':<20}{fn_c:>9d}   {tp_c:>7d}   (FN={fn_c}, TP={tp_c})")
+    print(f"\nTotal flagged: {flagged} ({flagged / len(y_true) * 100:.1f}% of test)")
+    print(f"True catches: {tp_c} of {total_returns} actual returns ({tp_c / total_returns * 100:.1f}%)")
+    print(f"False flags: {fp_c} of {flagged} flagged orders ({fp_c / max(flagged, 1) * 100:.1f}%)")
+
     analysis = _false_positive_analysis(test_orders, labels, y_pred, y_scores)
     tier_distribution = Counter(
         "HIGH" if s > 0.7 else "MEDIUM" if s > medium_threshold else "LOW" for s in scores
@@ -183,6 +200,17 @@ async def _run(args) -> dict:
             "positive_rate": metrics["positive_rate"],
         },
         "metrics": metrics,
+        "confusion_matrix": {
+            "gate": round(medium_threshold, 2),
+            "test_n": int(len(y_true)),
+            "tn": int(tn_c),
+            "fp": int(fp_c),
+            "fn": int(fn_c),
+            "tp": int(tp_c),
+            "flagged": flagged,
+            "true_catches_pct": round(tp_c / total_returns * 100, 1) if total_returns else 0.0,
+            "false_flag_pct_of_flagged": round(fp_c / max(flagged, 1) * 100, 1),
+        },
         "thresholds_note": f"HIGH tier threshold 0.7 (block/prepaid); "
         f"MEDIUM+ review gate {medium_threshold:.2f} (config-driven "
         f"operating_point.medium_review_threshold) - both reported honestly",
