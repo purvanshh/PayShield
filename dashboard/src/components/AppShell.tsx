@@ -5,7 +5,7 @@ import { NotificationsButton } from "./Notifications";
 import { useAuthStore } from "../store/authStore";
 
 const SECTION_LINKS = [
-  { to: "/", label: "Fraud", end: true },
+  { to: "/fraud", label: "Fraud", end: false },
   { to: "/return-risk", label: "Return Risk", end: false },
   { to: "/chargeback", label: "Chargeback", end: false },
 ];
@@ -188,7 +188,7 @@ export function AppShell() {
             }
           >
             <span className="material-symbols-outlined text-[20px]">
-              {item.to === "/" ? "grid_view" : item.to === "/return-risk" ? "receipt_long" : "shield"}
+              {item.to === "/fraud" ? "grid_view" : item.to === "/return-risk" ? "receipt_long" : "shield"}
             </span>
           </NavLink>
         ))}

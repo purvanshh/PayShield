@@ -13,26 +13,42 @@ interface AgentsReport {
   timestamp?: string;
 }
 
+function relativeTime(ts?: number): string {
+  if (!ts) return "no heartbeat yet";
+  const diff = Math.max(0, Math.round(Date.now() / 1000 - ts));
+  if (diff < 5) return "heartbeat · Just now";
+  if (diff < 60) return `heartbeat · ${diff}s ago`;
+  return `heartbeat · ${Math.round(diff / 60)}m ago`;
+}
+
 function AgentRow({ name, info }: { name: string; info: AgentInfo }) {
   const status = (info.status || "not_started").toUpperCase();
-  const ok = status === "HEALTHY";
+  const ok = status === "RUNNING" || status === "HEALTHY";
   const stale = status === "STALE" || status === "ERROR";
   return (
     <div className="flex items-center justify-between py-4 border-b border-white/5 hover:bg-surface-container-low transition-colors duration-200">
       <div className="flex items-center gap-4">
         <span
           className={`w-2 h-2 rounded-full ${
-            ok ? "bg-secondary" : stale ? "bg-error" : "bg-outline"
+            ok ? "bg-secondary" : stale ? "bg-primary" : "bg-outline"
           }`}
         />
         <div>
           <p className="font-body-md text-body-md text-on-surface">{name}</p>
           <p className="font-mono-data text-mono-data text-outline text-[12px]">
-            {info.last_seen ? `last seen ${new Date(info.last_seen * 1000).toLocaleTimeString()}` : "no heartbeat yet"}
+            {relativeTime(info.last_seen)}
           </p>
         </div>
       </div>
-      <span className="font-label-caps text-label-caps px-2 py-1 rounded border-subtle text-on-surface-variant inline-block">
+      <span
+        className={`font-label-caps text-label-caps px-2 py-1 rounded inline-block ${
+          ok
+            ? "bg-secondary/10 text-secondary border border-secondary/20"
+            : stale
+              ? "bg-primary/10 text-primary border border-primary/20"
+              : "border-subtle text-on-surface-variant"
+        }`}
+      >
         {status}
       </span>
     </div>
@@ -67,8 +83,9 @@ export function AgentsPage() {
           Agent Orchestration
         </h1>
         <p className="font-body-lg text-body-lg text-outline max-w-3xl">
-          The four live agents that power the risk path — each one deliberately
-          small, with its responsibilities documented and its health exposed here.
+          The four live agents that power the risk path — their heartbeat status is
+          reported from real Redis keys (<code className="text-on-surface-variant">/admin/agents/health</code>),
+          renewed by the API process every ~20s.
         </p>
       </div>
 

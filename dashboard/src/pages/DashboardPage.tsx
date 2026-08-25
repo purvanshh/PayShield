@@ -62,11 +62,6 @@ export function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const allowed = txns.filter((t) =>
-    String(t.recommended_action || "").toLowerCase().includes("allow")
-  ).length;
-  const hitRate = txns.length ? Math.round(((txns.length - allowed) / txns.length) * 100) : 0;
-
   return (
     <div className="flex flex-col">
       {/* Header / primary metrics */}
@@ -80,17 +75,11 @@ export function DashboardPage() {
             <span>{apiUp === false ? "Monitoring interrupted — API unreachable" : "Live Risk Monitoring Network"}</span>
           </div>
         </div>
-        <div className="md:col-span-6 grid grid-cols-2 gap-gutter mt-12 md:mt-0 pt-8 border-t border-white/10 md:border-t-0 md:pt-0">
+        <div className="md:col-span-6 grid grid-cols-1 gap-gutter mt-12 md:mt-0 pt-8 border-t border-white/10 md:border-t-0 md:pt-0">
           <div>
             <p className="font-label-caps text-label-caps text-outline mb-4">Active Anomalies</p>
             <p className="font-display-lg text-display-lg-mobile md:text-display-lg text-error-container font-mono-data animate-counter">
               {loading ? "—" : txns.length}
-            </p>
-          </div>
-          <div>
-            <p className="font-label-caps text-label-caps text-outline mb-4">Signal Hit Rate</p>
-            <p className="font-display-lg text-display-lg-mobile md:text-display-lg text-secondary font-mono-data animate-counter">
-              {loading ? "—" : `${hitRate}%`}
             </p>
           </div>
         </div>

@@ -11,7 +11,7 @@ const WORKFLOWS = [
     title: "Fraud Transaction",
     description: "Score a live transaction across velocity, geo and device vectors.",
     icon: "gpp_maybe",
-    to: "/",
+    to: "/fraud",
   },
   {
     key: "return-risk",

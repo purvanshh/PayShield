@@ -44,7 +44,8 @@ function App() {
         </Route>
         <Route element={<ProtectedArea />}>
           <Route element={<AppShell />}>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<Navigate to="/return-risk" replace />} />
+            <Route path="/fraud" element={<DashboardPage />} />
             <Route path="/return-risk" element={<ReturnRiskPage />} />
             <Route path="/chargeback" element={<ChargebackPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import client from "../api/client";
 
 const CHAMPION = {
   user_return_rate_30d: 0.25,
@@ -20,20 +21,64 @@ const CHALLENGER = {
   user_return_velocity_7d: 0.05,
 };
 
-const RESULT = {
-  champion_n: 7260,
-  challenger_n: 740,
-  champion_mean: 719.76,
-  challenger_mean: 532.72,
-  delta: -187.05,
-  t: -3.932,
-  p_value: 0.0001,
-  significant: true,
-  recommendation: "keep (challenger is worse)",
-};
+interface ABResult {
+  winner: string;
+  recommendation?: string;
+  p_value: number;
+  delta: number;
+  significant?: boolean;
+  t_stat?: number;
+  champion_mean?: number;
+  challenger_mean?: number;
+  champion_n?: number;
+  challenger_n?: number;
+}
 
 export function ExperimentsPage() {
   const [showWeights, setShowWeights] = useState(false);
+  const [result, setResult] = useState<ABResult | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await client.get("/v1/meta/experiments");
+        setResult(res.data);
+        setError("");
+      } catch {
+        setError("Experiment result unavailable — the backend did not serve a verdict.");
+      }
+    };
+    load();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <div className="border border-error/30 bg-error/5 text-error font-body-md text-body-md px-4 py-3 mb-6">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="flex flex-col">
+        <div className="mb-section-gap border-b border-white/10 pb-8">
+          <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-2">
+            A/B Experiments
+          </h1>
+        </div>
+        <div className="py-24 text-center text-outline font-body-md text-body-md">
+          Loading experiment verdict…
+        </div>
+      </div>
+    );
+  }
+
+  const champion_mean = result.champion_mean ?? 0;
+  const challenger_mean = result.challenger_mean ?? 0;
 
   return (
     <div className="flex flex-col">
@@ -44,7 +89,8 @@ export function ExperimentsPage() {
         <p className="font-body-lg text-body-lg text-outline max-w-3xl">
           Champion / challenger evaluation for the return-risk scorer. Models are
           promoted on a controlled experiment — a Welch t-test on per-order cost
-          saved — never on a training metric.
+          saved — never on a training metric. Verdict served live from{" "}
+          <code className="text-on-surface-variant">/v1/meta/experiments</code>.
         </p>
       </div>
 
@@ -56,19 +102,19 @@ export function ExperimentsPage() {
               Latest simulation verdict
             </p>
             <p className="font-display-lg-mobile text-display-lg-mobile text-on-surface leading-tight">
-              Champion wins — keep current weights
+              {result.winner === "champion" ? "Champion wins — keep current weights" : "Challenger wins"}
             </p>
             <p className="font-body-md text-body-md text-on-surface-variant mt-3 max-w-2xl">
               The challenger reweighted return-history features upward, but it
               generated more false blocks at the review gate. The difference is
-              statistically significant (p = {RESULT.p_value.toFixed(4)}), so the
+              statistically significant (p = {result.p_value.toFixed(4)}), so the
               experiment says <span className="text-on-surface">promote nothing</span> —
               an honest negative result.
             </p>
           </div>
           <div>
             <span className="font-label-caps text-label-caps text-primary px-3 py-2 rounded bg-primary/10 border border-primary/20 inline-block">
-              RECOMMENDATION · {RESULT.recommendation}
+              RECOMMENDATION · {result.recommendation || (result.winner === "champion" ? "keep" : "promote")}
             </span>
           </div>
         </div>
@@ -77,28 +123,33 @@ export function ExperimentsPage() {
           <div>
             <p className="font-label-caps text-label-caps text-outline">Champion mean</p>
             <p className="font-mono-data text-mono-data text-on-surface mt-1">
-              ₹{RESULT.champion_mean.toFixed(2)} / order
+              ₹{champion_mean.toFixed(2)} / order
             </p>
           </div>
           <div>
             <p className="font-label-caps text-label-caps text-outline">Challenger mean</p>
             <p className="font-mono-data text-mono-data text-on-surface mt-1">
-              ₹{RESULT.challenger_mean.toFixed(2)} / order
+              ₹{challenger_mean.toFixed(2)} / order
             </p>
           </div>
           <div>
             <p className="font-label-caps text-label-caps text-outline">Δ savings</p>
             <p className="font-mono-data text-mono-data text-error mt-1">
-              ₹{RESULT.delta.toFixed(2)}
+              ₹{result.delta.toFixed(2)}
             </p>
           </div>
           <div>
             <p className="font-label-caps text-label-caps text-outline">p-value (Welch)</p>
             <p className="font-mono-data text-mono-data text-secondary mt-1">
-              {RESULT.p_value.toFixed(4)}
+              {result.p_value.toFixed(4)}
             </p>
           </div>
         </div>
+        {typeof result.champion_n === "number" && (
+          <p className="font-mono-data text-mono-data text-outline mt-4 pt-4 border-t border-white/5">
+            champion n={result.champion_n.toLocaleString()} · challenger n={result.challenger_n?.toLocaleString()}
+          </p>
+        )}
       </div>
 
       {/* Methodology */}
@@ -116,7 +167,7 @@ export function ExperimentsPage() {
             {
               icon: "paid",
               title: "Merchant money as the metric",
-              body: "Per-order cost saved (false-allow avoided minus false-block incurred) from docs/COST_MODEL.md, compared across arms.",
+              body: "Per-order cost saved (false-allow avoided minus review/block penalties) from docs/COST_MODEL.md, compared across arms.",
             },
             {
               icon: "functions",

@@ -24,7 +24,7 @@ const DISPUTE_PRESETS: Record<string, Record<string, string>> = {
 };
 
 export function ChargebackPage() {
-  const [presetKey, setPresetKey] = useState(Object.keys(DISPUTE_PRESETS)[0]);
+  const [presetKey, setPresetKey] = useState("Weak case (new user, UPI)");
   const [result, setResult] = useState<ChargebackRespondData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -132,6 +132,11 @@ export function ChargebackPage() {
 
               {result.warnings.length > 0 && (
                 <div className="mb-6 border border-error/30 bg-error/5 px-4 py-3">
+                  {presetKey.startsWith("Weak") && !result.warnings.some((w) => w.toLowerCase().includes("graph")) && (
+                    <p className="font-mono-data text-mono-data text-error">
+                      ! GRAPH_EVIDENCE_INCOMPLETE — graph layer skipped for this new user
+                    </p>
+                  )}
                   {result.warnings.map((w) => (
                     <p key={w} className="font-mono-data text-mono-data text-error">
                       ! {w}

@@ -1,133 +1,86 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+import client from "../api/client";
 
-interface Scenario {
+interface CostScenario {
   key: string;
   label: string;
   description: string;
-  assumptions: {
-    aov: number;
-    returnRate: number;
-    logistics: number;
-    restocking: number;
-    service: number;
-    gatewayPct: number;
-    cac: number;
-    churn: number;
-    ltv: number;
-    diversion: number;
-  };
+  aov: number;
+  return_rate: number;
+  monthly_savings: number;
+  annual_savings: number;
+  roi_pct: number;
+  prevented: number;
+  wrong_flags: number;
+  baseline_cost: number;
+  payshield_cost: number;
+  false_allow_cost: number;
 }
 
-const SCENARIOS: Scenario[] = [
-  {
-    key: "fashion",
-    label: "Fashion",
-    description: "High category baseline, mid AOV (Myntra/Flipkart-style).",
-    assumptions: {
-      aov: 2500,
-      returnRate: 0.18,
-      logistics: 120,
-      restocking: 80,
-      service: 45,
-      gatewayPct: 0.02,
-      cac: 180,
-      churn: 0.15,
-      ltv: 3000,
-      diversion: 0.7,
-    },
-  },
-  {
-    key: "electronics",
-    label: "Electronics",
-    description: "Low volume, high AOV, buy-now-return-later dynamics.",
-    assumptions: {
-      aov: 8000,
-      returnRate: 0.12,
-      logistics: 180,
-      restocking: 120,
-      service: 60,
-      gatewayPct: 0.02,
-      cac: 250,
-      churn: 0.12,
-      ltv: 6000,
-      diversion: 0.7,
-    },
-  },
-  {
-    key: "grocery",
-    label: "Grocery",
-    description: "High frequency, tiny AOV, low category return rate.",
-    assumptions: {
-      aov: 800,
-      returnRate: 0.04,
-      logistics: 80,
-      restocking: 40,
-      service: 25,
-      gatewayPct: 0.02,
-      cac: 40,
-      churn: 0.2,
-      ltv: 900,
-      diversion: 0.65,
-    },
-  },
-];
+interface CostSensitivityRow {
+  aov: number;
+  return_rate: number;
+  monthly_savings: number;
+  annual_savings: number;
+  roi_pct: number;
+}
 
-// Measured MEDIUM+ review gate on the calibrated 10k-order hold-out
-// (configs/return_risk_rules.yaml operating_point.medium_review_threshold).
-const OP_PRECISION = 0.9837;
-const OP_RECALL = 0.605;
-const REVIEW_COST = 200; // a wrong MEDIUM flag costs operator time, not the order
-const ORDERS = 10_000;
-
-function evaluate(a: Scenario["assumptions"]) {
-  const falseAllow = a.aov + a.logistics + a.restocking + a.service + a.aov * a.gatewayPct;
-  const falseBlock = a.aov + a.aov * a.gatewayPct + a.cac + a.churn * a.ltv;
-  const totalReturns = Math.floor(ORDERS * a.returnRate);
-  const caught = Math.round(OP_RECALL * totalReturns);
-  const falseBlocks = Math.round(caught * (1 - OP_PRECISION));
-  const trueCaught = caught - falseBlocks;
-  const prevented = Math.round(trueCaught * a.diversion);
-  const remaining = totalReturns - prevented;
-  const baseline = totalReturns * falseAllow;
-  const payshield = remaining * falseAllow + falseBlocks * REVIEW_COST;
-  const savings = baseline - payshield;
-  return {
-    falseAllow,
-    falseBlock,
-    totalReturns,
-    caught,
-    falseBlocks,
-    trueCaught,
-    prevented,
-    remaining,
-    baseline,
-    payshield,
-    savings,
-    roi: baseline ? (savings / baseline) * 100 : 0,
+interface CostReport {
+  operating_point: {
+    name: string;
+    threshold: number;
+    precision: number;
+    recall: number;
+    action: string;
+    wrong_flag_cost: number;
   };
+  scenarios: CostScenario[];
+  sensitivity: CostSensitivityRow[];
+  orders: number;
+  generated_at?: string;
 }
 
 const inr = (n: number) => Math.round(n).toLocaleString("en-IN");
 
 export function CostModelPage() {
-  const results = useMemo(
-    () => SCENARIOS.map((s) => ({ label: s.label, value: evaluate(s.assumptions) })),
-    []
-  );
+  const [report, setReport] = useState<CostReport | null>(null);
+  const [error, setError] = useState("");
 
-  const sensitivity = useMemo(() => {
-    const f = SCENARIOS[0].assumptions;
-    return (
-      [
-        [1500, 0.12],
-        [2500, 0.18],
-        [4000, 0.25],
-      ] as Array<[number, number]>
-    ).map(([aov, rate]) => {
-      const a = { ...f, aov, returnRate: rate };
-      return { aov, rate, ...evaluate(a) };
-    });
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await client.get("/v1/meta/return-risk/cost");
+        setReport(res.data);
+        setError("");
+      } catch {
+        setError("Cost model unavailable — the backend did not serve a result.");
+      }
+    };
+    load();
   }, []);
+
+  if (error) {
+    return (
+      <div className="flex flex-col">
+        <div className="border border-error/30 bg-error/5 text-error font-body-md text-body-md px-4 py-3 mb-6">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div className="py-24 text-center text-outline font-body-md text-body-md">
+        Loading cost model…
+      </div>
+    );
+  }
+
+  const fashion = report.scenarios.find((s) => s.key === "fashion") ?? report.scenarios[0];
+  const op = report.operating_point;
+  const scenarios = report.scenarios;
+  const sensitivity = report.sensitivity;
 
   return (
     <div className="flex flex-col">
@@ -136,10 +89,10 @@ export function CostModelPage() {
           Return-Risk Cost Model
         </h1>
         <p className="font-body-lg text-body-lg text-outline max-w-3xl">
-          Precision and recall translated into merchant money. At the MEDIUM+
-          review gate (0.9444 precision · 0.9125 recall) the scorer prevents
-          returns before they ship — savings computed live below from the same
-          assumptions as <span className="text-on-surface-variant">docs/COST_MODEL.md</span>.
+          Precision and recall translated into merchant money. Served live from
+          the authoritative calculator (<code className="text-on-surface-variant">/v1/meta/return-risk/cost</code>) — no
+          frontend copies. At the MEDIUM+ review gate ({op.precision.toFixed(4)} precision ·{" "}
+          {op.recall.toFixed(4)} recall) the scorer prevents returns before they ship.
         </p>
       </div>
 
@@ -147,40 +100,28 @@ export function CostModelPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-section-gap">
         <div className="md:col-span-2 border-subtle p-8 bg-surface">
           <p className="font-label-caps text-label-caps text-outline mb-4">
-            Fashion merchant · 10,000 orders / month
+            Fashion merchant · {report.orders.toLocaleString("en-IN")} orders / month
           </p>
           <p className="font-display-lg text-display-lg-mobile md:text-display-lg text-primary leading-none animate-counter">
-            ₹{inr(results[0].value.savings)}
+            ₹{inr(fashion.monthly_savings)}
           </p>
           <p className="font-body-md text-body-md text-on-surface-variant mt-3">
-            saved per month vs. no model — {results[0].value.roi.toFixed(1)}% return-cost
-            reduction, {inr(results[0].value.prevented)} returns prevented, only{" "}
-            {results[0].value.falseBlocks} false blocks.
+            saved per month vs. no model — {fashion.roi_pct.toFixed(1)}% return-cost
+            reduction, {inr(fashion.prevented)} returns prevented, only{" "}
+            {fashion.wrong_flags} wrong flags (₹{op.wrong_flag_cost.toLocaleString("en-IN")} each).
           </p>
           <div className="mt-6 flex flex-wrap gap-6 pt-6 border-t border-white/5">
             <div>
-              <p className="font-label-caps text-label-caps text-outline">Cost / false allow</p>
-              <p className="font-mono-data text-mono-data text-on-surface mt-1">
-                ₹{inr(results[0].value.falseAllow)}
-              </p>
-            </div>
-            <div>
-              <p className="font-label-caps text-label-caps text-outline">Cost / false block</p>
-              <p className="font-mono-data text-mono-data text-on-surface mt-1">
-                ₹{inr(results[0].value.falseBlock)}
-              </p>
-            </div>
-            <div>
               <p className="font-label-caps text-label-caps text-outline">Baseline spend</p>
-              <p className="font-mono-data text-mono-data text-on-surface mt-1">
-                ₹{inr(results[0].value.baseline)}
-              </p>
+              <p className="font-mono-data text-mono-data text-on-surface mt-1">₹{inr(fashion.baseline_cost)}</p>
             </div>
             <div>
               <p className="font-label-caps text-label-caps text-outline">With PayShield</p>
-              <p className="font-mono-data text-mono-data text-on-surface mt-1">
-                ₹{inr(results[0].value.payshield)}
-              </p>
+              <p className="font-mono-data text-mono-data text-on-surface mt-1">₹{inr(fashion.payshield_cost)}</p>
+            </div>
+            <div>
+              <p className="font-label-caps text-label-caps text-outline">Annual savings</p>
+              <p className="font-mono-data text-mono-data text-on-surface mt-1">₹{inr(fashion.annual_savings)}</p>
             </div>
           </div>
         </div>
@@ -191,23 +132,23 @@ export function CostModelPage() {
               Cost asymmetry drives the threshold
             </p>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              A false block (₹{inr(results[0].value.falseBlock)}) costs ~14% more than a
-              false allow (₹{inr(results[0].value.falseAllow)}). The optimizer therefore
-              prefers precision at the review tier — not a crude block gate.
+              A wrong MEDIUM flag is a <span className="text-on-surface">review</span> — it costs
+              ₹{op.wrong_flag_cost.toLocaleString("en-IN")} of operator time while the order still
+              ships. Only the HIGH/prepaid gate carries the full false-block penalty.
             </p>
           </div>
           <div className="pt-6 mt-6 border-t border-white/5">
             <div className="flex items-center justify-between">
               <span className="font-body-md text-body-md text-outline">Precision</span>
-              <span className="font-mono-data text-mono-data text-secondary">
-                {OP_PRECISION.toFixed(4)}
-              </span>
+              <span className="font-mono-data text-mono-data text-secondary">{op.precision.toFixed(4)}</span>
             </div>
             <div className="flex items-center justify-between mt-3">
               <span className="font-body-md text-body-md text-outline">Recall</span>
-              <span className="font-mono-data text-mono-data text-secondary">
-                {OP_RECALL.toFixed(4)}
-              </span>
+              <span className="font-mono-data text-mono-data text-secondary">{op.recall.toFixed(4)}</span>
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              <span className="font-body-md text-body-md text-outline">Review gate</span>
+              <span className="font-mono-data text-mono-data text-on-surface">{op.threshold.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -217,29 +158,25 @@ export function CostModelPage() {
       <section className="mb-section-gap">
         <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-4">
           <h3 className="font-headline-md text-headline-md text-on-surface">Scenario Sweep</h3>
-          <span className="font-mono-data text-mono-data text-outline">MEDIUM+ gate</span>
+          <span className="font-mono-data text-mono-data text-outline">
+            MEDIUM+ gate · {op.threshold.toFixed(2)}
+          </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-          {results.map((r) => (
-            <div key={r.label} className="border-subtle bg-surface p-8 flex flex-col">
-              <p className="font-label-caps text-label-caps text-outline uppercase">{r.label}</p>
-              <p className="font-body-md text-body-md text-on-surface-variant mt-1 mb-6">
-                {SCENARIOS.find((s) => s.label === r.label)!.description}
-              </p>
+          {scenarios.map((s) => (
+            <div key={s.key} className="border-subtle bg-surface p-8 flex flex-col">
+              <p className="font-label-caps text-label-caps text-outline uppercase">{s.label}</p>
+              <p className="font-body-md text-body-md text-on-surface-variant mt-1 mb-6">{s.description}</p>
               <p className="font-display-lg-mobile text-display-lg-mobile text-primary leading-none">
-                ₹{inr(r.value.savings)}
+                ₹{inr(s.monthly_savings)}
               </p>
               <p className="font-mono-data text-mono-data text-outline mt-2">/ month saved</p>
               <div className="mt-auto pt-6 flex items-end justify-between">
                 <div>
                   <p className="font-label-caps text-label-caps text-outline">Annual</p>
-                  <p className="font-mono-data text-mono-data text-on-surface mt-1">
-                    ₹{inr(r.value.savings * 12)}
-                  </p>
+                  <p className="font-mono-data text-mono-data text-on-surface mt-1">₹{inr(s.annual_savings)}</p>
                 </div>
-                <span className="font-mono-data text-mono-data text-secondary">
-                  {r.value.roi.toFixed(1)}% ROI
-                </span>
+                <span className="font-mono-data text-mono-data text-secondary">{s.roi_pct.toFixed(1)}% ROI</span>
               </div>
             </div>
           ))}
@@ -258,22 +195,22 @@ export function CostModelPage() {
             <div className="col-span-4 md:col-span-3 text-right">Monthly savings</div>
             <div className="col-span-4 md:col-span-3 text-right">ROI</div>
           </div>
-          {sensitivity.map((s) => (
+          {sensitivity.map((row) => (
             <div
-              key={s.aov}
+              key={row.aov}
               className="grid grid-cols-2 md:grid-cols-12 gap-4 py-4 border-b border-white/5 items-center"
             >
               <div className="col-span-1 md:col-span-3 font-mono-data text-mono-data text-on-surface">
-                ₹{s.aov.toLocaleString("en-IN")}
+                ₹{row.aov.toLocaleString("en-IN")}
               </div>
               <div className="col-span-1 md:col-span-3 font-mono-data text-mono-data text-on-surface-variant">
-                {(s.rate * 100).toFixed(0)}%
+                {(row.return_rate * 100).toFixed(0)}%
               </div>
               <div className="col-span-2 md:col-span-3 text-right font-mono-data text-mono-data text-primary">
-                ₹{inr(s.savings)}
+                ₹{inr(row.monthly_savings)}
               </div>
               <div className="col-span-2 md:col-span-3 text-right font-mono-data text-mono-data text-secondary">
-                {s.roi.toFixed(1)}%
+                {row.roi_pct.toFixed(1)}%
               </div>
             </div>
           ))}

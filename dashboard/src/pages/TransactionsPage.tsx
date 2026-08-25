@@ -72,7 +72,7 @@ export function TransactionsPage() {
           </p>
         </div>
         <Link
-          to="/"
+          to="/fraud"
           className="font-label-caps text-label-caps text-primary hover:text-primary-fixed uppercase tracking-widest flex items-center gap-2"
         >
           Back to Dashboard <span className="material-symbols-outlined text-[16px]">arrow_back</span>

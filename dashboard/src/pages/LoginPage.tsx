@@ -26,7 +26,7 @@ export function LoginPage() {
         username,
         role: res.data.role,
       });
-      navigate("/", { replace: true });
+      navigate("/return-risk", { replace: true });
     } catch {
       setError("Invalid credentials. Check your username and password.");
     } finally {
