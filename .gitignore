@@ -20,3 +20,10 @@ models/production/explanations/
 store/audit_logs/
 .coverage
 htmlcov/
+
+# Local real-data validation artifacts (evaluation-only, not part of submission)
+dataset/
+models/amazon_validation.json
+models/real_data_validation.json
+scripts/validate_amazon_report.py
+scripts/validate_real_data.py
