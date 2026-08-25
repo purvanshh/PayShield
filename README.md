@@ -1,6 +1,6 @@
-# PayShield — Return-Risk Scorer for Razorpay Merchants
+# PayShield: A Student-Built Prototype for Honest Return-Risk Scoring
 
-**PayShield is a production-grade return-risk scoring system for Indian e-commerce merchants, built on Razorpay's infrastructure.** It scores every order *before it ships*, catches the high-risk tail at 98% precision, and saves a fashion merchant ~₹21 lakh/month by preventing returns instead of absorbing them. Fraud detection and chargeback response ship as platform extensions on the same audit chain.
+**PayShield is a Proof-of-Concept return-risk scoring system for Indian e-commerce merchants, built on Razorpay's infrastructure** (a student prototype — not production software). It scores every order *before it ships*, catches the high-risk tail at 98% precision, and saves a fashion merchant ~₹21 lakh/month by preventing returns instead of absorbing them. Fraud detection and chargeback response ship as platform extensions on the same audit chain.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg)](https://fastapi.tiangolo.com)
@@ -10,14 +10,37 @@
 
 ## The Numbers (30 seconds)
 
-Measured on a **10,000-order benchmark generated with priors calibrated against public Indian e-commerce distributions (Amazon India 2025 category margins)** — 500 users × 5 archetypes, seed 42, chronological per-user hold-out, so no score ever uses future returns:
+**Primary finding — the cost-model operating-point sweep.** On a
+high-return population (base rate ~32%+, Amazon-style margins) the default
+**0.30 review gate floods**: it flags ~3 of every 4 orders, precision
+collapses, and the merchant **loses** ~₹9.8 cr/month. Raising the config-driven
+gate to **0.50** keeps precision ~0.63 at an 18% flag rate and flips the
+economics **positive** — the single highest-leverage fix in the project:
+
+| Review gate | Flag rate | Precision | Net ₹ / month | ROI |
+|---|---|---|---|---|
+| **0.30 (before)** | 75.3% | 0.464 | **−₹9.8 cr** | **−38.9%** |
+| 0.45 | 19.9% | 0.612 | +₹0.46 cr | +1.8% |
+| **0.50 (after)** | 18.3% | 0.633 | **+₹0.81 cr** | **+3.2%** |
+
+Sweep measured on the reconstructed Amazon 2025 population — full story and
+methodology in [`docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`](docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md).
+Compounding it, the [Review-vs-Block cost fix](docs/COST_MODEL.md) charges a
+wrong MEDIUM flag ₹200 (operator time, the order still ships) instead of the
+full ₹3,180 — making the surplus strictly larger.
+
+The shipped operating points are measured on a **10,000-order benchmark
+generated with priors calibrated against public Indian e-commerce
+distributions (Amazon India 2025 category margins)** — 500 users × 5
+archetypes, seed 42, chronological per-user hold-out, so no score ever uses
+future returns:
 
 | Metric | Value | Meaning |
 |---|---|---|
 | **PR-AUC** | **0.9311** | Rank quality on the minority (return) class |
 | **Precision @ MEDIUM+** | **0.9837** | ~1 in 60 flagged orders is a wrong review flag |
-| **Recall @ MEDIUM+** | **0.6050** | Catches the clearly-high tail (review gate, tuned per vertical) |
-| **F1 @ MEDIUM+** | **0.7492** | Primary operating point (review gate 0.50) |
+| **Recall @ MEDIUM+** | **0.6050** | Catches the clearly-high tail (review gate 0.50, tuned per vertical) |
+| **F1 @ MEDIUM+** | **0.7492** | Primary operating point |
 | Precision @ HIGH gate | 0.9837 | Prepaid gate |
 | Recall @ HIGH gate | 0.6050 | |
 | ROC-AUC | 0.9431 | |
@@ -302,14 +325,6 @@ Everything below is measured against the live stack, not simulated.
 
 The estimator itself was fixed during development (PSI=43.4 → 3.86 on a real shift) — see the first story in [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md).
 
-### Compliance (programmatic checkers)
-
-| Framework | Before | After | Status |
-|-----------|--------|-------|--------|
-| PCI-DSS | 60/100 | **90/100** | passed (no high-severity findings) |
-| RBI | 16/100 | **83/100** | passed |
-| EU AI Act | — | **100/100** | passed |
-
 ---
 
 ## Appendix C — Bug Resolution and Technical Notes
@@ -378,7 +393,7 @@ PayShield/
 ├── engine/                    # L1 statistical filter, L2 GNN, ensemble fusion
 ├── agents/                    # 4-agent orchestration (see docs/TRACK2_ARCHITECTURE.md)
 ├── llm/                       # Ollama investigation stack
-├── compliance/                # PCI-DSS / RBI / EU AI Act checkers
+├── compliance/                # regulatory scorecard checkers (see Appendix F)
 ├── store/                     # Redis / Postgres / Neo4j / audit chain
 ├── data/synthetic/            # return-risk + UPI transaction generators
 ├── observability/             # PSI drift monitoring, Prometheus metrics
@@ -391,7 +406,7 @@ PayShield/
 
 ## Appendix E — Agent System
 
-Return-risk is production-minimal by design. Full rationale in [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md) — development-only agents are archived under `agents/archived/` for transparency.
+Return-risk is minimal by design. Full rationale in [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md) — development-only agents are archived under `agents/archived/` for transparency.
 
 | Live agent | Responsibility |
 |---|---|
@@ -402,7 +417,7 @@ Return-risk is production-minimal by design. Full rationale in [`docs/TRACK2_ARC
 
 ---
 
-## Appendix F — Ops, ML Lifecycle & Environment
+## Appendix F — Ops, ML Lifecycle, Compliance & Deployment
 
 ### Model training & promotion
 
@@ -430,7 +445,28 @@ python scripts/run_drift_report.py # PSI drift (or GET /admin/drift/psi)
 | Type check | `mypy api/ engine/ agents/` |
 | Tests (coverage ≥ 70%) | `pytest --cov --cov-report=term-missing` |
 | Security | `bandit -r .` |
-| Deploy | ArgoCD → Kubernetes (`k8s/overlays/prod`) |
+| Deploy | ArgoCD → Kubernetes (`k8s/overlays/prod`) — projected, not wired to CI |
+
+### Compliance & deployment scorecards (Proof-of-Concept — hidden, aspirational)
+
+<details>
+<summary><b>Compliance checkers & k8s deployment — not external audits, not shipped</b></summary>
+
+These numbers come from the prototype's *programmatic* checkers
+(`python scripts/security_audit_check.py` / `make compliance-check`). They
+are self-assessments, not third-party audits, and the Kubernetes deployment is
+a projected state with no CI workflow behind it.
+
+| Framework | Before | After | Status |
+|-----------|--------|-------|--------|
+| PCI-DSS | 60/100 | **90/100** | checker result (no high-severity findings) |
+| RBI | 16/100 | **83/100** | checker result |
+| EU AI Act | — | **100/100** | checker result |
+
+Deployment path (projected): Docker Compose for local/demo → ArgoCD →
+Kubernetes (`k8s/overlays/prod`) with sealed secrets and an ingress manifest.
+As a Proof-of-Concept this path is documented, not operated.
+</details>
 
 ### Environment variables
 
