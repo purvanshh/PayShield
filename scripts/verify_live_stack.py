@@ -86,15 +86,18 @@ async def verify(base_url: str) -> list[dict]:
         )
         if r.status_code == 200:
             d = r.json()["data"]
-            ok = d["risk_tier"] == "HIGH" and 0.7 <= d["return_risk_score"] <= 0.95
+            # The XGBoost engine returns P(return), which for a strong serial
+            # returner can legitimately exceed 0.95; the meaningful check is
+            # the HIGH tier plus a high score.
+            ok = d["risk_tier"] == "HIGH" and 0.7 <= d["return_risk_score"] <= 1.0
             record(
                 "serial returner /v1/return/score",
-                "HIGH ~0.83",
-                f"{d['risk_tier']} {d['return_risk_score']}",
+                "HIGH >=0.70",
+                f"{d['risk_tier']} {d['return_risk_score']} (engine={d.get('engine')})",
                 ok,
             )
         else:
-            record("serial returner", "HIGH ~0.83", f"HTTP {r.status_code}", False)
+            record("serial returner", "HIGH >=0.70", f"HTTP {r.status_code}", False)
 
         # honest customer (LOW)
         r = await client.post(

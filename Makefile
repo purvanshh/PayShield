@@ -86,6 +86,16 @@ ablation:
 sensitivity:
 	python scripts/sensitivity.py
 
+# XGBoost return-risk model pipeline (Phase 1-3)
+train-xgb:
+	python scripts/train_xgb_return_risk.py
+
+ablation-xgb:
+	python scripts/ablation_study.py
+
+tune-xgb:
+	python scripts/tune_xgb.py
+
 generate-data:
 	python scripts/generate_synthetic_data.py
 

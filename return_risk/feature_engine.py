@@ -42,6 +42,17 @@ DEFAULT_PRIOR = 0.15  # population return-rate prior for histories we haven't se
 DEFAULT_MERCHANT_RETURN_RATE = DEFAULT_PRIOR
 DEFAULT_RESOLUTION_HOURS = 72.0
 AMOUNT_SATURATION_INR = 50_000.0  # log-amount normalisation saturates at ₹50k
+POPULATION_AOV = 74_500.0  # Amazon India 2025 AOV fallback for amount-vs-AOV ratio
+DEFAULT_DAYS_SINCE_LAST_ORDER = 60  # new-user default for days-since-last-order
+
+# Payment-method return-risk, matching data/synthetic/return_risk_generator.
+PAYMENT_METHOD_RISK = {
+    "UPI": 0.20,
+    "CARD": 0.30,
+    "WALLET": 0.40,
+    "NETBANKING": 0.35,
+    "COD": 1.00,
+}
 
 
 class ReturnRiskFeatureEngine:
@@ -65,11 +76,14 @@ class ReturnRiskFeatureEngine:
         amount: Decimal,
         cod_flag: bool,
         timestamp: datetime | None = None,
+        payment_method: str = "UPI",
+        device_fingerprint: str = "",
     ) -> dict[str, Any]:
         """Extract user, merchant and transaction features.
 
         Returns ``{feature_name: {"value", "source"}}`` plus ``_meta`` with
-        extraction metadata.
+        extraction metadata. ``payment_method`` / ``device_fingerprint`` are
+        optional context used by the ML engine features.
         """
         timestamp = timestamp or datetime.utcnow()
 
@@ -84,6 +98,9 @@ class ReturnRiskFeatureEngine:
             cod_flag=cod_flag,
             timestamp=timestamp,
             merchant_features=merchant_features,
+            user_features=user_features,
+            payment_method=payment_method,
+            device_fingerprint=device_fingerprint,
         )
 
         return {
@@ -124,6 +141,8 @@ class ReturnRiskFeatureEngine:
                 "user_avg_return_value": {"value": 0.0, "source": source},
                 "user_return_reason_distribution": {"value": {}, "source": source},
                 "user_is_new": {"value": True, "source": "inferred"},
+                "user_avg_order_value": {"value": POPULATION_AOV, "source": source},
+                "user_last_activity": {"value": None, "source": source},
             }
 
         total_orders = int(data.get("total_orders", 0))
@@ -136,6 +155,14 @@ class ReturnRiskFeatureEngine:
 
         serial_returner = return_rate_lifetime > 0.50 and total_orders >= 3
         returns_7d = await self._count_returns_in_window(user_id, days=7)
+
+        aov_raw = data.get("avg_order_value")
+        if aov_raw:
+            aov = float(aov_raw)
+            aov_source = "redis_hash"
+        else:
+            aov = float(data.get("avg_return_value", 0.0) or POPULATION_AOV) or POPULATION_AOV
+            aov_source = "computed"
 
         reasons_raw = data.get("return_reason_distribution", "{}")
         try:
@@ -156,6 +183,8 @@ class ReturnRiskFeatureEngine:
             "user_avg_return_value": {"value": float(data.get("avg_return_value", 0.0)), "source": "redis_hash"},
             "user_return_reason_distribution": {"value": reasons, "source": "redis_hash"},
             "user_is_new": {"value": False, "source": "inferred"},
+            "user_avg_order_value": {"value": round(aov, 2), "source": aov_source},
+            "user_last_activity": {"value": data.get("last_activity"), "source": "redis_hash"},
         }
 
     async def _extract_merchant_features(
@@ -249,7 +278,11 @@ class ReturnRiskFeatureEngine:
         cod_flag: bool,
         timestamp: datetime,
         merchant_features: dict[str, Any],
+        user_features: dict[str, Any] | None = None,
+        payment_method: str = "UPI",
+        device_fingerprint: str = "",
     ) -> dict[str, Any]:
+        user_features = user_features or {}
         # category baseline prefers the merchant's own per-category rate
         merchant_rate = merchant_features.get("merchant_category_return_rate", {})
         category_baseline = float(merchant_rate.get("value", self._category_prior(category)))
@@ -263,6 +296,31 @@ class ReturnRiskFeatureEngine:
         hour = timestamp.hour
         time_risk = 0.3 if hour >= 23 or hour <= 5 else 0.0
 
+        # ---- ML-engine features (consumed by the XGBoost scorer) ----
+        # amount_vs_user_aov_ratio: order value relative to the user's AOV.
+        user_aov = float(user_features.get("user_avg_order_value", {}).get("value", POPULATION_AOV)) or POPULATION_AOV
+        amount_vs_aov = float(amount) / user_aov if user_aov else 0.0
+
+        # payment_method_risk: COD (no money at checkout) is highest risk.
+        effective_method = "COD" if cod_flag else (payment_method or "UPI").upper()
+        payment_method_risk = float(PAYMENT_METHOD_RISK.get(effective_method, PAYMENT_METHOD_RISK["UPI"]))
+
+        # device_fingerprint_match: the return-risk module keeps no device
+        # store, so a *neutral* 0.5 is used (unknown evidence) rather than
+        # guessing a match. The model treats it as uninformative and leans on
+        # the remaining six features.
+        device_match = 0.5
+
+        # days_since_last_order: gap since the user's last activity.
+        last_activity = user_features.get("user_last_activity", {}).get("value")
+        if last_activity:
+            try:
+                days_since = max(0.0, (timestamp - datetime.fromisoformat(last_activity)).total_seconds() / 86400.0)
+            except (TypeError, ValueError):
+                days_since = DEFAULT_DAYS_SINCE_LAST_ORDER
+        else:
+            days_since = DEFAULT_DAYS_SINCE_LAST_ORDER
+
         return {
             "txn_category_return_baseline": {
                 "value": round(category_baseline, 4),
@@ -273,6 +331,13 @@ class ReturnRiskFeatureEngine:
             "txn_time_of_day_risk": {"value": time_risk, "source": "computed"},
             "txn_is_salary_day": {"value": self._is_salary_day(timestamp), "source": "computed"},
             "txn_user_merchant_interaction_count": {"value": 0, "source": "placeholder"},
+            "txn_amount_vs_user_aov_ratio": {"value": round(amount_vs_aov, 4), "source": "computed"},
+            "txn_payment_method_risk": {"value": round(payment_method_risk, 4), "source": "computed"},
+            "txn_device_fingerprint_match": {
+                "value": device_match,
+                "source": "placeholder" if not device_fingerprint else "no_device_store",
+            },
+            "txn_days_since_last_order": {"value": round(days_since, 2), "source": "computed"},
         }
 
     async def _count_returns_in_window(self, user_id: str, days: int) -> int:

@@ -11,12 +11,67 @@ back to the tuned defaults below when the registry is empty); risk tiers
 come from ``configs/return_risk_rules.yaml``.
 """
 
+from __future__ import annotations
+
+import os
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
-from return_risk.feature_engine import FeatureRegistry, ReturnRiskFeatureEngine
-from return_risk.rules_engine import RulesEngine
+# xgboost can segfault on macOS with OpenMP multi-threading under pytest or
+# when embedded (known issue). Inference is a single score per call, so pin
+# it to one thread here; the training scripts use their own n_jobs and do not
+# import this module. setdefault so an explicit env var is respected.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+import pandas as pd  # noqa: E402
+import xgboost as xgb  # noqa: E402
+
+from return_risk.feature_engine import FeatureRegistry, ReturnRiskFeatureEngine  # noqa: E402
+from return_risk.rules_engine import RulesEngine  # noqa: E402
+
+# Feature surface consumed by the XGBoost model (must match the training
+# pipeline: data/synthetic/return_risk_generator.FEATURES).
+XGB_FEATURES = [
+    "user_return_rate_30d",
+    "user_return_rate_90d",
+    "amount_vs_user_aov_ratio",
+    "category_return_baseline",
+    "payment_method_risk",
+    "device_fingerprint_match",
+    "days_since_last_order",
+]
+
+# Preferred tuned model first, then the default-hyperparameter model.
+DEFAULT_XGB_MODEL_PATHS = [
+    "models/return_risk_xgb_best.json",
+    "models/return_risk_xgb_v1.json",
+]
+
+# The XGBoost model is process-level state: every scorer instance shares the
+# same loaded model (loaded lazily, once) rather than loading it per request.
+_XGB_CACHE: dict[str, Any] = {"model": None, "importance": None, "path": None}
+
+
+def _get_xgb_model() -> dict[str, Any]:
+    """Return the cached XGBoost model (loaded once per process)."""
+    if _XGB_CACHE["model"] is not None:
+        return _XGB_CACHE
+    for candidate in DEFAULT_XGB_MODEL_PATHS:
+        if Path(candidate).exists():
+            try:
+                model = xgb.XGBClassifier()
+                model.load_model(str(candidate))
+            except Exception:  # nosec B112 - a broken model degrades to fallback
+                continue
+            _XGB_CACHE["model"] = model
+            _XGB_CACHE["importance"] = dict(
+                zip(XGB_FEATURES, model.feature_importances_.tolist(), strict=True)
+            )
+            _XGB_CACHE["path"] = str(candidate)
+            break
+    return _XGB_CACHE
 
 FEATURE_WEIGHTS = {
     "user_return_rate_30d": 0.25,
@@ -64,6 +119,7 @@ class ReturnRiskScorer:
         feature_engine: ReturnRiskFeatureEngine | None = None,
         rules_engine: RulesEngine | None = None,
         registry: FeatureRegistry | None = None,
+        model_path: str | Path | None = None,
     ):
         self.registry = registry or FeatureRegistry()
         if feature_engine is None:
@@ -83,6 +139,33 @@ class ReturnRiskScorer:
             self.rules_engine.risk_tiers or dict(RISK_TIERS)
         )
 
+        # XGBoost primary engine (shared cached model if a trained model is
+        # present), hand-weighted fallback otherwise.
+        self.xgb_model: xgb.XGBClassifier | None = None
+        self.xgb_available = False
+        self.model_path: str | None = None
+        self.xgb_feature_importance: dict[str, float] | None = None
+        if model_path is None:
+            cache = _get_xgb_model()
+            if cache["model"] is not None:
+                self.xgb_model = cache["model"]
+                self.xgb_available = True
+                self.model_path = cache["path"]
+                self.xgb_feature_importance = cache["importance"]
+        elif Path(model_path).exists():
+            # Explicit path: load it directly (test/tooling use case).
+            try:
+                self.xgb_model = xgb.XGBClassifier()
+                self.xgb_model.load_model(str(model_path))
+                self.xgb_available = True
+                self.model_path = str(model_path)
+                self.xgb_feature_importance = dict(
+                    zip(XGB_FEATURES, self.xgb_model.feature_importances_.tolist(), strict=True)
+                )
+            except Exception:  # nosec B112 - a broken model degrades to the fallback
+                self.xgb_model = None
+                self.xgb_available = False
+
     # ------------------------------------------------------------------ #
     # pipeline                                                            #
     # ------------------------------------------------------------------ #
@@ -97,12 +180,19 @@ class ReturnRiskScorer:
         cod_flag: bool,
         payment_method: str = "UPI",  # noqa: ARG002 - API contract parity
         timestamp: datetime | None = None,
+        device_fingerprint: str = "",
     ) -> dict[str, Any]:
         """Score an order for return-risk.
 
         Returns the complete assessment: score, tier, feature breakdown
         (value/weight/contribution/source), triggered rules, recommendations,
-        user profile and confidence.
+        user profile, confidence and - when a trained XGBoost model is
+        loaded - the engine attribution (``engine``, ``feature_importance``
+        and the raw model inputs ``xgb_features``).
+
+        The XGBoost model is the primary engine; the hand-weighted composite
+        remains the fallback (and the feature breakdown below is always the
+        transparent hand-weighted decomposition for merchant explainability).
         """
         if self.feature_engine is None:
             raise ValueError("ReturnRiskScorer requires a feature engine to score orders")
@@ -115,10 +205,22 @@ class ReturnRiskScorer:
             amount=amount,
             cod_flag=cod_flag,
             timestamp=timestamp,
+            payment_method=payment_method,
+            device_fingerprint=device_fingerprint,
         )
 
         rules_triggered = self.rules_engine.evaluate(features)
         score, breakdown = self._compute_score(features, rules_triggered)
+
+        engine = "hand_weighted"
+        feature_importance = None
+        xgb_features = None
+        if self.xgb_available and self.xgb_model is not None:
+            model_score, xgb_features = self._xgb_predict(features)
+            score = model_score
+            engine = "xgboost"
+            feature_importance = self.xgb_feature_importance
+
         risk_tier = self._determine_tier(score)
         recommendations = self._generate_recommendations(risk_tier, rules_triggered, features)
         confidence = self._calculate_confidence(features)
@@ -133,8 +235,45 @@ class ReturnRiskScorer:
             "rules_triggered": rules_triggered,
             "recommendations": recommendations,
             "user_profile": user_profile,
+            "engine": engine,
+            "model_path": self.model_path,
+            "feature_importance": feature_importance,
+            "xgb_features": xgb_features,
             "scored_at": timestamp.isoformat(),
         }
+
+    # ------------------------------------------------------------------ #
+    # XGBoost engine                                                      #
+    # ------------------------------------------------------------------ #
+
+    def _xgb_predict(self, features: dict[str, Any]) -> tuple[float, dict[str, float]]:
+        """Score an order with the loaded XGBoost model.
+
+        Maps the feature-engine output onto the seven model features (the
+        rate features are exposed directly; the rest are computed txn
+        features), then returns ``(P(return), xgb_feature_vector)``.
+        """
+        xgb_features = {
+            "user_return_rate_30d": float(self._val(features, "user_return_rate_30d")),
+            "user_return_rate_90d": float(self._val(features, "user_return_rate_90d")),
+            "amount_vs_user_aov_ratio": float(self._val(features, "txn_amount_vs_user_aov_ratio")),
+            "category_return_baseline": float(self._val(features, "txn_category_return_baseline")),
+            "payment_method_risk": float(self._val(features, "txn_payment_method_risk")),
+            "device_fingerprint_match": float(self._val(features, "txn_device_fingerprint_match")),
+            "days_since_last_order": float(self._val(features, "txn_days_since_last_order")),
+        }
+        df = pd.DataFrame([xgb_features])
+        score = float(self.xgb_model.predict_proba(df)[0, 1])  # type: ignore[union-attr]
+        return score, xgb_features
+
+    @staticmethod
+    def _val(features: dict[str, Any], name: str, default: float = 0.0) -> float:
+        """Read a feature's raw value from the ``{"value", "source"}`` dict."""
+        entry = features.get(name)
+        if isinstance(entry, dict):
+            value = entry.get("value", default)
+            return float(value) if value is not None else default
+        return float(entry) if entry is not None else default
 
     def _compute_score(
         self, features: dict[str, Any], rules_triggered: list[dict[str, Any]]

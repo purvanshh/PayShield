@@ -131,6 +131,10 @@ class ReturnScoreResponse(BaseModel):
     rules_triggered: list[RuleTriggered] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
     user_profile: ReturnUserProfile = Field(default_factory=ReturnUserProfile)
+    engine: str = "hand_weighted"
+    model_path: str | None = None
+    feature_importance: dict[str, float] | None = None
+    xgb_features: dict[str, float] | None = None
 
 
 class ReturnScoreEnvelopeResponse(BaseModel):

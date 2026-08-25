@@ -74,6 +74,7 @@ async def score_return_risk(
         cod_flag=request.cod_flag,
         payment_method=request.payment_method,
         timestamp=request.timestamp,
+        device_fingerprint=request.device_fingerprint,
     )
 
     background_tasks.add_task(

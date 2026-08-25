@@ -16,6 +16,11 @@ and fairness audit results.
 | `production/calibrator_v1.pkl` | Fitted isotonic calibrator (ECE 0.010) | `engine/ensemble.py:ConfidenceCalibrator.fit()` |
 | `production/payshield_gnn_v1.pt` | GNN v1.1.0 checkpoint (served by `ml/inference.py`; hidden/layers/dropout read from the artifact) | `scripts/benchmark_gnn.py --save-model` |
 | `registry/` | Versioned model artifacts — v1.1.0 (GNN, production, `latest` → v1.1.0), v1.0.0 (statistical filter), v0.1.0 (GNN legacy); each version dir has `model.pt`, `manifest.json`, `metadata.json`, `model_card.md` | `ml/registry.py` + `scripts/check_improvement.py --register-if-better` |
+| `return_risk_xgb_best.json` | **Tuned XGBoost return-risk model** (PR-AUC 0.8729) — primary engine loaded by `return_risk/scorer.py` | `scripts/tune_xgb.py` |
+| `return_risk_xgb_v1.json` | XGBoost return-risk model with default hyperparameters (fallback if `best` is absent) | `scripts/train_xgb_return_risk.py` |
+| `xgb_evaluation.json` | Phase 1 comparison — XGBoost vs hand-weighted vs naive baselines (PR-AUC/precision/recall/F1/confusion matrix) | `scripts/train_xgb_return_risk.py` |
+| `ablation_study.json` | Leave-one-feature-out ablation (PR-AUC drop per feature) | `scripts/ablation_study.py` |
+| `xgb_tuning_results.json` | 144-combo grid-search results + best params + test PR-AUC | `scripts/tune_xgb.py` |
 
 ## Fallback Behavior
 

@@ -84,7 +84,15 @@ class TestReturnRiskScorer:
         # post-contribution rule adjustment (see scorer.RULE_BOOST) - capped,
         # and transparently derivable from the fired rules in the response
         boost = ReturnRiskScorer.promotion_score(result["rules_triggered"])
-        assert abs((total + boost) - result["return_risk_score"]) < 1e-3
+        if result.get("engine") == "hand_weighted":
+            assert abs((total + boost) - result["return_risk_score"]) < 1e-3
+        else:
+            # XGBoost engine: the score comes from the model; the breakdown
+            # is the transparent hand-weighted decomposition for merchants.
+            assert result["engine"] == "xgboost"
+            assert result["feature_importance"] is not None
+            assert result["xgb_features"] is not None
+            assert 0 <= result["return_risk_score"] <= 1
         for name, entry in breakdown.items():
             assert entry["source"] not in ("", "unknown") or name in (
                 "txn_user_merchant_interaction_count",
