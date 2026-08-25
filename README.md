@@ -94,6 +94,27 @@ history, merchant/category baselines and device fingerprints** and measures
 The XGBoost model is promoted into that enriched path via the A/B harness
 (`ml/ab_testing.py`); the hand-weighted scorer is kept as the automatic fallback.
 
+### Why we don't report XGBoost on Redis-enriched features
+
+The live Redis-backed system (PR-AUC 0.9311) is measured with the **hand-weighted
+scorer** on enriched features. We have not isolated **XGBoost on
+Redis-enriched features** as a separate benchmark because:
+
+1. **Production reality:** the live system is a hybrid — XGBoost primary,
+   hand-weighted fallback, both consuming the same Redis-enriched feature
+   pipeline. Isolating XGBoost would require disabling the fallback, which
+   never happens in production.
+2. **Engineering priority:** the 0.8067 → 0.9311 gap (PR-AUC **+0.12**) proves
+   feature enrichment matters more than model choice. The first item on
+   "What I'd Do Next" is an A/B test of XGBoost vs. hand-weighted on live
+   enriched data.
+3. **Honest scope:** this prototype was built in five days. Isolating every
+   pipeline permutation is future work, not current evidence.
+
+The honest answer: **we don't know XGBoost-on-enriched PR-AUC yet.** The
+harness to measure it is built. We need a merchant partner to run it. Stating
+that openly is scope discipline, not a gap.
+
 ### Cost model — one gate, two feature paths
 
 On a 10k-order fashion merchant (₹2.5k AOV, 18% return rate), the **0.50 review
@@ -271,6 +292,32 @@ Precision 484/(484+8) = **0.9837** · recall 484/(484+316) = **0.6050** — the
 confusion matrix is the raw-count version of the operating point reported
 above. One in ~60 flagged orders is a mistake; the cost model prices that
 mistake at ₹200 of operator review time, not ₹3,180 of lost revenue.
+
+### Confusion Matrix — XGBoost Offline Path (2,000-order hold-out, gate 0.50)
+
+The actual output of `scripts/train_xgb_return_risk.py` on the same 2,000-order
+held-out test set, using the **tuned XGBoost model on raw features**:
+
+```
+CONFUSION MATRIX (XGBoost offline, held-out test, n=2000, gate 0.50)
+                     Not Flagged   Flagged
+Actual No Return          915       293   (TN=915, FP=293)
+Actual Return             179       613   (FN=179, TP=613)
+
+Total flagged: 906 (45.3% of test)
+True catches: 613 of 792 actual returns (77.4%)
+False flags: 293 of 906 flagged orders (32.3%)
+```
+
+Precision 613/(613+293) = **0.677** · recall 613/(613+179) = **0.774** · F1 **0.722**.
+
+This is the **offline XGBoost** operating point on raw features — higher recall
+(0.774 vs 0.605) but lower precision (0.677 vs 0.984) than the Redis-enriched
+live system above. The trade-off is intentional and honest: the offline path
+catches more returns but flags more orders for review. The live
+Redis-enriched path is the production default because its precision (one wrong
+flag in ~60) is what makes the cost model work; the offline XGBoost number is
+what the raw-features model alone achieves.
 
 ---
 

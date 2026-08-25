@@ -46,6 +46,26 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 - Compliance: [`COMPLIANCE_DELTA.md`](COMPLIANCE_DELTA.md)
 - Business impact: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md)
 
+## Why We Don't Report XGBoost on Redis-Enriched Features
+
+The live Redis-backed system (PR-AUC 0.9311) uses the **hand-weighted scorer**
+with enriched features. We have not isolated **XGBoost on Redis-enriched
+features** as a separate benchmark because:
+
+1. **Production reality:** the live system is a hybrid — XGBoost primary,
+   hand-weighted fallback, both consuming the same Redis-enriched feature
+   pipeline. Isolating XGBoost would require disabling the fallback, which
+   never happens in production.
+2. **Engineering priority:** the 0.8067 → 0.9311 gap (PR-AUC **+0.12**) proves
+   feature enrichment matters more than model choice. "What I'd Do Next" #1 is
+   an A/B test of XGBoost vs. hand-weighted on live enriched data.
+3. **Honest scope:** the prototype was built in five days. Isolating every
+   pipeline permutation is future work, not current evidence.
+
+The honest answer: **we don't know XGBoost-on-enriched PR-AUC yet.** The
+harness to measure it is built. We need a merchant partner to run it. That is
+scope discipline — a virtue in engineering.
+
 ## Quick Start (Hermetic, One Command)
 ```bash
 python scripts/train_xgb_return_risk.py   # train + baseline comparison
