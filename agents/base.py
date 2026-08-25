@@ -1,5 +1,7 @@
 import asyncio
+import json
 import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -8,6 +10,8 @@ from agents.message import AgentMessage, MessageRouter
 from agents.state import AgentState
 
 logger = logging.getLogger(__name__)
+
+HEARTBEAT_TTL_SECONDS = 60
 
 
 @dataclass
@@ -21,16 +25,33 @@ class AgentConfig:
 
 
 class BaseAgent(ABC):
-    def __init__(self, config: AgentConfig):
-        self.config = config
+    def __init__(self, config: AgentConfig | None = None, heartbeat_redis: Any = None):
+        self.config = config or AgentConfig()
         self.state = AgentState.IDLE
         self.message_queue: asyncio.Queue[AgentMessage] = asyncio.Queue()
         self._router: MessageRouter | None = None
         self._running = False
+        # Optional Redis client used to publish a liveness heartbeat key
+        # (``agent:heartbeat:{agent_id}``, TTL 60s). The admin health endpoint
+        # reads these keys and returns RUNNING while the heartbeat is fresh.
+        self._heartbeat_redis = heartbeat_redis
 
     @abstractmethod
     async def process(self, message: AgentMessage) -> AgentMessage:
         pass
+
+    async def touch_heartbeat(self) -> None:
+        """Record a fresh heartbeat marker; no-op when no Redis is wired."""
+        if self._heartbeat_redis is None:
+            return
+        try:
+            await self._heartbeat_redis.set(
+                f"agent:heartbeat:{self.config.agent_id}",
+                json.dumps({"ts": time.time()}),
+                ttl=HEARTBEAT_TTL_SECONDS,
+            )
+        except Exception as e:  # nosec B110 - a failed heartbeat must not kill the agent
+            logger.debug("heartbeat write failed for %s: %s", self.config.agent_id, e)
 
     async def send_message(self, recipient: str, content: dict,
                            message_type: str = "EVENT", correlation_id: str = "",
@@ -79,7 +100,7 @@ class BaseAgent(ABC):
                 if response and self._router:
                     await self._router.route(response)
                 self.state = AgentState.IDLE
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self.state = AgentState.IDLE
             except Exception as exc:
                 logger.error(f"Agent {self.config.agent_id} error: {exc}", exc_info=True)

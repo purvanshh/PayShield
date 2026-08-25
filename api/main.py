@@ -153,5 +153,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"razorpay_webhook_router_skipped: {e}")
 
+    try:
+        from api.routes.meta import router as meta_router
+        app.include_router(meta_router, tags=["meta"])
+    except Exception as e:
+        logger.warning(f"meta_router_skipped: {e}")
+
 
 app = create_app()

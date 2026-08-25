@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,8 +20,9 @@ async def reload_rules(
     _=Depends(require_permission("rule", "write")),
 ):
     try:
-        import yaml
         from pathlib import Path
+
+        import yaml
         rules_path = Path("configs/statistical_rules.yaml")
         if not rules_path.exists():
             raise HTTPException(status_code=404, detail="Rules config not found")
@@ -101,12 +102,11 @@ async def agent_health(
 ):
     """Health snapshot of the four live agents.
 
-    Live agents record a heartbeat marker in Redis when they run
-    (``agent:heartbeat:{agent_id}``); the endpoint reflects the last known
-    status. Agents that never ran show ``not_started`` rather than a fake
-    HEALTHY.
+    Live agents renew a heartbeat marker in Redis every ~20s
+    (``agent:heartbeat:{agent_id}``); the endpoint returns RUNNING while the
+    heartbeat is fresh (<30s) and STALE once it lapses. Agents that never ran
+    show ``not_started`` rather than a fake RUNNING.
     """
-    from datetime import timezone
 
     live_agents = [
         "transaction_agent",
@@ -115,7 +115,7 @@ async def agent_health(
         "human_review_agent",
     ]
     agents_status: dict[str, dict[str, Any]] = {}
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_ts = datetime.now(UTC).timestamp()
     for agent_id in live_agents:
         try:
             raw = await redis.get(f"agent:heartbeat:{agent_id}")
@@ -129,8 +129,8 @@ async def agent_health(
                 last_seen = float(heartbeat.get("ts", 0))
             except Exception:
                 last_seen = 0.0
-            alive = (now_ts - last_seen) < 3600
-            agents_status[agent_id] = {"status": "HEALTHY" if alive else "STALE", "last_seen": last_seen}
+            alive = (now_ts - last_seen) < 30
+            agents_status[agent_id] = {"status": "RUNNING" if alive else "STALE", "last_seen": last_seen}
         except Exception as e:
             logger.warning("agent health check failed for %s: %s", agent_id, e)
             agents_status[agent_id] = {"status": "error", "detail": str(e)}
@@ -154,8 +154,9 @@ async def restart_agent(
 async def get_config(
     _=Depends(require_permission("rule", "write")),
 ):
-    import yaml
     from pathlib import Path
+
+    import yaml
     configs = {}
     for path in Path("configs").glob("*.yaml"):
         try:

@@ -1,0 +1,13 @@
+{
+  "winner": "champion",
+  "recommendation": "keep (challenger is worse)",
+  "p_value": 0.0001,
+  "delta": -187.05,
+  "significant": true,
+  "t_stat": -3.932,
+  "champion_mean": 719.76,
+  "challenger_mean": 532.72,
+  "champion_n": 7260,
+  "challenger_n": 740,
+  "note": "Real output of scripts/simulate_ab_test.py on the calibrated generator (seed 42, 10k orders). The challenger's reweighted return-history features produced more false blocks; the difference is statistically significant, so nothing is promoted."
+}

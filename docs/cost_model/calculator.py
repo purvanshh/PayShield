@@ -198,17 +198,103 @@ def _run_sensitivity(orders: int, op_name: str) -> None:
         )
 
 
+def _build_json_report(orders: int, op_name: str, path: Path) -> None:
+    """Write the cost model's authoritative result set to ``path``.
+
+    Consumed by the dashboard via ``GET /v1/meta/return-risk/cost`` so the UI
+    always renders what the calculator measures — no duplicated TS constants.
+    """
+    from datetime import UTC, datetime
+
+    op = OPERATING_POINTS[op_name]
+
+    scenarios = []
+    for key in ("fashion", "electronics", "grocery"):
+        config = load_scenario(key)
+        assumptions = _scenario_assumptions(config)
+        r = evaluate_scenario(orders, assumptions, op)
+        scenarios.append(
+            {
+                "key": key,
+                "label": key.title(),
+                "description": config.get("description", ""),
+                "aov": assumptions.aov,
+                "return_rate": assumptions.return_rate,
+                "monthly_savings": r["monthly_savings"],
+                "annual_savings": r["annual_savings"],
+                "roi_pct": r["roi_pct"],
+                "prevented": r["prevented"],
+                "wrong_flags": r["false_blocks"],
+                "baseline_cost": r["baseline_cost"],
+                "payshield_cost": r["payshield_cost"],
+                "false_allow_cost": r["cost_per_false_allow"],
+            }
+        )
+
+    base = CostAssumptions()
+    sensitivity = []
+    for aov, rate in ((1500, 0.12), (2500, 0.18), (4000, 0.25)):
+        a = CostAssumptions(
+            aov=aov,
+            return_rate=rate,
+            return_logistics=base.return_logistics,
+            restocking=base.restocking,
+            service_cost=base.service_cost,
+            gateway_fee_pct=base.gateway_fee_pct,
+            cac=base.cac,
+            churn_after_false_block=base.churn_after_false_block,
+            ltv=base.ltv,
+            diversion_effectiveness=base.diversion_effectiveness,
+        )
+        r = evaluate_scenario(orders, a, op)
+        sensitivity.append(
+            {
+                "aov": aov,
+                "return_rate": rate,
+                "monthly_savings": r["monthly_savings"],
+                "annual_savings": r["annual_savings"],
+                "roi_pct": r["roi_pct"],
+            }
+        )
+
+    report = {
+        "operating_point": {
+            "name": op.name,
+            "threshold": op.threshold,
+            "precision": op.precision,
+            "recall": op.recall,
+            "action": op.action,
+            "wrong_flag_cost": base.review_cost,
+        },
+        "scenarios": scenarios,
+        "sensitivity": sensitivity,
+        "orders": orders,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+    path.write_text(json.dumps(report, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Return-risk cost model calculator")
     parser.add_argument("--orders", type=int, default=10_000, help="orders per month")
     parser.add_argument("--scenario", default="fashion", help="fashion | electronics | grocery")
     parser.add_argument("--operating-point", default="MEDIUM+", help="HIGH | MEDIUM+")
     parser.add_argument("--sensitivity", action="store_true", help="AOV × return-rate grid")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="write models/cost_model_results.json and exit (consumed by the dashboard)",
+    )
     args = parser.parse_args()
 
     op_name = args.operating_point.upper()
     if op_name not in OPERATING_POINTS:
         sys.exit(f"unknown operating point: {args.operating_point}")
+
+    if args.json:
+        _build_json_report(args.orders, op_name, Path("models/cost_model_results.json"))
+        print("wrote models/cost_model_results.json")
+        return
 
     if args.sensitivity:
         _run_sensitivity(args.orders, op_name)
