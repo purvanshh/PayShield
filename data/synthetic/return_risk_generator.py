@@ -10,11 +10,15 @@ process.
 
 How it works
 ------------
-Each order's ``returned`` outcome is drawn from a noisy logistic function
-of the seven features. The features are generated *before* the label with
-realistic distributions, so there is no target leakage: the model must
-recover ``P(return)`` from the features alone, exactly as it must at
-inference time.
+Each order's ``returned`` outcome is drawn from a noisy logistic function of
+the seven *visible* features **plus hidden features the model never observes**
+(product rating, delivery speed, packaging quality, weather delays, customer
+mood) **plus** irreducible label noise. This deliberately breaks a circular
+data-generating process: the label is not a deterministic function of the
+features XGBoost trains on, so the model must learn from noisy, incomplete
+signal - exactly the situation a real merchant's data presents. The hidden
+variables are stored on the frame as ``hidden_*`` columns (transparency) but
+are excluded from ``FEATURES``.
 
 - ``user_return_rate_30d`` / ``user_return_rate_90d`` are noisy estimates of
   the user's recent return propensity (a real deployment would compute these
@@ -23,8 +27,8 @@ inference time.
 - ``category_return_baseline`` mirrors ``return_risk.feature_engine.CATEGORY_BASELINES``
   so the offline table and the production feature store agree on its meaning.
 - The category baselines and payment/device/amount/recency features each carry
-  a controlled, non-redundant share of the label signal, which is what makes
-  the ablation study meaningful.
+  a controlled, non-redundant share of the *visible* label signal, which is
+  what makes the ablation study meaningful.
 
 The single entry point ``generate_return_risk_dataset`` returns a
 ``pandas.DataFrame`` with columns:
@@ -132,6 +136,46 @@ _SEASONALITY = [c / sum(_MONTHLY_COUNTS.values()) for c in _MONTHLY_COUNTS.value
 RATE30_NOISE = 0.16
 RATE90_NOISE = 0.06
 
+# Hidden features: variables that genuinely influence whether an order is
+# returned but that the model never observes. This breaks the "circular"
+# data-generating process (where the label was a logistic of exactly the
+# features the model trains on) and forces XGBoost to learn from noisy,
+# incomplete signal - closer to real merchant data where you do not observe
+# every variable. Ranges are (min, max).
+HIDDEN_FEATURES = {
+    "product_rating": (1.0, 5.0),      # 1-5 stars; lower rating -> higher return risk
+    "delivery_speed_days": (1.0, 7.0),  # slower delivery -> higher return risk
+    "packaging_quality": (1.0, 5.0),   # poorer packaging -> higher return risk
+    "weather_delay": (0.0, 1.0),       # 1 if monsoon/festive logistics delay
+    "customer_mood": (-1.0, 1.0),      # random sentiment factor
+}
+
+# Relative weight of each hidden feature in the label (see _hidden_logit).
+HIDDEN_WEIGHTS = {
+    "product_rating": 0.25,
+    "delivery_speed_days": 0.15,
+    "packaging_quality": 0.10,
+    "weather_delay": 0.10,
+    "customer_mood": 0.05,
+}
+
+# Scales the hidden signal so it is comparable to (not dwarfed by) the visible
+# signal. Chosen by calibration: with HIDDEN_SCALE = 26 the hidden term carries
+# enough label variance that the model learns from genuinely noisy, incomplete
+# signal and the achievable (visible-features-only) PR-AUC settles near ~0.78.
+HIDDEN_SCALE = 26.0
+
+# Fraction of orders affected by a weather/festive logistics delay.
+WEATHER_DELAY_RATE = 0.15
+
+# Label noise (logit units).
+LABEL_NOISE_STD = 0.10
+
+# Expected value of _hidden_logit() over the feature distributions (0.25*0.5 +
+# 0.15*0.5 + 0.10*0.5 + 0.10*0.15 + 0.05*0). Subtracted so the hidden signal
+# adds variance (confounding) without shifting the base rate.
+HIDDEN_MEAN = 0.265
+
 
 def _logit_weights() -> dict[str, float]:
     """True data-generating weights (kept here for provenance).
@@ -148,7 +192,7 @@ def _logit_weights() -> dict[str, float]:
     - ``elevated 90d rate in a high-baseline category`` compounds.
     """
     return {
-        "intercept": -3.70,
+        "intercept": -4.60,
         "user_return_rate_30d": 3.60,
         "user_return_rate_90d": 1.80,
         "amount_vs_user_aov_ratio": 1.60,
@@ -157,9 +201,9 @@ def _logit_weights() -> dict[str, float]:
         "device_fingerprint_match": -2.40,
         "days_since_last_order": 1.30,
         "latent": 2.80,
-        "inter_30d_x_payment": 1.50,
-        "inter_amount_x_device_risk": 1.20,
-        "inter_90d_x_category": 1.00,
+        "inter_30d_x_payment": 5.00,
+        "inter_amount_x_device_risk": 4.00,
+        "inter_90d_x_category": 3.20,
     }
 
 
@@ -167,8 +211,54 @@ def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
 
-def _return_probability(features: dict[str, float], latent: float) -> float:
-    """P(return) for an order given its features and the user's latent risk."""
+def _hidden_features(rng: random.Random) -> dict[str, float]:
+    """Draw the unobservable per-order variables.
+
+    Drawn independently of the visible features (they are genuine confounders:
+    correlated with the label but not with what the model can see). They are
+    stored on the DataFrame as ``hidden_*`` columns for transparency but are
+    deliberately excluded from ``FEATURES``.
+    """
+    return {
+        "product_rating": round(rng.uniform(*HIDDEN_FEATURES["product_rating"]), 1),
+        "delivery_speed_days": round(rng.uniform(*HIDDEN_FEATURES["delivery_speed_days"]), 1),
+        "packaging_quality": round(rng.uniform(*HIDDEN_FEATURES["packaging_quality"]), 1),
+        "weather_delay": float(rng.random() < WEATHER_DELAY_RATE),
+        "customer_mood": round(rng.uniform(*HIDDEN_FEATURES["customer_mood"]), 2),
+    }
+
+
+def _hidden_logit(hidden: dict[str, float]) -> float:
+    """Hidden-feature contribution to the return logit (higher = more risk).
+
+    Mirrors the semantics in HIDDEN_WEIGHTS: low product rating, slow
+    delivery, poor packaging and a weather delay all push the return
+    probability up; customer mood adds a small random nudge.
+    """
+    hw = HIDDEN_WEIGHTS
+    score = 0.0
+    score += hw["product_rating"] * (5.0 - hidden["product_rating"]) / 4.0
+    score += hw["delivery_speed_days"] * (hidden["delivery_speed_days"] - 1.0) / 6.0
+    score += hw["packaging_quality"] * (5.0 - hidden["packaging_quality"]) / 4.0
+    score += hw["weather_delay"] * hidden["weather_delay"]
+    score += hw["customer_mood"] * hidden["customer_mood"]
+    return score
+
+
+def _return_probability(
+    features: dict[str, float],
+    latent: float,
+    hidden: dict[str, float],
+    noise: float = 0.0,
+) -> float:
+    """P(return) for an order given visible + hidden features and label noise.
+
+    The label is driven by the *visible* feature surface the model trains on
+    (interactions included) **plus** the hidden features the model never sees,
+    **plus** irreducible noise. XGBoost therefore learns from noisy, incomplete
+    signal - the achievable PR-AUC is bounded by how much of the label variance
+    the visible features can explain.
+    """
     w = _logit_weights()
     logit = w["intercept"]
     logit += w["user_return_rate_30d"] * features["user_return_rate_30d"]
@@ -187,6 +277,10 @@ def _return_probability(features: dict[str, float], latent: float) -> float:
         * (1.0 - features["device_fingerprint_match"])
     )
     logit += w["inter_90d_x_category"] * features["user_return_rate_90d"] * features["category_return_baseline"]
+    # Hidden (unobserved) signal + noise. Centred on zero so it adds
+    # confounding variance without shifting the base rate.
+    logit += HIDDEN_SCALE * (_hidden_logit(hidden) - HIDDEN_MEAN)
+    logit += noise
     return 1.0 / (1.0 + math.exp(-logit))
 
 
@@ -259,7 +353,7 @@ def generate_return_risk_dataset(
             dates = _seasonal_dates(orders_per_user, start, rng)
 
             for i, ts in enumerate(dates):
-                # Features are generated before the label (no target leakage).
+                # Visible features are generated before the label (no leakage).
                 rate_30d = _clamp(latent + rng.gauss(0.0, RATE30_NOISE), 0.02, 0.90)
                 rate_90d = _clamp(latent + rng.gauss(0.0, RATE90_NOISE), 0.02, 0.90)
                 aov_ratio = _clamp(math.exp(rng.gauss(0.0, 0.5)), 0.15, 4.0)
@@ -268,6 +362,7 @@ def generate_return_risk_dataset(
                 payment_method = _payment_method(rng)
                 device_match = _device_fingerprint_match(rng, archetype)
                 days_since = _days_since_last_order(np_rng)
+                hidden = _hidden_features(rng)
 
                 features = {
                     "user_return_rate_30d": rate_30d,
@@ -281,7 +376,8 @@ def generate_return_risk_dataset(
                     "days_since_last_order": days_since,
                 }
 
-                p_return = _return_probability(features, latent)
+                label_noise = float(np_rng.normal(0.0, LABEL_NOISE_STD))
+                p_return = _return_probability(features, latent, hidden, noise=label_noise)
                 returned = 1 if np_rng.random() < p_return else 0
 
                 rows.append(
@@ -296,6 +392,9 @@ def generate_return_risk_dataset(
                         "timestamp": ts,
                         "returned": returned,
                         **features,
+                        # Hidden variables kept for transparency/diagnostics but
+                        # never part of FEATURES (the model does not see them).
+                        **{f"hidden_{k}": v for k, v in hidden.items()},
                     }
                 )
 

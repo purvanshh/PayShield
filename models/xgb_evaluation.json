@@ -2,63 +2,63 @@
   "gate": 0.5,
   "models": [
     {
-      "pr_auc": 0.8709840678692597,
-      "precision_at_gate": 0.740395809080326,
-      "recall_at_gate": 0.8270481144343304,
-      "f1_at_gate": 0.7813267813267813,
+      "pr_auc": 0.8042044591367973,
+      "precision_at_gate": 0.6350148367952523,
+      "recall_at_gate": 0.8106060606060606,
+      "f1_at_gate": 0.7121464226289518,
       "confusion_matrix": {
-        "tn": 1008,
-        "fp": 223,
-        "fn": 133,
-        "tp": 636
+        "tn": 839,
+        "fp": 369,
+        "fn": 150,
+        "tp": 642
       },
       "name": "XGBoost (default)",
       "feature_importance": {
-        "user_return_rate_30d": 0.2760253846645355,
-        "user_return_rate_90d": 0.2606388330459595,
-        "amount_vs_user_aov_ratio": 0.10527883470058441,
-        "category_return_baseline": 0.062013041228055954,
-        "payment_method_risk": 0.14812824130058289,
-        "device_fingerprint_match": 0.10480964183807373,
-        "days_since_last_order": 0.04310604929924011
+        "user_return_rate_30d": 0.21208998560905457,
+        "user_return_rate_90d": 0.1813810020685196,
+        "amount_vs_user_aov_ratio": 0.12244948744773865,
+        "category_return_baseline": 0.06053919345140457,
+        "payment_method_risk": 0.24781058728694916,
+        "device_fingerprint_match": 0.12381097674369812,
+        "days_since_last_order": 0.05191876366734505
       }
     },
     {
-      "pr_auc": 0.8623555772218784,
-      "precision_at_gate": 0.9704142011834319,
-      "recall_at_gate": 0.21326397919375814,
-      "f1_at_gate": 0.34968017057569295,
+      "pr_auc": 0.7896274288513454,
+      "precision_at_gate": 0.9565217391304348,
+      "recall_at_gate": 0.19444444444444445,
+      "f1_at_gate": 0.323189926547744,
       "confusion_matrix": {
-        "tn": 1226,
-        "fp": 5,
-        "fn": 605,
-        "tp": 164
+        "tn": 1201,
+        "fp": 7,
+        "fn": 638,
+        "tp": 154
       },
       "name": "Hand-weighted (current)"
     },
     {
-      "pr_auc": 0.754536857054575,
-      "precision_at_gate": 0.6899618805590851,
-      "recall_at_gate": 0.706111833550065,
-      "f1_at_gate": 0.6979434447300771,
+      "pr_auc": 0.6991140027215157,
+      "precision_at_gate": 0.6308290155440415,
+      "recall_at_gate": 0.61489898989899,
+      "f1_at_gate": 0.6227621483375959,
       "confusion_matrix": {
-        "tn": 987,
-        "fp": 244,
-        "fn": 226,
-        "tp": 543
+        "tn": 923,
+        "fp": 285,
+        "fn": 305,
+        "tp": 487
       },
       "name": "Naive: SerialReturner"
     },
     {
-      "pr_auc": 0.5377515983961856,
-      "precision_at_gate": 0.5989583333333334,
-      "recall_at_gate": 0.14954486345903772,
-      "f1_at_gate": 0.2393340270551509,
+      "pr_auc": 0.5884367588932806,
+      "precision_at_gate": 0.6847826086956522,
+      "recall_at_gate": 0.1590909090909091,
+      "f1_at_gate": 0.2581967213114754,
       "confusion_matrix": {
-        "tn": 1154,
-        "fp": 77,
-        "fn": 654,
-        "tp": 115
+        "tn": 1150,
+        "fp": 58,
+        "fn": 666,
+        "tp": 126
       },
       "name": "Naive: COD+HighAOV"
     }
