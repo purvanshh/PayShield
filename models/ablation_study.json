@@ -1,0 +1,57 @@
+{
+  "method": "leave-one-feature-out retraining",
+  "baseline_pr_auc": 0.8708752712379484,
+  "combined_rate_features": {
+    "features": [
+      "user_return_rate_30d",
+      "user_return_rate_90d"
+    ],
+    "pr_auc_ablated": 0.7639565940951364,
+    "drop": 0.106918677142812,
+    "pct_drop": 12.277151582318695
+  },
+  "ablations": [
+    {
+      "feature": "amount_vs_user_aov_ratio",
+      "pr_auc_ablated": 0.8349340088314775,
+      "drop": 0.035941262406470886,
+      "pct_drop": 4.127027554173219
+    },
+    {
+      "feature": "payment_method_risk",
+      "pr_auc_ablated": 0.8351853206227204,
+      "drop": 0.03568995061522795,
+      "pct_drop": 4.098170173611052
+    },
+    {
+      "feature": "user_return_rate_30d",
+      "pr_auc_ablated": 0.8409516802773607,
+      "drop": 0.02992359096058772,
+      "pct_drop": 3.436036358920993
+    },
+    {
+      "feature": "user_return_rate_90d",
+      "pr_auc_ablated": 0.8626814208892004,
+      "drop": 0.008193850348747977,
+      "pct_drop": 0.9408753031993236
+    },
+    {
+      "feature": "device_fingerprint_match",
+      "pr_auc_ablated": 0.864174303917606,
+      "drop": 0.006700967320342421,
+      "pct_drop": 0.7694520147319148
+    },
+    {
+      "feature": "category_return_baseline",
+      "pr_auc_ablated": 0.8661753190340107,
+      "drop": 0.004699952203937707,
+      "pct_drop": 0.5396814399445203
+    },
+    {
+      "feature": "days_since_last_order",
+      "pr_auc_ablated": 0.8678533656440146,
+      "drop": 0.0030219055939337824,
+      "pct_drop": 0.3469963717810182
+    }
+  ]
+}
