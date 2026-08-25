@@ -1,8 +1,12 @@
-# PayShield: A Student-Built Prototype for Honest Return-Risk Scoring
+# PayShield: Return-Risk Scorer for Indian E-Commerce
 
 **One-sentence:** PayShield scores every order *before it ships*, catches
-high-risk returns at ~68% precision, and saves a fashion merchant ₹20.9
-lakh/month (live, Redis-enriched path) on 10,000 orders.
+high-risk returns at high precision, and saves a fashion merchant **₹20.9
+lakh/month** on 10,000 orders.
+
+**For evaluators:** Start with [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) —
+10-minute walkthrough. Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
+Honest ledger: [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
 **The numbers:**
 - **Offline XGBoost:** PR-AUC **0.8067** — learns from noisy, incomplete signal
@@ -23,6 +27,9 @@ extensions on the same audit chain.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
+
+**[→ Full README below.]** The rest is the deep dive — architecture, API,
+data, operations. If you only have two minutes, read `EVALUATOR_GUIDE.md`.
 
 ## The Numbers (30 seconds)
 
