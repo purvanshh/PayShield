@@ -13,8 +13,8 @@
 ### Day 2: Core Concepts
 
 - [ ] Read [Architecture Overview](../architecture/overview.md)
-- [ ] Review [Ensemble Architecture](../architecture/ensemble.md)
-- [ ] Read [API Reference](../api/endpoints.md)
+- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
+- [ ] Read [API Reference](../API_REFERENCE.md)
 - [ ] Execute a test transaction: `python scripts/quick_test.py`
 - [ ] Explore the codebase structure
 
@@ -28,9 +28,9 @@
 
 ### Day 4: Operations
 
-- [ ] Review [Operations Manual](../operations/deployment.md)
+- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
 - [ ] Practice deploy to dev environment
-- [ ] Review [Monitoring](../operations/monitoring.md) dashboards
+- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md) for observability
 - [ ] Simulate incident using runbooks
 
 ### Day 5: Advanced Topics

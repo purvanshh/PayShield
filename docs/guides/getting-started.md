@@ -112,6 +112,6 @@ curl http://localhost:8000/admin/drift/psi -H "x-api-key: payshield-dev-key-2026
 ## Next Steps
 
 - [Architecture Overview](../architecture/overview.md)
-- [API Documentation](../api/endpoints.md)
+- [API Reference](../API_REFERENCE.md)
 - [Development Guide](development.md)
-- [Deployment Guide](../operations/deployment.md)
+- [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
