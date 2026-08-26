@@ -1,9 +1,9 @@
 # Contributing to PayShield
 
-Thanks for wanting to help. PayShield is a three-layer risk platform (L1
-statistical rules, L2 GNN, L3 LLM investigation) extended by Track 2 with a
-chargeback evidence responder and a return-risk scorer — all defence-only,
-all explainable, all measured.
+Thanks for wanting to help. PayShield is a **return-risk scorer** for Indian
+e-commerce (7 features → XGBoost primary → tiered actions), with fraud (GNN)
+and chargeback (rebuttal builder) extensions on the same tamper-evident audit
+chain — all defence-only, all explainable, all measured.
 
 ## Quick start
 
@@ -16,7 +16,7 @@ cd PayShield
 pip install -r requirements.txt -r requirements-dev.txt
 
 # 3. Run the suite — everything below must pass before you open a PR
-make test          # 537 tests, hermetic (no Redis/Neo4j/Ollama required)
+make test          # 455 tests, hermetic (no live services required)
 ```
 
 ## Pre-PR checklist
@@ -61,9 +61,9 @@ pytest tests/unit/chargeback tests/unit/return_risk tests/integration -q
   `RAZORPAY_*`, `PAYSHIELD_DEV_API_KEY`, compose defaults).
 - Ever-changing RuleSets: edit `configs/return_risk_rules.yaml` and its
   test, never the conditions inline.
-- Compliance must not regress: run the three checkers
-  (`make compliance-check`) — results captured in
-  `COMPLIANCE_DELTA_TRACK2.md`.
+- The audit chain must not regress: the tamper-evident log lives in
+  `store/audit_log.py` (see [`COMPLIANCE_DELTA.md`](COMPLIANCE_DELTA.md) —
+  compliance certification is out of scope for this PoC).
 
 ## Getting help
 

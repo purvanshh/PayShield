@@ -231,7 +231,7 @@ Full table in `scripts/verify_live_stack.py`.
 ## Platform Extensions
 
 Fraud detection (`engine/`, a graph neural network) and chargeback response
-(`chargeback/`, an LLM dispute rebuttal builder) are implemented in the
+(`chargeback/`, a rule-based dispute rebuttal builder) are implemented in the
 codebase and share the same tamper-evident audit chain, but they are **excluded
 from this Track 02 submission** to keep the focus on return-risk. They live on
 as future work — see `docs/TRACK2_ARCHITECTURE.md`, `models/payshield_gnn_v1_card.md`

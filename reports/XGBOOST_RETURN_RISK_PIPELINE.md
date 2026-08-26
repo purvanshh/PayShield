@@ -153,9 +153,9 @@ gap.
 
 1. **Record the 2-minute video** (explicitly skipped by request).
 2. **`scripts/verify_live_stack.py` against a live Docker stack** — requires
-   `docker compose up` (Redis + API + Ollama). Docker is available but the
-   stack (torch API image + Ollama) was not brought up; the XGBoost engine is
-   already validated through the test suite and ASGI-level API checks.
+   `docker compose up` (Redis + API). Docker is available but the stack was
+   not brought up; the XGBoost engine is already validated through the test
+   suite and ASGI-level API checks.
 3. **Push to the remote** — commits are local (`git log`); push is up to the user.
 4. **Optional, honest limitations to disclose:**
    - `device_fingerprint_match` is a **neutral 0.5** at inference (no device

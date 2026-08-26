@@ -56,7 +56,7 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 - Verified response: **REJECT · confidence 1.0 · completeness 1.0**
   - evidence slots: `amount`, `summary`, `detailed_reason`, `billing_proof`
   - audit trail: `L1_EVIDENCE_COLLECTED → REBUTTAL_ASSEMBLED`
-  - narrative: deterministic fallback (LLM optional) — same facts, honest
+  - narrative: deterministic fallback — same facts, honest
     wording
 - Demo line: *"the rebuttal is assembled from evidence gathered at
   transaction time — we never re-analyse, we retrieve."*
@@ -66,7 +66,7 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 - Seeded audit entry for `TXN_NEW_001` (brand-new user, no device record).
 - Verified response: **PARTIAL · confidence 0.68 · completeness 0.68**
   - `graph_evidence=None`, `investigation_report=None`
-  - warnings: graph evidence incomplete + LLM report unavailable
+  - warnings: graph evidence incomplete + investigation report unavailable
 - Demo line: *"this is the case we can't win on evidence — the system says
   so instead of pretending. That's the honest-AI beat."*
 

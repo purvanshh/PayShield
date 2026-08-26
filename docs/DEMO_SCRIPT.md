@@ -44,8 +44,7 @@ curl -X POST http://localhost:8000/v1/score \
 **Expected output:** `decision: ALLOW`, low `fraud_probability`, `latency_ms` in single digits.
 
 **Talking points:** L1 velocity/geo/Benford run first (sub-ms); L2 GNN is
-*conditional* — runs only when the user has graph history; L3 LLM narrative
-is async via Celery and never blocks the response.
+*conditional* — runs only when the user has graph history.
 
 ## Scene 2 — Return Risk Scoring (0:45–1:30)
 
@@ -97,8 +96,8 @@ curl -X POST http://localhost:8000/v1/chargeback/respond \
 `razorpay_payload` with the contest flag and evidence slots.
 
 **Talking points:** evidence is reconstructed from the tamper-evident audit
-chain (nothing re-analysed); the narrative comes from the same LLM stack
-with a chargeback-specific prompt; the draft is *not* auto-submitted —
+chain (nothing re-analysed); the narrative is built by the rule-based
+generator with an honest completeness cap; the draft is *not* auto-submitted —
 submission is `chargeback:admin` only (human-in-the-loop).
 
 ## Scene 4 — Metrics (2:30–3:15)
@@ -157,7 +156,7 @@ curl -X POST http://localhost:8000/v1/chargeback/respond \
 ```
 
 **Expected output:** conservative `ACCEPT`/`PARTIAL` with low confidence and
-warnings — "graph evidence incomplete", "LLM investigation report not
+warnings — "graph evidence incomplete", "investigation report not
 available". We show this case deliberately: when the evidence isn't there,
 the system says so.
 
@@ -166,11 +165,11 @@ the system says so.
 - Problem taste: chargeback + return-fraud losses are a real Indian
   e-commerce pain; the demo uses UPI/Visa/MC reason codes and network
   deadlines, not generic ones.
-- Build quality: 530+ tests, clean ruff on new modules, hermetic tests
-  (no real Redis/Neo4j/Ollama needed).
+- Build quality: 455+ tests, clean ruff on new modules, hermetic tests
+  (no live services needed).
 - AI judgment: rules for the sub-ms decisions, GNN for relational fraud,
-  LLM for narrative — each tool where it fits, with honest confidence
-  everywhere.
+  XGBoost for return-risk — each tool where it fits, with honest
+  confidence everywhere.
 - Failure recovery: the weak-case scene is the "what broke, how you got
   out" moment.
 

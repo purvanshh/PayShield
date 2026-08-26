@@ -4,38 +4,31 @@
 
 ```
 payshield/
-├── api/                # FastAPI application
-│   ├── main.py         # App factory & startup
-│   ├── routes/         # API endpoints (score, investigation, feedback, etc.)
-│   ├── middleware.py   # Middleware (auth, rate-limit, timing, CORS, security headers)
-│   ├── dependencies.py # Dependency injection (verify_api_key, get_redis, rate limits)
-│   ├── auth.py         # JWT, TOTP MFA, API key verification
-│   ├── security.py     # Rate limiter (Redis incr+TTL, IP sliding window)
-│   └── lifespan.py     # Startup/shutdown resource lifecycle
-├── engine/             # Scoring & decision engine
-│   ├── statistical_filter.py  # L1: 12 rules (velocity, geo, Benford)
-│   ├── ensemble.py            # Weighted fusion + isotonic calibrator
-│   ├── graph_model.py         # HeteroConv+SAGEConv GNN
-│   └── graph_feature_engine.py # Ego-graph extraction
-├── store/              # Data stores
-│   ├── redis_client.py       # AsyncRedisClient (circuit breaker)
-│   ├── audit_log.py          # Hash-chained JSONL + async queue writer
-│   ├── graph_db.py           # NetworkXGraphDB (fallback)
-│   └── connection_pool.py    # Redis pool + circuit breaker
-├── compliance/         # Programmatic compliance checkers
-│   ├── pci_dss.py, rbi_localization.py, eu_ai_act.py
-├── agents/             # 4-agent orchestration + agent/archived (see docs/architecture/AGENTS.md)
-├── ml/                 # ML lifecycle (train, registry, A/B testing, inference)
-├── llm/                # Ollama LLM integration (client, prompts, parser, investigator)
-├── tasks/              # Celery async tasks
-├── configs/            # YAML configuration (rules, RBAC, thresholds, features)
-├── tests/              # Test suite (392 tests, 74% coverage)
-│   ├── unit/           # 13+ unit test files
-│   ├── integration/    # API, score-path, security integration tests
-│   ├── e2e/            # End-to-end tests (needs live services)
-│   └── fake_redis.py   # In-memory async Redis (single source of truth)
-├── docs/               # Documentation
-└── models/             # Model artifacts + fairness audit
+├── return_risk/         # ★ Evaluated hero: feature engine, rules, XGBoost scorer
+├── api/                 # FastAPI application
+│   ├── main.py          # App factory & router wiring
+│   ├── routes/          # return_risk, health, auth, admin, experiments, meta (+ chargeback/score extensions)
+│   ├── middleware.py    # Auth, rate-limit, timing, CORS, security headers
+│   ├── dependencies.py  # verify_api_key, get_redis, rate limits
+│   ├── auth.py          # JWT, TOTP MFA, API key verification
+│   ├── security.py      # Rate limiter (Redis incr+TTL)
+│   └── lifespan.py      # Startup/shutdown resource lifecycle
+├── engine/              # (extension) fraud: L1 statistical filter, L2 GNN, ensemble
+├── chargeback/          # (extension) dispute rebuttal builder + Razorpay client
+├── store/               # Redis client, audit log, connection pool (+ fraud graph store)
+├── integrations/        # Razorpay adapter + webhooks (order.paid → score)
+├── ml/                  # return-risk champion/challenger A/B + model lifecycle
+├── observability/       # PSI drift monitoring (return-risk surface)
+├── data/synthetic/      # return-risk generator (non-circular DGP)
+├── scripts/             # train/ablation/tune/benchmark/verify — the evidence
+├── configs/             # YAML configuration (return_risk_rules, feature_registry, RBAC)
+├── tests/               # Test suite (455 tests)
+│   ├── unit/            # incl. return_risk/ scorer, feature engine, rules
+│   ├── integration/     # API, return-risk, chargeback, security
+│   ├── e2e/             # End-to-end (needs live services)
+│   └── fake_redis.py    # In-memory async Redis (single source of truth)
+├── docs/                # Documentation
+└── models/              # Return-risk model artifacts + cost model
 ```
 
 ## Coding Standards
@@ -83,7 +76,7 @@ make typecheck  # Run mypy
 Testing conventions:
 - `tests/fake_redis.py` — in-memory async Redis (single source of truth, never per-test patch)
 - `tests/conftest.py` — autouse fixture for hermetic rate limiter
-- Coverage gates: TOTAL ≥ 70%, score.py ≥ 80%, ensemble.py ≥ 80%, graph_feature_engine.py ≥ 80%
+- Coverage gates: TOTAL ≥ 70%, `return_risk/*` ≥ 80%
 
 ## Git Workflow
 
@@ -111,15 +104,12 @@ chore:    Maintenance
 ## Docker Development
 
 ```bash
-# Build images
-make docker-build
+# Build and start the stack (api + redis)
+docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml up -d
 
-# Start services
-make dev
-
-# Run specific service
-docker compose up api -d
-docker compose up celery-worker -d
+# API only
+docker compose -f docker/docker-compose.yml up api -d
 ```
 
 ## Environment-Specific Configuration
@@ -129,7 +119,7 @@ docker compose up celery-worker -d
 | Development | `.env` | Local overrides |
 | Testing | `.env.test` | CI/CD pipeline |
 | Staging | `.env.staging` | Pre-production |
-| Production | `.env.prod` | K8s secrets |
+| Production | `.env.prod` | Env-secret config, rotate dev defaults |
 
 ## Common Tasks
 

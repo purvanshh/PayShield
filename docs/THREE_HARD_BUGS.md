@@ -71,9 +71,8 @@ isn't — the brief is built around *honest metrics*. A claim you can't
 reproduce isn't just wrong; it signals you don't know the difference
 between a target and a measurement.
 
-**The debugging trail.** For the GNN benchmark series
-(`scripts/benchmark_gnn.py`, 36k synthetic transactions, user-disjoint
-80/10/10 split), I finally ran the numbers:
+**The debugging trail.** For the GNN benchmark series (36k synthetic
+transactions, user-disjoint 80/10/10 split), I finally ran the numbers:
 
 - **PR-AUC 0.198** (not 0.92); edge-free MLP baseline 0.056 → **3.5× lift**;
 - AUC-ROC 0.692.

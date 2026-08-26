@@ -2,116 +2,76 @@
 
 ## Prerequisites
 
-- Python 3.12+
-- Docker & Docker Compose
-- Redis 7+
-- PostgreSQL 16+
-- Node.js 20+ (for dashboard)
-- Make
+- Python 3.11+
+- Docker & Docker Compose (only for the live-stack demo)
+- Redis 7+ (only for the live scorer path)
 
 ## Installation
 
-### 1. Clone the Repository
-
 ```bash
-git clone https://github.com/your-org/payshield.git
-cd payshield
-```
-
-### 2. Environment Setup
-
-```bash
+git clone https://github.com/purvanshh/PayShield.git
+cd PayShield
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-### 3. Configuration
+## Configuration
 
 ```bash
 cp .env.example .env
-# Edit .env with your settings
 ```
 
-Required environment variables (see `.env.example` for the full list):
+Key variables (see `.env.example` for the full list):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PAYSHIELD_DEV_API_KEY` | API key for all endpoints (`x-api-key` header) | `payshield-dev-key-2026` |
-| `REDIS_HOST` / `REDIS_PORT` | Redis connection | `localhost:6379` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://payshield:payshield@localhost:5432/payshield` |
-| `NEO4J_URI` | Neo4j connection | `bolt://localhost:7687` |
-| `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local LLM inference | `http://localhost:11434` / `qwen2.5:3b` |
-| `ENCRYPTION_KEY` | AES-256 key for data at rest (PCI-DSS 3.4) | dev-only default |
-| `DATA_REGION` | Data residency (RBI DL-1) | `IN` |
-| `ENFORCE_RBAC` | Role-gated admin endpoints | `false` locally (compose sets `true`) |
+| `REDIS_HOST` / `REDIS_PORT` | Redis connection (live scorer path) | `localhost:6379` |
+| `ENCRYPTION_KEY` | AES-256 key for data at rest (dev-only default) | `pay-shield-dev-aes256-key-0001` |
+| `ENFORCE_RBAC` | Role-gated admin endpoints | `true` in compose |
 
-### 4. Database Setup
+## Running
+
+### Hermetic (no services — the evaluation path)
+
+The return-risk evidence is fully reproducible with zero services:
 
 ```bash
-# Create database
-createdb payshield
-
-# Run migrations
-alembic upgrade head
-
-# Seed sample data (optional)
-python scripts/seed_data.py
+python scripts/train_xgb_return_risk.py      # train + baseline comparison (~20s)
+python scripts/ablation_study.py             # leave-one-feature-out ablation (~60s)
+python scripts/tune_xgb.py                   # 144-combo hyperparameter search (~15s)
+python scripts/benchmark_return_risk.py      # Redis-backed scorer benchmark
+python docs/cost_model/calculator.py         # the numbers in ₹
+python docs/cost_model/calculator.py --vertical-sensitivity
 ```
 
-### 5. Running the System
-
-#### Using Docker Compose (recommended for development)
+### Live stack (Docker)
 
 ```bash
-# Pull the LLM image the compose file expects
-ollama pull qwen2.5:3b
-
-# Start all 5 services (api, worker, redis, ollama, dashboard)
-docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml up -d --build   # api + redis
+python scripts/seed_demo_data.py                            # seed the curated scenarios
+python scripts/verify_live_stack.py                         # 10 scenarios vs real Redis
 ```
 
-Health: `curl http://localhost:8000/health` → `{"status": "healthy", "checks": {redis, neo4j, ollama, celery}}`.
+Health: `curl http://localhost:8000/health`.
 
-#### Manual Start
-
-```bash
-# Terminal 1: API Server
-uvicorn api.main:app --reload --port 8000
-
-# Terminal 2: Celery Worker
-celery -A tasks.celery_app worker -Q investigation,default -l info
-
-# Terminal 3: Dashboard (optional)
-cd dashboard && npm run dev
-```
-
-### 6. Verify Installation
+## Verify the return-risk scorer
 
 ```bash
-# Health check
-curl http://localhost:8000/health
-
-# Score a transaction (normal → ALLOW)
-curl -X POST http://localhost:8000/v1/score \
-  -H "x-api-key: payshield-dev-key-2026" \
-  -H "Content-Type: application/json" \
-  -d '{"txn_id":"TEST001","user_id":"U001","merchant_id":"M001","amount":500,
-       "timestamp":"2026-07-31T12:00:00","device_fingerprint":"fp_test_1",
-       "location":{"lat":19.076,"lon":72.8777,"timestamp":"2026-07-31T12:00:00"},
-       "mcc_code":"5411","txn_type":"P2M"}'
-
-# Compliance status
-curl http://localhost:8000/admin/compliance/status -H "x-api-key: payshield-dev-key-2026"
+curl -X POST http://localhost:8000/v1/return/score \
+  -H "X-API-Key: payshield-dev-key-2026" -H "Content-Type: application/json" \
+  -d '{"order_id":"ORD_DEMO_001","user_id":"U_SERIAL_001","merchant_id":"M_FASHION_001",
+       "amount":5500,"category":"fashion","payment_method":"UPI","cod_flag":true}'
 
 # Drift report
-curl http://localhost:8000/admin/drift/psi -H "x-api-key: payshield-dev-key-2026"
+curl http://localhost:8000/admin/drift/return-risk -H "X-API-Key: payshield-dev-key-2026"
 ```
 
 ## Next Steps
 
-- [Architecture Overview](../architecture/overview.md)
+- [Evaluator Guide](../../EVALUATOR_GUIDE.md) — the 10-minute walkthrough
 - [API Reference](../API_REFERENCE.md)
 - [Development Guide](development.md)
 - [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)

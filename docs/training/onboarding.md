@@ -1,64 +1,38 @@
 # Developer Onboarding Guide
 
-## First Week
+## Day 1: Environment Setup
 
-### Day 1: Environment Setup
-
-- [ ] Clone repository and install dependencies
-- [ ] Run `make dev` to start local environment
+- [ ] Clone repository and install dependencies (`pip install -r requirements.txt -r requirements-dev.txt`)
 - [ ] Complete [Getting Started Guide](../guides/getting-started.md)
-- [ ] Verify `curl localhost:8000/health` returns OK
-- [ ] Run test suite: `make test`
+- [ ] Run the hermetic evidence scripts: `python scripts/train_xgb_return_risk.py`
+- [ ] Run the test suite: `make test` (455 tests, no services needed)
+- [ ] (Optional) Start the live stack: `docker compose -f docker/docker-compose.yml up -d`
 
-### Day 2: Core Concepts
+## Day 2: Core Concepts
 
-- [ ] Read [Architecture Overview](../architecture/overview.md)
-- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
+- [ ] Read [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
+- [ ] Read [Evaluator Guide](../../EVALUATOR_GUIDE.md) — what the submission is judged on
 - [ ] Read [API Reference](../API_REFERENCE.md)
-- [ ] Execute a test transaction: `python scripts/quick_test.py`
-- [ ] Explore the codebase structure
+- [ ] Score a return-risk order (see Getting Started) and inspect the feature breakdown
+- [ ] Explore the codebase structure (`return_risk/` is the evaluated hero)
 
-### Day 3: Development Workflow
+## Day 3: Development Workflow
 
-- [ ] Create a feature branch from `develop`
-- [ ] Implement a small change (e.g., add a rule)
+- [ ] Create a feature branch
+- [ ] Implement a small change (e.g., add a rule to `configs/return_risk_rules.yaml`)
 - [ ] Write tests for the change
-- [ ] Submit a pull request
-- [ ] Review a colleague's PR
+- [ ] Submit a pull request (follow `CONTRIBUTING.md`)
 
-### Day 4: Operations
+## Day 4: Verification
 
-- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md)
-- [ ] Practice deploy to dev environment
-- [ ] Review [Track 2 Architecture](../TRACK2_ARCHITECTURE.md) for observability
-- [ ] Simulate incident using runbooks
-
-### Day 5: Advanced Topics
-
-- [ ] Review [Agent System](../architecture/agents.md)
-- [ ] Understand Celery task workflow
-- [ ] Review LLM investigator configuration
-- [ ] Shadow on-call engineer
+- [ ] Run `python scripts/benchmark_return_risk.py` and `python docs/cost_model/calculator.py`
+- [ ] Run `python scripts/verify_live_stack.py` against the Docker stack
+- [ ] Review the honest ledger: [`MISTAKES_AND_LEARNINGS.md`](../../MISTAKES_AND_LEARNINGS.md)
 
 ## Key Resources
 
 ### Documentation
-- `docs/` - Complete documentation suite
-- `CONTRIBUTING.md` - Contribution guidelines
-- `Makefile` - Common development commands
-
-### Communication
-- **Slack**: #payshield-dev (development), #payshield-alerts (incidents)
-- **Email**: dev@payshield.io
-- **Standup**: Daily 10:00 AM
-- **Sprint Planning**: Monday 11:00 AM
-
-### Tools & Access
-
-| Tool | URL | Purpose |
-|------|-----|---------|
-| GitHub | github.com/your-org/payshield | Code, issues, PRs |
-| Grafana | grafana.payshield.io | Dashboards |
-| Sentry | sentry.io/org/payshield | Error tracking |
-| ArgoCD | argocd.payshield.io | Deployment management |
-| Jira | jira.payshield.io | Task tracking |
+- `docs/` — cost model, Razorpay integration, hard bugs, architecture
+- `EVALUATOR_GUIDE.md` — the 10-minute walkthrough
+- `Makefile` — common commands (`test`, `lint`, `train-xgb`, `ablation-xgb`, `tune-xgb`)
+- `CONTRIBUTING.md` — contribution guidelines

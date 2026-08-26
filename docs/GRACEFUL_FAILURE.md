@@ -18,7 +18,7 @@ prior*, *caps confidence*, *warns explicitly* and *leaves an audit trail*.
 | Redis unavailable | `_safe_redis` degrades on every failed read | Neutral priors, no velocity/reason features (`default_redis_error`) | Floor (history unreadable) | `REDIS_UNAVAILABLE` warning |
 | Thin chargeback evidence | Required-field completeness gate | `PARTIAL` rebuttal + explicit warnings | Capped at 0.70 → 0.68 | `INCOMPLETE_EVIDENCE` warning |
 | GNN timeout (> 40 ms) | Timeout guard in the ensemble | L1-only fusion | Unchanged | `GNN_TIMEOUT` note |
-| LLM unavailable | Health check on the investigator task | Investigation skipped; score still served | Unchanged | `LLM_SKIPPED` note |
+| Chargeback LLM narrative | LLM stack removed in the scope cut | Rule-based narrative fallback only | Capped | `NARRATIVE_FALLBACK` note |
 
 ## How Degradation Is Proven, Not Just Claimed
 

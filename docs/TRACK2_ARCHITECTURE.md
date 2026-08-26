@@ -16,20 +16,20 @@
   ┌────────▼────────┐  ┌────────▼────────┐  ┌──────────▼───────────┐
   │ L1 velocity/geo │  │ ReturnRisk      │  │ ChargebackEvidence   │
   │ L2 GNN (cond.)  │  │ FeatureEngine   │  │ Collector (audit    │
-  │ L3 LLM (async)  │  │  (Redis profile)│  │  chain re-read)     │
-  │ Ensemble fusion │  └────────┬────────┘  └──────────┬───────────┘
-  └────────┬────────┘           │                      │
-           │           ┌────────▼────────┐  ┌──────────▼───────────┐
-           │           │ RulesEngine     │  │ RebuttalBuilder      │
-           │           │ (YAML, reload)  │  │ (type/narrative/     │
-           │           └────────┬────────┘  │  Razorpay payload)   │
-           │                    │           └──────────┬───────────┘
+  │ Ensemble fusion │  │  (Redis profile)│  │  chain re-read)     │
+  └────────┬────────┘  └────────┬────────┘  └──────────┬───────────┘
            │           ┌────────▼────────┐              │
-           │           │ Weighted Scorer │  ┌──────────▼───────────┐
-           │           │ (breakdown)     │  │ NarrativeGenerator   │
-           │           └────────┬────────┘  │ (LLM or fallback)    │
-           │                    │           └──────────┬───────────┘
-           │           ┌────────▼────────┐              │
+           │           │ RulesEngine     │  ┌──────────▼───────────┐
+           │           │ (YAML, reload)  │  │ RebuttalBuilder      │
+           │           └────────┬────────┘  │ (type/narrative/     │
+           │                    │           │  Razorpay payload)   │
+           │           ┌────────▼────────┐  └──────────┬───────────┘
+           │           │ XGBoost primary │              │
+           │           │ fallback:       │  ┌──────────▼───────────┐
+           │           │ weighted scorer │  │ NarrativeGenerator   │
+           │           └────────┬────────┘  │ (rule-based; LLM     │
+           │                    │           │  stack removed)      │
+           │           ┌────────▼────────┐  └──────────┬───────────┘
            │           │ Tier + recs     │  ┌──────────▼───────────┐
            └──────────►└─────────────────┘  │ RazorpayClient       │
                                             │ (mock / real)        │
@@ -45,7 +45,7 @@
 
 | Sink | Track 2 consumers |
 |---|---|
-| `store/audit_logs/` — tamper-evident JSONL chain | evidence collector (point-in-time reconstruction), webhook event log, justification for RBI controls |
+| `store/audit_logs/` — tamper-evident JSONL chain | evidence collector (point-in-time reconstruction), webhook event log |
 | Redis `return_risk:*` | feature engine (profiles, velocity zsets, merchant baselines, category zsets) |
 | Redis `velocity:user:*`, `dfp:*`, `ud:*`, `benford:*` | L1 features + evidence collector device/merchant evidence |
 | Redis `chargeback:rebuttal:{dispute_id}` | draft cache (TTL 30d) + `chargeback:payment_txn:{payment_id}` for webhook auto-assembly |
@@ -61,7 +61,8 @@ response with per-feature contributions; profile refreshed in background.
 **Chargeback** (remedial path): webhook (HMAC-verified) or manual call →
 txn resolved from audit chain → L1 snapshot + device/merchant evidence →
 completeness score → rule-based response type (ACCEPT/REJECT/PARTIAL) →
-narrative (LLM with deterministic fallback) → Razorpay payload cached →
+narrative (rule-based; the LLM stack was removed in the scope cut) →
+Razorpay payload cached →
 draft returned; only `chargeback:admin` can submit.
 
 ## Distinctive design choices (summary — full rationale in docs/DESIGN_DECISIONS.md)

@@ -28,15 +28,14 @@ We aim to:
 - **Authorization**: RBAC enforced on all admin endpoints (`ENFORCE_RBAC=true`; roles in `configs/rbac.yaml`)
 - **Encryption**: TLS 1.3 in transit, AES-256 at rest (`ENCRYPTION_KEY` env, PCI-DSS 3.4)
 - **Audit**: Tamper-evident audit log — append-only JSONL with SHA-256 hash chaining and PII masking (PAN, UPI IDs, device fingerprints) written on every scoring decision (`store/audit_log.py`, PCI-DSS 10.1)
-- **Secrets**: SealedSecrets in Kubernetes — encrypted in Git, only decryptable by cluster; dev-only defaults in `.env.example` must be rotated in production
-- **Network**: K8s network policies — zero-trust between pods
+- **Secrets**: env-based config only — dev-only defaults in `.env.example` must be rotated in production
+- **Network**: service-to-service access limited to the compose network (api ↔ redis)
 - **Dependencies**: Automated vulnerability scanning via Dependabot
 
 ## Known Gaps
 
 | Area | Status |
 |------|--------|
-| Dashboard auth tokens in localStorage (TD-003) | Pending — httpOnly cookies planned |
 | OpenTelemetry distributed tracing | Not wired — correlation IDs available |
 
 ## Disclosure Policy

@@ -36,10 +36,12 @@ The infrastructure exists for two things the brief actually asks about:
 **the enrichment story** (Redis holds the user/merchant history that takes the
 same features from 0.8067 to 0.9311 — that gap *is* the finding), and **the
 platform extensions** (fraud/chargeback on the same audit chain), which are
-explicitly demoted to future work in the README. Postgres, Neo4j, Ollama and
-the React dashboard serve the demo and the extensions, not the evaluated
-scorer. If I had 24 hours, I'd keep Redis, cut the dashboard and Neo4j, and
-spend the saved time on the vertical-sensitivity analysis now in
+explicitly demoted to future work in the README. Everything else — Postgres,
+Neo4j, Ollama, the Celery workers, the React dashboard and the k8s manifests —
+was **removed in a deliberate scope cut**: the repo went from ~40 top-level
+directories to ~19 and from 579 tests to 455, all still green. If I had 24
+hours, I'd keep Redis and the return-risk evidence scripts exactly as they are
+and spend any saved time on the vertical-sensitivity analysis now in
 `docs/COST_MODEL.md`.
 
 ## Q3: "Your data is synthetic. Why should we trust this?"

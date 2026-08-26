@@ -13,7 +13,7 @@ each chargeback inherits its transaction's record plus dispute metadata.
 | Transactions (all ALLOWED by PayShield) | 100 |
 | Chargebacks | 12 (12.0%) |
 | With L2 graph evidence | 56/100 |
-| With L3 LLM investigation | 34/100 |
+| With L3 LLM investigation (LLM stack since removed) | 34/100 |
 
 ## Chargebacks by network
 

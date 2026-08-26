@@ -1,94 +1,38 @@
-# Compliance Hardening — Before / After Delta
+# Compliance — Out of Scope (PoC)
 
-> **Disclaimer:** This document tracks gaps for **future compliance work**. No
-> certifications have been sought or obtained. All scores in prior versions
-> were from **programmatic self-assessments, not third-party audits**. PCI-DSS,
-> RBI and EU AI Act certification are out of scope for this PoC; the audit-chain
-> infrastructure (`store/audit_log.py`) is designed to *support* future
-> certification, not to claim it.
+> **Disclaimer:** No certifications have been sought or obtained for this
+> Proof-of-Concept. PCI-DSS, RBI and EU AI Act certification are **out of
+> scope**; the audit-chain infrastructure (`store/audit_log.py`) is designed to
+> *support* future certification, not to claim it.
 
-Compliance is checked programmatically by `compliance/pci_dss.py` and
-`compliance/rbi_localization.py` (each control = env var, artifact dir, or
-operational signal). Baseline run on 2026-07-31 before hardening; final run
-after the fixes below.
+Earlier versions of this repo carried programmatic self-assessment scores
+(PCI-DSS 90/100, RBI 100/100, EU AI Act 100/100) produced by
+`compliance/*ComplianceChecker` modules. Those were **self-assessments, not
+third-party audits**, and the checker modules have since been removed from the
+repo. The historical scores should not be read as certifications.
 
-## Summary
+## What the codebase supports today (future-work scaffolding)
 
-| Framework | Before | After | Pass |
-|-----------|--------|-------|------|
-| PCI-DSS   | 60/100 | 90/100 | yes (no high-severity findings) |
-| RBI       | 16/100 | 100/100 | yes |
-| EU AI Act | —      | 100/100 | yes (13 controls, all passing) |
+| Capability | Where | Relevance to future certification |
+|---|---|---|
+| Tamper-evident audit log | `store/audit_log.py` | Append-only JSONL with SHA-256 hash chaining, genesis-hash verification, PII masking at write — the substrate for PCI-DSS 10.x / RBI retention |
+| RBAC on admin routes | `configs/rbac.yaml` + `api/rbac.py` | Every admin route gated by `require_permission(...)` |
+| TOTP MFA for admin | `api/routes/auth.py` | RFC 6238 (SHA-1, 30s step, pure stdlib) — PCI-DSS 8.3-shaped |
+| JWT refresh rotation | `api/routes/auth.py` | 7-day sliding window, token-jti revocation |
+| Per-key / per-user rate limiting | `api/security.py` | 1000 req/hr Redis incr+TTL |
+| CORS restriction | `api/main.py` | Env-driven `FRONTEND_URL`, no wildcard |
+| Data region marker | `docker/docker-compose.yml` | `DATA_REGION=IN` |
 
-## PCI-DSS: 60 → 90
-
-Top-3 high-severity findings fixed:
-
-| Control | Finding (before) | Fix | Verified by |
-|---------|------------------|-----|-------------|
-| 3.4 | `ENCRYPTION_KEY` not set — payment data unencrypted at rest | AES-256 key injected via `ENCRYPTION_KEY` env (compose + `.env.example`, dev-only default) | checker reads env; key present in api & worker containers |
-| 8.1 | RBAC not enforced on admin endpoints | `ENFORCE_RBAC=true` in compose; every admin route gated by `require_permission(...)` | checker reads env |
-| 10.1 | Immutable audit log directory missing | `store/audit_log.py`: append-only JSONL audit log with SHA-256 hash chaining (`prev_hash` → `hash`), genesis hash verified; every score decision appended (`audit_20260731.jsonl`); PII masked at write (`fp_7***************`) | checker finds non-empty `store/audit_logs` |
-
-Remaining gap — resolved in Phase 9:
-
-| Control | Finding | Status |
-|---------|---------|--------|
-| 8.3 | MFA for admin accounts | **FIXED** — Phase 9 implemented RFC 6238 TOTP (SHA-1, 30s step, 6 digits, pure stdlib). `/auth/totp/setup` + `/auth/totp/verify` endpoints, admin-only via JWT role check. Module-level `auth_manager` singleton preserves secrets across requests. |
-
-## RBI: 16 → 100
-
-All five findings fixed:
-
-| Control | Finding (before) | Fix | Verified by |
-|---------|------------------|-----|-------------|
-| DL-1 | Data region `unknown` — must be India | `DATA_REGION=IN` in compose | checker reads env |
-| AI-1 | No explanation artifacts for production decisions | `api/routes/score.py:_persist_explanation` writes `models/production/explanations/{txn_id}.json` (rules + velocity/geo features) for every BLOCK/REVIEW | checker finds non-empty dir (14 artifacts) |
-| AI-1 (low) | LLM narratives disabled | `ENABLE_LLM_INVESTIGATOR=true`; async LLM investigation pipeline live (qwen2.5:3b, served from Redis) | checker reads env |
-| AI-2 | Analyst feedback dir missing — human oversight loop inactive | `api/routes/feedback.py` persists every analyst decision to `store/feedback/{feedback_id}.json`; loop exercised with 12 submissions | checker counts ≥ 10 entries |
-| AI-3 | Model registry has no versioned models | `models/registry/v1.1.0/` (GNN, production — `latest` symlink, `metadata.json`, model card) + `models/registry/v1.0.0/model_card.json` (statistical filter) + `models/registry/v0.1.0/model_card.json` (GNN, legacy) | checker finds `v*` dirs |
-
-## Supporting changes
-
-- `store/audit_log.py` — tamper-evident audit log + `PIIMasker` (PAN, UPI, device-fingerprint patterns) used by every decision path.
-- `api/routes/score.py` — audit append, explanation persistence, latency breakdown, and drift sampling on the live path.
-- `configs/rbac.yaml` — `system` role gains `feedback:write`; `api/rbac.py` accepts `x-api-key` for role-scoped endpoints.
-- `docker/docker-compose.yml` — data volumes (`store/audit_logs`, `store/feedback`, `models/production/explanations`, `compliance/reports`) persist artifacts across container rebuilds.
-- `observability/drift.py` — robust PSI estimator (shared quantile bins, bin-count scaling, Laplace smoothing) powers drift-aware compliance; see `docs/operations/monitoring.md`.
-- Reports archived under `compliance/reports/` (`pci_dss_20260731.json`, `rbi_20260731.json`).
-
-## Latest verified scores (2026-08-01, post-Phase-10)
-
-PCI-DSS **90/100** (passed) · RBI **100/100** (passed) · EU AI Act **100/100** (passed)
-
-**Phase 9–10 additions:**
-- TOTP MFA for admin accounts (RFC 6238, pure stdlib — PCI-DSS 8.3 resolved)
-- JWT refresh rotation with 7-day sliding window (fixed revocation bug: was storing raw token instead of jti)
-- Per-API-key rate limiting (1000 req/hr, Redis incr+TTL) + per-user limits
-- CORS restricted to env-driven `FRONTEND_URL` (no wildcard — PCI-DSS network control)
-- Redis `maxmemory_policy=allkeys-lru` enforced at connection init
-- Async audit logger — asyncio.Queue + background worker, <1ms hot-path append
-- EU AI Act checker: 13 controls, 100/100 score — conformity assessment, post-market monitoring, human oversight logging, technical documentation
-- Fairness audit (SPD/EOD on synthetic gender/age-tier/city-tier slices)
-- Auto-generated model card from benchmark JSON (zero hand-edited metrics)
-- `verify_chain()` fix — was including `entry_id` in hash recomputation, causing all verifications to fail
-
-Honest engineering ledger (bugs found & fixed, incl. the PSI estimator and the
-"AUC > 0.92" correction): [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md)
-and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md).
-
-## How to reproduce
+## How to verify the audit chain
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build
-# drive some traffic (bursts create BLOCK/REVIEW artifacts):
-#   POST /v1/score ...  (repeat 14x, same user/merchant, ₹95k)
-# submit analyst feedback (≥ 10):
-#   POST /v1/feedback   {txn_id, analyst_id, original_decision, analyst_decision, ...}
-docker compose -f docker/docker-compose.yml exec api python3 -c "
-from compliance.pci_dss import PCIDSSComplianceChecker
-from compliance.rbi_localization import RBILocalizationChecker
-print(PCIDSSComplianceChecker().generate_report()['score'])
-print(RBILocalizationChecker().generate_report()['score'])
-"
+docker compose -f docker/docker-compose.yml up -d
+python scripts/seed_demo_data.py
+# drive a few /v1/return/score and /v1/return/update calls, then:
+docker compose -f docker/docker-compose.yml exec api python -c \
+  "from store.audit_log import audit_logger; print(audit_logger.verify_chain())"
 ```
+
+See the honest engineering ledger — including the "AUC > 0.92" correction and
+the PSI-estimator fix — in [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md)
+and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md).
