@@ -79,7 +79,6 @@ export function LoginPage() {
                 className="w-full bg-transparent border-b border-subtle pb-2 pt-1 font-mono-data text-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors rounded-none placeholder-outline-variant"
                 id="username"
                 name="username"
-                placeholder="admin"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -99,7 +98,6 @@ export function LoginPage() {
                 className="w-full bg-transparent border-b border-subtle pb-2 pt-1 font-mono-data text-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors rounded-none placeholder-outline-variant"
                 id="password"
                 name="password"
-                placeholder="••••••••"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
