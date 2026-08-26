@@ -228,14 +228,14 @@ Full table in `scripts/verify_live_stack.py`.
 
 ---
 
-## Platform Extensions
+## Repository Scope
 
-Fraud detection (`engine/`, a graph neural network) and chargeback response
-(`chargeback/`, a rule-based dispute rebuttal builder) are implemented in the
-codebase and share the same tamper-evident audit chain, but they are **excluded
-from this Track 02 submission** to keep the focus on return-risk. They live on
-as future work — see `docs/TRACK2_ARCHITECTURE.md`, `models/payshield_gnn_v1_card.md`
-and `docs/RAZORPAY_INTEGRATION.md`.
+This submission evaluates the **return-risk scorer** only. Fraud detection
+(`engine/`, `ml/`) and chargeback response (`chargeback/`) extensions exist in
+the codebase as future platform work but are **not measured or documented in
+this track** — their API routes (`/v1/score`, `/v1/chargeback/*`) remain
+mounted for completeness but are out of scope, and every number, metric and
+cost figure here covers the return-risk surface only.
 
 **Compliance:** PCI-DSS, RBI and EU AI Act certifications are **out of scope
 for this PoC**. The audit-chain infrastructure (`store/audit_log.py`) is
