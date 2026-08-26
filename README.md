@@ -319,32 +319,18 @@ told as full stories (root cause, debugging trail, lesson) in
 ```
 PayShield/
 ├── return_risk/               # ★ Evaluated hero: feature engine, rules, XGBoost scorer
-├── data/synthetic/            # return-risk generator (non-circular DGP) + UPI txn generator
+├── data/synthetic/            # return-risk generator (non-circular DGP)
 ├── scripts/                   # train/ablation/tune/benchmark/verify — the evidence
 ├── docs/ + docs/cost_model/   # cost model + calculator + vertical sensitivity
 ├── api/                       # FastAPI app (return-risk routes are the hero surface)
 ├── integrations/              # Razorpay adapter + webhooks (order.paid → score)
 ├── engine/                    # (extension) fraud: L1 filter, L2 GNN, ensemble
 ├── chargeback/                # (extension) dispute rebuttal builder + Razorpay client
-├── store/                     # Redis / Postgres / audit chain
-├── ml/                        # model lifecycle, champion/challenger A/B
-├── observability/             # PSI drift monitoring, Prometheus metrics
-├── dashboard/                 # operator UI (demo surface)
+├── store/                     # Redis client + audit chain (+ fraud graph store)
+├── ml/                        # return-risk champion/challenger A/B
+├── observability/             # PSI drift monitoring (return-risk surface)
 └── tests/                     # unit + integration + e2e
 ```
-
-## Appendix D — Agent System
-
-Return-risk is minimal by design. Full rationale in
-[`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md) — development-only
-agents are archived under `agents/archived/` for transparency.
-
-| Live agent | Responsibility |
-|---|---|
-| `transaction_agent` | Extracts order features + evaluates rules |
-| `profile_agent` | Maintains user return/order history |
-| `reflection_agent` | Nightly false-positive clustering + weight sync |
-| `human_review_agent` | Ingests analyst overrides |
 
 ---
 

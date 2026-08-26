@@ -16,11 +16,11 @@ it was copied into the README and talks. Nobody reran it.
 **Impact:** A judge or peer reading the card would trust a number that did not
 exist and could not be reproduced.
 
-**Fix:** Ran the real benchmark (`scripts/benchmark_gnn.py`, 36k synthetic
-transactions, user-disjoint split): **PR-AUC 0.198** (AUC-ROC 0.692) — not
-0.92. The honest number was actually a good story: a **3.5–4× lift** over an
-edge-free MLP baseline. The v1.1.0 iteration (target-user readout, five live
-features) held the lift: **test PR-AUC 0.4125**, still 4.0× vs the baseline.
+**Fix:** Ran the real GNN benchmark (36k synthetic transactions, user-disjoint
+split): **PR-AUC 0.198** (AUC-ROC 0.692) — not 0.92. The honest number was
+actually a good story: a **3.5–4× lift** over an edge-free MLP baseline. The
+v1.1.0 iteration (target-user readout, five live features) held the lift:
+**test PR-AUC 0.4125**, still 4.0× vs the baseline.
 
 **Lesson:** Publish the number the run produced, or don't publish it. The
 corrected 0.4125 is smaller than the aspirational 0.92 — and infinitely more
@@ -73,9 +73,9 @@ stubs or re-implementations of what existing infrastructure already covered.
 **Impact:** The codebase looked like architecture-astronauting. A judge would
 ask "why this many agents?" and there was no good answer.
 
-**Fix:** Archived the agents that weren't in the live path to
-[`agents/archived/`](agents/archived/) with a transparent README. The live
-investigation path runs only the agents that actually execute.
+**Fix:** Archived the agents that weren't in the live path and, in the final
+scope pass, removed the agent framework entirely — the return-risk scorer runs
+the features → rules → XGBoost path directly, with no orchestration layer.
 
 **Lesson:** Scope discipline beats architectural ambition. Build what runs,
 document what didn't — and keep the live path small enough to defend.

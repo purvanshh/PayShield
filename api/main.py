@@ -82,18 +82,6 @@ def _include_routers(app: FastAPI):
         logger.warning(f"score_router_skipped: {e}")
 
     try:
-        from api.routes.investigation import router as investigation_router
-        app.include_router(investigation_router, prefix="/v1", tags=["investigation"])
-    except Exception as e:
-        logger.warning(f"investigation_router_skipped: {e}")
-
-    try:
-        from api.routes.feedback import router as feedback_router
-        app.include_router(feedback_router, prefix="/v1", tags=["feedback"])
-    except Exception as e:
-        logger.warning(f"feedback_router_skipped: {e}")
-
-    try:
         from api.routes.metrics import router as metrics_router
         app.include_router(metrics_router, tags=["metrics"])
     except Exception as e:
@@ -106,34 +94,16 @@ def _include_routers(app: FastAPI):
         logger.warning(f"admin_router_skipped: {e}")
 
     try:
-        from api.routes.stream import router as stream_router
-        app.include_router(stream_router, tags=["stream"])
-    except Exception as e:
-        logger.warning(f"stream_router_skipped: {e}")
-
-    try:
         from api.routes.experiments import router as experiments_router
         app.include_router(experiments_router, tags=["experiments"])
     except Exception as e:
         logger.warning(f"experiments_router_skipped: {e}")
 
     try:
-        from api.routes.compliance import router as compliance_router
-        app.include_router(compliance_router, tags=["compliance"])
-    except Exception as e:
-        logger.warning(f"compliance_router_skipped: {e}")
-
-    try:
         from api.routes.chargeback_webhook import router as chargeback_webhook_router
         app.include_router(chargeback_webhook_router, tags=["webhooks"])
     except Exception as e:
         logger.warning(f"chargeback_webhook_router_skipped: {e}")
-
-    try:
-        from api.routes.graph import router as graph_router
-        app.include_router(graph_router, prefix="/v1/graph", tags=["graph"])
-    except Exception as e:
-        logger.warning(f"graph_router_skipped: {e}")
 
     try:
         from api.routes.chargeback import router as chargeback_router

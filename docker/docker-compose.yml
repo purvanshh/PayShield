@@ -14,12 +14,9 @@ services:
       - compliance_reports_data:/app/compliance/reports
     environment:
       - REDIS_HOST=redis
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_MODEL=qwen2.5:3b
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-pay-shield-dev-aes256-key-0001}
       - ENFORCE_RBAC=true
       - DATA_REGION=IN
-      - ENABLE_LLM_INVESTIGATOR=true
     depends_on:
       redis:
         condition: service_healthy
@@ -33,30 +30,6 @@ services:
       timeout: 10s
       retries: 3
 
-  worker:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
-    command: celery -A tasks.celery_app worker -Q investigation,default --loglevel=info
-    volumes:
-      - store_data:/app/store/audit_logs
-      - store_data:/app/store/feedback
-      - explanations_data:/app/models/production/explanations
-      - compliance_reports_data:/app/compliance/reports
-    environment:
-      - REDIS_HOST=redis
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_MODEL=qwen2.5:3b
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-pay-shield-dev-aes256-key-0001}
-      - ENFORCE_RBAC=true
-      - DATA_REGION=IN
-      - ENABLE_LLM_INVESTIGATOR=true
-    depends_on:
-      redis:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-
   redis:
     image: redis:7-alpine
     ports:
@@ -69,31 +42,8 @@ services:
     volumes:
       - redis_data:/data
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  dashboard:
-    build:
-      context: ../dashboard
-      dockerfile: ../docker/Dockerfile.dashboard
-    ports:
-      - "3000:80"
-    depends_on:
-      api:
-        condition: service_started
-
 volumes:
   redis_data:
-  ollama_data:
   store_data:
   explanations_data:
   compliance_reports_data:

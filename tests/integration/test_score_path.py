@@ -416,29 +416,6 @@ class TestScorePathRobustness:
         assert resp.status_code == 200
         assert resp.json()["decision"] == "BLOCK"
 
-    async def test_investigation_enqueue_failure_ignored(self, client, monkeypatch):
-        ac, resources = client
-        monkeypatch.setattr(score_module, "_celery_available", True)
-        monkeypatch.setattr(score_module, "generate_investigation", _FakeCeleryTask())
-        now = datetime.utcnow().timestamp()
-        bursts = [now - 60 + i * 2 for i in range(25)]
-        redis = resources["redis"]
-        redis.seed_velocity(
-            "U_ENQ_001", "DEV_ENQ_001", bursts,
-            amounts=[10000.0] * 25, merchants=["M5502"] * 25,
-        )
-        redis.seed_velocity(
-            "U_ENQ_002", "DEV_ENQ_001", bursts,
-            amounts=[10000.0] * 25, merchants=["M5502"] * 25,
-        )
-        resp = await ac.post(
-            "/v1/score",
-            json=_txn_payload("TXN_ENQ_01", user_id="U_ENQ_001", device="DEV_ENQ_001"),
-            headers=HEADERS,
-        )
-        assert resp.status_code == 200
-        assert resp.json()["decision"] == "BLOCK"
-
     async def test_cache_write_failure_ignored(self, client, monkeypatch):
         ac, resources = client
         redis = resources["redis"]
@@ -529,11 +506,6 @@ class TestScorePathRobustness:
         )
         assert resp.status_code == 200
         assert resp.json()["decision"] == "ALLOW"
-
-
-class _FakeCeleryTask:
-    def delay(self, *a, **k):
-        raise RuntimeError("broker down")
 
 
 class TestBatchScoring:

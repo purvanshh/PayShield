@@ -171,7 +171,7 @@ class SystemHealthReporter:
             if f["category"] == "ml" and "retraining" in f["description"]:
                 recs.append("Trigger model retraining via `make trigger-retrain`")
             if f["category"] == "backup":
-                recs.append("Run backup scripts: `./dr/backup-postgres.sh`")
+                recs.append("Enable Redis persistence (RDB/AOF) for backup")
             if f["category"] == "infrastructure" and "disk" in f["description"]:
                 recs.append("Free up disk space or increase volume size")
             if f["category"] == "celery":

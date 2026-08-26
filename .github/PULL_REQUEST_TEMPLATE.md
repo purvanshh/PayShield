@@ -14,8 +14,7 @@ Brief description of what this PR does. Link the issue it closes, if any.
 
 - [ ] `chargeback/` or `api/routes/chargeback*`
 - [ ] `return_risk/` or `api/routes/return_risk*`
-- [ ] `observability/`, `ml/`, `agents/`
-- [ ] dashboard (Vite/React)
+- [ ] `observability/`, `ml/`, `engine/`
 - [ ] configs / docs
 
 ## Testing

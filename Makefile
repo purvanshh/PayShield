@@ -1,4 +1,4 @@
-.PHONY: up down build test lint format typecheck pre-commit clean demo-stack demo-health demo-prewarm demo-normal demo-burst demo-geo demo-investigation demo-drift
+.PHONY: up down build test lint format typecheck pre-commit clean
 
 # Docker
 up:
@@ -9,31 +9,6 @@ down:
 
 build:
 	docker compose -f docker/docker-compose.yml build
-
-# Demo replay
-demo-stack:
-	bash scripts/demo_replay.sh stack
-
-demo-health:
-	bash scripts/demo_replay.sh health
-
-demo-prewarm:
-	bash scripts/demo_replay.sh prewarm $(if $(SUFFIX),$(SUFFIX),DEMO)
-
-demo-normal:
-	bash scripts/demo_replay.sh normal $(if $(SUFFIX),$(SUFFIX),DEMO)
-
-demo-burst:
-	bash scripts/demo_replay.sh burst $(if $(SUFFIX),$(SUFFIX),DEMO)
-
-demo-geo:
-	bash scripts/demo_replay.sh geo
-
-demo-investigation:
-	bash scripts/demo_replay.sh investigation $(if $(TXN_ID),$(TXN_ID),TXN_BURST_$(if $(SUFFIX),$(SUFFIX),DEMO)_14)
-
-demo-drift:
-	bash scripts/demo_replay.sh drift
 
 # Testing
 test:
@@ -59,32 +34,13 @@ format:
 	ruff format .
 
 typecheck:
-	mypy api/ engine/ llm/ data/ store/ observability/
+	mypy api/ engine/ data/ store/ observability/
 
 pre-commit:
 	pre-commit run --all-files
 
 pre-commit-install:
 	pre-commit install
-
-# Training & Evaluation
-train:
-	python scripts/train_gnn.py --epochs 50
-
-evaluate:
-	python scripts/evaluate.py
-
-benchmark:
-	python scripts/benchmark_latency.py --n-requests 500
-
-backtest:
-	python scripts/backtest.py --days 7 --daily-txns 1000
-
-ablation:
-	python scripts/ablation.py
-
-sensitivity:
-	python scripts/sensitivity.py
 
 # XGBoost return-risk model pipeline (Phase 1-3)
 train-xgb:
@@ -96,12 +52,6 @@ ablation-xgb:
 tune-xgb:
 	python scripts/tune_xgb.py
 
-generate-data:
-	python scripts/generate_synthetic_data.py
-
-validate-data:
-	python scripts/validate_data.py
-
 # Environment
 install:
 	pip install -r requirements.txt
@@ -109,13 +59,6 @@ install:
 install-dev:
 	pip install -r requirements.txt -r requirements-dev.txt
 	pre-commit install
-
-# SRE & Chaos
-chaos-test:
-	python scripts/chaos-run.py list
-
-chaos-run:
-	python scripts/chaos-run.py run $(experiment)
 
 # CI/CD
 ci:
@@ -125,20 +68,11 @@ ci:
 	make typecheck
 
 security-scan:
-	bandit -r api/ agents/ ml/ llm/ engine/ -f json -o reports/security-scan.json || true
+	bandit -r api/ return_risk/ engine/ store/ data/ integrations/ -f json -o reports/security-scan.json || true
 
 # Model A/B Testing & Continuous Improvement
 trigger-retrain:
 	python -c "from ml.continuous_improvement import ContinuousImprovementLoop; loop = ContinuousImprovementLoop(); report = loop.check_retrain_trigger(); print(report); exit(0 if report['should_retrain'] else 1)" || echo "Retraining not needed"
-
-# Phase 10 — benchmark a retrained candidate, gate it against the currently
-# promoted model, and register+promote only when it improves by >= 0.005 PR-AUC.
-retrain:
-	python scripts/benchmark_gnn.py --users 12000 --merchants 1000 --txns 36000 --epochs 100 --batch-size 16 --sweep-trials 8 --sweep-epochs 25 --latency-runs 300 --seed 42 --save-model
-	python scripts/check_improvement.py --epsilon 0.005 --register-if-better
-
-retrain-gate:
-	python scripts/check_improvement.py --epsilon 0.005
 
 # Phase 60 — Health & Architecture
 health-report:
@@ -148,14 +82,12 @@ benchmark-opt:
 	python scripts/benchmark_optimization.py
 
 arch-review:
-	@echo "=== Architecture Review (Phase 60) ==="
-	@echo "See ARCHITECTURE_REVIEW.md for full document"
+	@echo "=== Return-Risk Architecture (Track 02) ==="
+	@echo "See docs/TRACK2_ARCHITECTURE.md for the architecture"
 	@echo "Review checklist:"
-	@echo "  - [ ] READ ARCHITECTURE_REVIEW.md"
-	@echo "  - [ ] REVIEW PERFORMANCE_OPTIMIZATION_LOG.md"
-	@echo "  - [ ] UPDATE TECHNICAL_DEBT_REGISTER.md"
-	@echo "  - [ ] CHECK MAINTENANCE_ROADMAP.md"
-	@echo "  - [ ] VERIFY CURRENT METRICS IN models/gnn_benchmark_results.json"
+	@echo "  - [ ] READ docs/TRACK2_ARCHITECTURE.md"
+	@echo "  - [ ] REVIEW docs/COST_MODEL.md"
+	@echo "  - [ ] CHECK CURRENT METRICS IN models/return_risk_benchmark_results.json"
 
 experiment-list:
 	python -c "from ml.ab_testing import ABTestFramework; f = ABTestFramework(); [print(e.name, e.status, e.traffic_split) for e in f.list_experiments()]"

@@ -37,19 +37,6 @@ async def lifespan_manager(app: FastAPI):
         logger.warning(f"model_load_skipped: {e}")
 
     try:
-        from llm.client import OllamaClient
-        from llm.config import OllamaConfig
-        ollama = OllamaClient(OllamaConfig())
-        healthy = await ollama.health()
-        if healthy:
-            resources["ollama"] = ollama
-            logger.info("ollama_healthy")
-        else:
-            logger.warning("ollama_unhealthy")
-    except Exception as e:
-        logger.warning(f"ollama_check_skipped: {e}")
-
-    try:
         from store.neo4j_client import Neo4jGraphDB
         neo4j = Neo4jGraphDB()
         await neo4j.connect()
@@ -108,47 +95,10 @@ async def lifespan_manager(app: FastAPI):
 
     app.state.resources = resources
 
-    # Live-agent heartbeats: instantiate the four production agents, attach the
-    # Redis client and renew `agent:heartbeat:{id}` every 20s (TTL 60s) so
-    # `GET /admin/agents/health` reports them RUNNING (<30s staleness rule).
-    try:
-        from agents.base import AgentConfig, BaseAgent  # noqa: F401 - imported for type clarity
-        from agents.human_review_agent import HumanReviewAgent
-        from agents.profile_agent import ProfileAgent
-        from agents.reflection_agent import ReflectionAgent
-        from agents.transaction_agent import TransactionAnalysisAgent
-
-        live_agents = [
-            TransactionAnalysisAgent(),
-            ProfileAgent(),
-            ReflectionAgent(),
-            HumanReviewAgent(),
-        ]
-        for agent in live_agents:
-            agent._heartbeat_redis = resources.get("redis")
-
-        async def _heartbeat_loop():
-            while True:
-                for agent in live_agents:
-                    await agent.touch_heartbeat()
-                await asyncio.sleep(20)
-
-        resources["_heartbeat_task"] = asyncio.create_task(_heartbeat_loop())
-        logger.info("agent_heartbeats_started")
-    except Exception as e:
-        logger.warning(f"agent_heartbeats_skipped: {e}")
-
     logger.info("payshield_startup_complete")
     yield
 
     logger.info("payshield_shutdown_begin")
-    task = resources.get("_heartbeat_task")
-    if task:
-        task.cancel()
-        try:
-            await task
-        except (asyncio.CancelledError, Exception):  # nosec B110 - shutdown best-effort
-            pass
     if resources.get("audit_logger"):
         try:
             await resources["audit_logger"].stop()

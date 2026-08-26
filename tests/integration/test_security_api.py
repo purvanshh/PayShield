@@ -72,9 +72,9 @@ class TestRateLimiting:
         monkeypatch.setattr(dependencies, "API_KEY_RATE_LIMIT", 5)
         headers = {"X-API-Key": DEV_KEY}
         for i in range(5):
-            resp = await client.get("/v1/investigations", headers=headers)
+            resp = await client.get("/v1/return/profile/U001", headers=headers)
             assert resp.status_code == 200
-        resp = await client.get("/v1/investigations", headers=headers)
+        resp = await client.get("/v1/return/profile/U001", headers=headers)
         assert resp.status_code == 429
         assert resp.json()["detail"] == "Rate limit exceeded"
         assert resp.headers.get("retry-after") == "3600"
@@ -86,9 +86,9 @@ class TestRateLimiting:
         access = login.json()["access_token"]
         bearer = {"Authorization": f"Bearer {access}"}
         for i in range(2):
-            resp = await client.get("/v1/investigations", headers=bearer)
+            resp = await client.get("/v1/return/profile/U001", headers=bearer)
             assert resp.status_code == 200
-        resp = await client.get("/v1/investigations", headers=bearer)
+        resp = await client.get("/v1/return/profile/U001", headers=bearer)
         assert resp.status_code == 429
 
     async def test_different_keys_not_limited_together(self, client, monkeypatch):
@@ -96,7 +96,7 @@ class TestRateLimiting:
         auth = dependencies.auth_manager
         auth.register_api_key("psk-test-key-2", role="system", name="t2")
         headers2 = {"X-API-Key": "psk-test-key-2"}
-        resp = await client.get("/v1/investigations", headers=headers2)
+        resp = await client.get("/v1/return/profile/U001", headers=headers2)
         assert resp.status_code == 200
 
     async def test_limit_constant_is_1000_per_hour(self):
@@ -180,98 +180,6 @@ class TestTOTPEndpoints:
         )
         assert verify.json() == {"verified": False, "enabled": False}
 
-
-class TestInvestigationsBatching:
-    async def _seed(self, redis, count):
-        for i in range(count):
-            await redis.set(
-                f"investigation:INV{i:04d}",
-                json.dumps({
-                    "report": {
-                        "txn_id": f"INV{i:04d}",
-                        "narrative": "synthetic",
-                        "fraud_type": "IMPERSONATION" if i % 2 else "PHISHING",
-                        "confidence": "HIGH",
-                        "recommended_action": "BLOCK",
-                        "key_evidence": [],
-                        "reasoning": "test",
-                        "generated_at": (datetime.utcnow() - timedelta(minutes=i)).isoformat(),
-                    }
-                }),
-            )
-
-    async def test_list_uses_batching_and_pagination(self, client):
-        redis = app.state.resources["redis"]
-        await self._seed(redis, 25)
-        start = time.perf_counter()
-        resp = await client.get(
-            "/v1/investigations?page=2&page_size=10",
-            headers={"X-API-Key": DEV_KEY},
-        )
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["total"] == 25
-        assert len(data["results"]) == 10
-        assert data["page"] == 2
-        assert elapsed_ms < 50, f"listing took {elapsed_ms:.1f}ms"
-
-    async def test_list_filters(self, client):
-        redis = app.state.resources["redis"]
-        await self._seed(redis, 6)
-        resp = await client.get(
-            "/v1/investigations?fraud_type=IMPERSONATION",
-            headers={"X-API-Key": DEV_KEY},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["total"] == 3
-        assert all(r["fraud_type"] == "IMPERSONATION" for r in data["results"])
-
-    async def test_empty_list(self, client):
-        resp = await client.get("/v1/investigations", headers={"X-API-Key": DEV_KEY})
-        assert resp.status_code == 200
-        assert resp.json()["total"] == 0
-
-
-class TestGraphPagination:
-    async def _seed_graph(self, client):
-        db = app.state.resources["graph_db"]
-        db.create_entity("ROOT", "user", {"risk": 0.9})
-        for i in range(10):
-            nid = f"NB{i:02d}"
-            db.create_entity(nid, "merchant", {"risk": 0.1 * i})
-            db.link_entities("ROOT", nid, "transaction", {"amount": 100.0})
-
-    async def test_network_paginated(self, client):
-        await self._seed_graph(client)
-        resp = await client.get(
-            "/v1/graph/network/ROOT?limit=3&offset=0",
-            headers={"X-API-Key": DEV_KEY},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["total_nodes"] == 11
-        assert len(data["nodes"]) == 3
-        assert data["has_more"] is True
-
-        resp2 = await client.get(
-            "/v1/graph/network/ROOT?limit=3&offset=3",
-            headers={"X-API-Key": DEV_KEY},
-        )
-        data2 = resp2.json()
-        assert len(data2["nodes"]) == 3
-        assert data2["nodes"][0]["id"] != data["nodes"][0]["id"]
-
-    async def test_network_last_page_has_no_more(self, client):
-        await self._seed_graph(client)
-        resp = await client.get(
-            "/v1/graph/network/ROOT?limit=1000&offset=0",
-            headers={"X-API-Key": DEV_KEY},
-        )
-        data = resp.json()
-        assert data["has_more"] is False
-        assert len(data["nodes"]) == 11
 
 
 class TestReturnRiskExperiments:
