@@ -135,6 +135,32 @@ floor: at ₹800 AOV and a 4% baseline a review gate still saves ₹1.5L/month.
 | ₹2,500 | 18% | ₹20,92,650 | ₹2.51 Cr | 41.6% |
 | ₹4,000 | 25% | ₹44,97,325 | ₹5.40 Cr | 41.6% |
 
+## Vertical Sensitivity Analysis (where the 0.50 gate breaks)
+
+The 0.50 gate is tuned for a **high-return vertical**. Precision at a fixed
+gate scales with the base rate — fewer real returns sit in the flagged tail —
+so on a low-return vertical the same gate flags mostly good orders. Swept
+from the tuned XGBoost operating curve
+(`python docs/cost_model/calculator.py --vertical-sensitivity`):
+
+| Merchant vertical | Base return rate | Optimal gate | Net ₹/month at 0.50 gate | Net ₹/month at optimal gate |
+|---|---|---|---|---|
+| Fashion (high return) | 32% | 0.50 | **+₹24.3L** | **+₹24.3L** |
+| Fashion (low return) | 14% | 0.60 | +₹3.4L | +₹3.5L |
+| Electronics | 8% | 0.70 | +₹0.6L | +₹0.7L |
+| Grocery | 4% | 0.70 | −₹0.2L | −₹0.1L |
+
+**Why it breaks:** at low base rates, flagging ~45% of orders (the 0.50 flag
+rate) catches too few *true* returns to cover ₹200-per-flag review costs.
+Precision at a gate is approximately `recall(gate) × base_rate / flag_rate(gate)`;
+at 4% base that collapses the review economics. The gate must move up (0.60–0.70)
+as the base rate falls, and below ~5% base rate no review gate is profitable
+with the raw-features model — the correct answer there is *don't review*, or
+recalibrate the model on that merchant's data.
+
+> These are **synthetic projections** — real merchant data would calibrate the
+> base rate and gate jointly. `vertical_sensitivity.json` holds the full sweep.
+
 ## Why MEDIUM+ Is the Optimal Point
 
 1. **98.4% precision** → only ~1 in 60 flagged orders is a wrong flag.
@@ -156,5 +182,6 @@ unit economics the minimiser flags for review, keeps false orders flowing
 python docs/cost_model/calculator.py                     # fashion base case
 python docs/cost_model/calculator.py --scenario grocery  # grocery merchant
 python docs/cost_model/calculator.py --sensitivity       # AOV × return grid
+python docs/cost_model/calculator.py --vertical-sensitivity  # gate sweep across base rates
 python docs/cost_model/calculator.py --orders 10000 --operating-point HIGH
 ```

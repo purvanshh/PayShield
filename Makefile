@@ -140,18 +140,6 @@ retrain:
 retrain-gate:
 	python scripts/check_improvement.py --epsilon 0.005
 
-# Compliance
-compliance-check:
-	python -c "from compliance.pci_dss import PCIDSSComplianceChecker; c=PCIDSSComplianceChecker(); r=c.run(); print(f'PCI-DSS: score={r.score}, passed={r.passed}, findings={len(r.findings)}')"
-	python -c "from compliance.rbi_localization import RBILocalizationChecker; c=RBILocalizationChecker(); r=c.run(); print(f'RBI: score={r.score}, passed={r.passed}, findings={len(r.findings)}')"
-	python -c "from compliance.eu_ai_act import EUAiActComplianceChecker; c=EUAiActComplianceChecker(); r=c.run(); print(f'EU AI Act: score={r.score}, passed={r.passed}, findings={len(r.findings)}')"
-
-compliance-report:
-	python -c "from compliance.audit_generator import ComplianceAuditGenerator; g=ComplianceAuditGenerator(); r=g.generate_quarterly_report(); print(f'Report: {r.report_id}, score={r.score}')"
-
-compliance-evidence:
-	python -c "from compliance.evidence_collector import EvidenceCollector; c=EvidenceCollector(); p=c.collect_evidence(); print(f'Evidence: {p}')"
-
 # Phase 60 — Health & Architecture
 health-report:
 	python scripts/system_health_report.py

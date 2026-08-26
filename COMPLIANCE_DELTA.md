@@ -1,5 +1,12 @@
 # Compliance Hardening — Before / After Delta
 
+> **Disclaimer:** This document tracks gaps for **future compliance work**. No
+> certifications have been sought or obtained. All scores in prior versions
+> were from **programmatic self-assessments, not third-party audits**. PCI-DSS,
+> RBI and EU AI Act certification are out of scope for this PoC; the audit-chain
+> infrastructure (`store/audit_log.py`) is designed to *support* future
+> certification, not to claim it.
+
 Compliance is checked programmatically by `compliance/pci_dss.py` and
 `compliance/rbi_localization.py` (each control = env var, artifact dir, or
 operational signal). Baseline run on 2026-07-31 before hardening; final run
@@ -66,7 +73,9 @@ PCI-DSS **90/100** (passed) · RBI **100/100** (passed) · EU AI Act **100/100**
 - Auto-generated model card from benchmark JSON (zero hand-edited metrics)
 - `verify_chain()` fix — was including `entry_id` in hash recomputation, causing all verifications to fail
 
-Full audit: `AUDIT_REPORT_v2.md`
+Honest engineering ledger (bugs found & fixed, incl. the PSI estimator and the
+"AUC > 0.92" correction): [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md)
+and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md).
 
 ## How to reproduce
 

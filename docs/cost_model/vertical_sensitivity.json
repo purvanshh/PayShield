@@ -1,0 +1,56 @@
+{
+  "method": "precision(gate, b) = recall(gate) * b / flag_rate(gate) on the tuned XGBoost operating curve",
+  "orders": 10000,
+  "assumptions": {
+    "aov": 2500.0,
+    "review_cost": 200.0,
+    "diversion_effectiveness": 0.7
+  },
+  "note": "Synthetic projections. Real merchant data would calibrate the base rate and gate jointly.",
+  "verticals": [
+    {
+      "vertical": "Fashion (high return)",
+      "base_return_rate": 0.32,
+      "optimal_gate": 0.5,
+      "net_050": 2425060.0,
+      "net_optimal": 2425060.0,
+      "roi_050_pct": 27.11381932021467,
+      "roi_optimal_pct": 27.11381932021467,
+      "precision_optimal": 0.5466289866774324,
+      "recall_optimal": 0.7740625
+    },
+    {
+      "vertical": "Fashion (low return)",
+      "base_return_rate": 0.14,
+      "optimal_gate": 0.6,
+      "net_050": 340895.0,
+      "net_optimal": 349115.0,
+      "roi_050_pct": 8.711857909532327,
+      "roi_optimal_pct": 8.921926910299003,
+      "precision_optimal": 0.2579001019367992,
+      "recall_optimal": 0.7007142857142857
+    },
+    {
+      "vertical": "Electronics",
+      "base_return_rate": 0.08,
+      "optimal_gate": 0.7,
+      "net_050": 58105.0,
+      "net_optimal": 68135.0,
+      "roi_050_pct": 2.598613595706619,
+      "roi_optimal_pct": 3.0471824686940967,
+      "precision_optimal": 0.15966386554621848,
+      "recall_optimal": 0.595
+    },
+    {
+      "vertical": "Grocery",
+      "base_return_rate": 0.04,
+      "optimal_gate": 0.7,
+      "net_050": -15875.0,
+      "net_optimal": -7465.0,
+      "roi_050_pct": -1.4199463327370303,
+      "roi_optimal_pct": -0.6677101967799642,
+      "precision_optimal": 0.07983193277310924,
+      "recall_optimal": 0.595
+    }
+  ]
+}

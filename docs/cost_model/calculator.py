@@ -61,6 +61,122 @@ OPERATING_POINTS = {
     "MEDIUM+": OperatingPoint("MEDIUM+", 0.50, 0.9837, 0.6050, action="review"),
 }
 
+# Operating curve of the tuned XGBoost model: {gate: (flag_rate, recall)}.
+# Measured on the seed-42 2,000-order hold-out of
+# scripts/train_xgb_return_risk.py (models/return_risk_xgb_best.json). Used by
+# vertical_sensitivity() to project precision at any base rate via
+# precision(gate, b) = recall(gate) * b / flag_rate(gate).
+_XGB_OPERATING_CURVE = {
+    0.20: (0.7665, 0.9545),
+    0.25: (0.6995, 0.9242),
+    0.30: (0.6385, 0.9015),
+    0.35: (0.5855, 0.8737),
+    0.40: (0.5345, 0.8409),
+    0.45: (0.4920, 0.8081),
+    0.50: (0.4530, 0.7740),
+    0.60: (0.3805, 0.7008),
+    0.70: (0.2980, 0.5947),
+}
+
+
+def vertical_sensitivity(
+    orders: int = 10_000,
+    gates: list[float] | None = None,
+    verticals: list[tuple[str, float]] | None = None,
+) -> dict[str, Any]:
+    """Sweep the review gate across merchant verticals of different base rates.
+
+    At a fixed gate, precision scales with the base rate (fewer real returns
+    among the flagged tail), while recall and the flag rate stay fixed. So
+    ``precision(gate, b) = recall(gate) * b / flag_rate(gate)`` using the tuned
+    model's measured operating curve. The review gate (₹200/flag) is the only
+    action considered - blocking (₹3,180) is a separate, stricter surface.
+
+    Prints a markdown table and writes ``vertical_sensitivity.json``.
+    """
+    assumptions = CostAssumptions()  # ₹2,500 AOV, ₹200 review cost, 10k orders
+    gates = gates or [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.60, 0.70]
+    verticals = verticals or [
+        ("Fashion (high return)", 0.32),
+        ("Fashion (low return)", 0.14),
+        ("Electronics", 0.08),
+        ("Grocery", 0.04),
+    ]
+
+    rows = []
+    for label, base_rate in verticals:
+        best: tuple[float, float, dict] | None = None  # (savings, gate, result)
+        at_050: dict[str, Any] | None = None
+        for gate in gates:
+            if gate not in _XGB_OPERATING_CURVE:
+                continue
+            flag_rate, recall = _XGB_OPERATING_CURVE[gate]
+            precision = min(1.0, recall * base_rate / max(flag_rate, 1e-9))
+            op = OperatingPoint("MEDIUM+", gate, precision, recall, action="review")
+            assumptions = CostAssumptions(return_rate=base_rate)
+            res = evaluate_scenario(orders, assumptions, op)
+            if abs(gate - 0.50) < 1e-9:
+                at_050 = res
+            if best is None or res["monthly_savings"] > best[0]:
+                best = (res["monthly_savings"], gate, res)
+
+        assert best is not None and at_050 is not None
+        best_savings, best_gate, best_res = best
+        rows.append(
+            {
+                "vertical": label,
+                "base_return_rate": base_rate,
+                "optimal_gate": best_gate,
+                "net_050": at_050["monthly_savings"],
+                "net_optimal": best_res["monthly_savings"],
+                "roi_050_pct": at_050["roi_pct"],
+                "roi_optimal_pct": best_res["roi_pct"],
+                "precision_optimal": best_res["caught"] and (best_res["true_caught"] / best_res["caught"]) or 0.0,
+                "recall_optimal": best_res["caught"] / best_res["total_returns"] if best_res["total_returns"] else 0.0,
+            }
+        )
+
+    _print_sensitivity_markdown(rows)
+
+    out = {
+        "method": "precision(gate, b) = recall(gate) * b / flag_rate(gate) on the tuned XGBoost operating curve",
+        "orders": orders,
+        "assumptions": {
+            "aov": assumptions.aov,
+            "review_cost": assumptions.review_cost,
+            "diversion_effectiveness": assumptions.diversion_effectiveness,
+        },
+        "note": "Synthetic projections. Real merchant data would calibrate the base rate and gate jointly.",
+        "verticals": rows,
+    }
+    path = Path(__file__).resolve().parent / "vertical_sensitivity.json"
+    path.write_text(json.dumps(out, indent=2))
+    print(f"\nSaved: {path}")
+    return out
+
+
+def _print_sensitivity_markdown(rows: list[dict[str, Any]]) -> None:
+    def fmt_rupees(v: float) -> str:
+        cr = v / 10_000_000
+        if abs(cr) >= 1:
+            return f"{cr:+.2f} cr"
+        return f"₹{v/100_000:+.1f}L"
+
+    print("=" * 80)
+    print("VERTICAL SENSITIVITY — net savings vs base return rate (10k orders, review gate ₹200)")
+    print("=" * 80)
+    print("| Merchant vertical | Base return rate | Optimal gate | Net ₹/month at 0.50 gate | Net ₹/month at optimal gate |")
+    print("|---|---|---|---|---|")
+    for r in rows:
+        print(
+            f"| {r['vertical']} | {r['base_return_rate']:.0%} | {r['optimal_gate']:.2f} | "
+            f"{fmt_rupees(r['net_050'])} | {fmt_rupees(r['net_optimal'])} |"
+        )
+    print(
+        "\nAt low base rates, a 0.50 gate flags ~45% of orders while too few are real "
+        "returns to cover review costs. The gate is only optimal for high-return verticals."
+    )
+
 
 def evaluate_scenario(
     orders: int,
@@ -281,6 +397,11 @@ def main() -> None:
     parser.add_argument("--operating-point", default="MEDIUM+", help="HIGH | MEDIUM+")
     parser.add_argument("--sensitivity", action="store_true", help="AOV × return-rate grid")
     parser.add_argument(
+        "--vertical-sensitivity",
+        action="store_true",
+        help="gate sweep across vertical base rates (writes docs/cost_model/vertical_sensitivity.json)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="write models/cost_model_results.json and exit (consumed by the dashboard)",
@@ -290,6 +411,10 @@ def main() -> None:
     op_name = args.operating_point.upper()
     if op_name not in OPERATING_POINTS:
         sys.exit(f"unknown operating point: {args.operating_point}")
+
+    if args.vertical_sensitivity:
+        vertical_sensitivity(orders=args.orders)
+        return
 
     if args.json:
         _build_json_report(args.orders, op_name, Path("models/cost_model_results.json"))
