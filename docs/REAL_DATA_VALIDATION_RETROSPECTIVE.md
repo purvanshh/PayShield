@@ -62,11 +62,48 @@ risk-free. They now default to the **population prior**
 | Config-driven operating point (`base_rate_adjustment`, `medium_review_threshold: 0.50`) consumed by the benchmark | `configs/return_risk_rules.yaml`, `return_risk/rules_engine.py`, `scripts/benchmark_return_risk.py` |
 | Review-vs-Block cost split (wrong MEDIUM flag = ₹200 review; wrong HIGH block = ₹3,180) | `docs/cost_model/assumptions.py`, `docs/cost_model/calculator.py` |
 
+## Generator Design and Feature Learnability
+
+The submission uses two synthetic generators, and the difference between them
+is itself a finding:
+
+1. **Offline DGP** (`data/synthetic/return_risk_generator.py`): return
+   probability is a logistic function of the 7 visible features + hidden
+   confounders. This makes the `returned` label **learnable from the features**
+   → PR-AUC **0.8067**.
+2. **Track-2 enriched generator** (`data/synthetic/return_generator.py`):
+   return probability is `user["return_rate"] + gauss(0, 0.05)` — the user's
+   latent propensity plus noise. **Amount, category, payment method, device and
+   recency never enter the return probability.**
+
+**Finding:** the Track-2 generator models *user propensity*, not
+*feature-driven returns*. The per-order `returned` outcome is Bernoulli(user
+rate) — pure noise beyond ranking users by propensity. That is why any model
+caps at ~0.52 PR-AUC on that label, while the user-level archetype is
+separated cleanly (hand-weighted 0.93 on `high_risk`).
+
+**Implication:** the enriched feature pipeline (Redis user history, merchant
+baselines) is architecturally sound, but the generator it is tested against
+does not inject feature-dependent return signal. Recalibrating the model
+requires either:
+
+- (a) retraining on **real merchant data** where returns *are* feature
+  dependent, or
+- (b) revising the enriched generator to include feature-driven return
+  probability (future work).
+
+**Honest scope:** we scoped to (1) — the offline DGP — because it is the only
+generator where the model's feature importance and ablation drops measure
+genuine signal. The enriched pipeline is built but not yet validated with a
+comparable generator, and the XGBoost model has not been recalibrated to it.
+See Mistake 6 in [`MISTAKES_AND_LEARNINGS.md`](../MISTAKES_AND_LEARNINGS.md).
+
 ## Re-run
 
 ```bash
-python scripts/benchmark_return_risk.py     # calibrated benchmark
-python docs/cost_model/calculator.py        # Review-vs-Block cost model
-python scripts/validate_real_data.py        # retail dataset validation (hermetic)
-python scripts/validate_amazon_report.py --signal sticky   # amazon report reconstruction
+python scripts/train_xgb_return_risk.py      # offline model + baseline comparison
+python scripts/ablation_study.py             # feature evidence (LOFO)
+python docs/cost_model/calculator.py         # Review-vs-Block cost model
+python docs/cost_model/calculator.py --vertical-sensitivity
+python scripts/validate_real_data.py         # retail dataset validation (hermetic)
 ```

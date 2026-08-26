@@ -1,6 +1,6 @@
 # Mistakes and Learnings
 
-This is the honest ledger — the five mistakes that shaped the build, what
+This is the honest ledger — the six mistakes that shaped the build, what
 each cost, and the fix that held. Deep dives on the first three live in
 [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md); the full 24-entry
 register is in the README's Appendix C.
@@ -46,20 +46,21 @@ normalization asserted to sum to 1. Validated on degenerate cases: identical →
 against ground truth (identical distributions, tiny samples, empty bins), not
 against the unit tests it wants to pass.
 
-## Mistake 3: The 0.30 Review Gate Lost the Merchant Money
+## Mistake 3: The 0.30 Review Gate Was Chosen by Accuracy Intuition, Not Cost
 
-**What happened:** The initial cost model used a 0.30 review gate. It seemed
-reasonable — catch more returns. It didn't model the cost of false flags.
+**What happened:** The initial review gate (0.30) was picked to "catch more
+returns." It didn't model the cost of false flags, and on a high-return
+population the reconstructed-data runs showed a 0.30 gate can flag ~75% of
+orders with collapsed precision — losing money.
 
-**Impact:** On a high-return population (base rate ~32%+) the 0.30 gate flags
-~75% of orders, precision collapses to 0.46, and the merchant would **lose
-₹9.8 cr/month**.
+**Impact:** On the reconstructed Amazon 2025 population a 0.30 gate would have
+cost the merchant ₹9.8 cr/month (75% flag rate, precision ~0.46).
 
 **Fix:** Built a proper cost model — ₹200 per false MEDIUM flag (operator
 review; the order still ships), ₹3,180 per false HIGH block (lost order + CAC
-+ churn). Optimized the gate to **0.50**: 18% flag rate, precision ~0.63, and
-the merchant **saves +₹0.81 cr/month** (a 10k-order fashion merchant nets
-**₹20.9 lakh/month**).
++ churn). The measured offline-model sweep shows **0.50 is optimal for
+high-return verticals** (₹17.5L at 0.50 vs ₹16.3L at 0.30), and the gate is
+config-driven per vertical.
 
 **Lesson:** Threshold selection is a business optimization, not an accuracy
 contest. Always translate false positives into money before tuning a gate.
@@ -109,7 +110,32 @@ non-circular generator are the minimum viable credibility stack.
 
 ---
 
-## What the five have in common
+## Mistake 6: The 0.9311 / ₹20.9L Attribution Error
+
+**What happened:** The README led with two PR-AUC numbers — 0.8067 (offline
+XGBoost) and 0.9311 (Redis-enriched). These were **not comparable**: different
+labels (`returned` vs. `high_risk` archetype), different engines (XGBoost vs.
+hand-weighted), different data generators. The ₹20.9L cost model was tied to
+the 0.9311 operating point, not the evaluated model.
+
+**Why it matters:** In a track about honest metrics, leading with a
+non-comparable "better" number signals either incompetence or dishonesty.
+Neither is acceptable.
+
+**The fix:** Removed 0.9311 from all headline surfaces. The single defensible
+number is offline XGBoost **0.8067** → **₹17.5L** at the 0.50 gate (P 0.677,
+R 0.774, measured confusion matrix). The enriched feature pipeline is
+documented as future work (the XGBoost model has not been recalibrated to its
+distributions), and the generator-design limitation is documented in
+`docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`. Added this entry.
+
+**Lesson:** When you have two numbers that measure different things, pick the
+one you can defend and explain why the other exists but isn't comparable.
+Don't let the higher number lead.
+
+---
+
+## What the six have in common
 
 | Mistake | Surface it broke | The fix that held |
 |---------|------------------|-------------------|
@@ -118,6 +144,7 @@ non-circular generator are the minimum viable credibility stack.
 | 0.30 gate | Business economics | Cost-model-driven threshold |
 | Agent bloat | Architecture clarity | Archive what doesn't run |
 | Circular synthetic data | Validity of the model | Hidden confounders + independent validation + baselines + ablation |
+| 0.9311 attribution | Comparability of metrics | Pick the defensible number; document the rest |
 
 Each was a small error with a large lesson: publish only what you can reproduce,
 validate instruments against ground truth, price your mistakes in money, keep

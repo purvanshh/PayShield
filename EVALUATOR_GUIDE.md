@@ -7,9 +7,10 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 
 ## Minute 1–2: The Business Case
 - Open [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
-- See the 0.30 → 0.50 gate sweep: a high-return merchant flips from losing
-  **−₹9.8 cr/month** to saving **+₹0.81 cr/month**. The headline: a 10k-order
-  fashion merchant saves **₹20.9 lakh/month**.
+- See the gate sweep: a 10k-order fashion merchant saves **₹17.5 lakh/month**
+  at the **0.50 review gate** (precision 0.677, recall 0.774 — the offline
+  XGBoost operating point). The gate is config-driven per vertical; 0.50 is
+  optimal for high-return verticals.
 
 ## Minute 3–4: The Model
 - Open [`scripts/train_xgb_return_risk.py`](scripts/train_xgb_return_risk.py)
@@ -46,25 +47,24 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 - Compliance: [`COMPLIANCE_DELTA.md`](COMPLIANCE_DELTA.md)
 - Business impact: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md)
 
-## Why We Don't Report XGBoost on Redis-Enriched Features
+## The Enriched Feature Pipeline (future work, not a headline)
 
-The live Redis-backed system (PR-AUC 0.9311) uses the **hand-weighted scorer**
-with enriched features. We have not isolated **XGBoost on Redis-enriched
-features** as a separate benchmark because:
+The Redis-enriched feature engine (`return_risk/feature_engine.py` + user/
+merchant profiles) exists in the codebase and the live scorer runs on it, but
+**the XGBoost model has not been recalibrated to enriched feature
+distributions** — it was trained on the offline DGP's features. Two honest
+caveats, both documented:
 
-1. **Production reality:** the live system is a hybrid — XGBoost primary,
-   hand-weighted fallback, both consuming the same Redis-enriched feature
-   pipeline. Isolating XGBoost would require disabling the fallback, which
-   never happens in production.
-2. **Engineering priority:** the 0.8067 → 0.9311 gap (PR-AUC **+0.12**) proves
-   feature enrichment matters more than model choice. "What I'd Do Next" #1 is
-   an A/B test of XGBoost vs. hand-weighted on live enriched data.
-3. **Honest scope:** the prototype was built in five days. Isolating every
-   pipeline permutation is future work, not current evidence.
-
-The honest answer: **we don't know XGBoost-on-enriched PR-AUC yet.** The
-harness to measure it is built. We need a merchant partner to run it. That is
-scope discipline — a virtue in engineering.
+1. The enriched-path scorer (before the scope cut, hand-weighted) reached
+   **0.9311 PR-AUC on the serial/fraud-archetype label** — a different target
+   (user type, not per-order `returned`) and a different engine than the
+   evaluated model. It is **not comparable** to 0.8067 and is **not** a
+   headline number; see [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
+2. Applied today, the XGBoost model scores **0.82** on that archetype target
+   and ~0.50 on the per-order `returned` label — because the enriched
+   generator's `returned` outcome depends only on the user's latent rate (see
+   `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`). Retraining on the enriched
+   pipeline is "What I'd Do Next" #1.
 
 ## Quick Start (Hermetic, One Command)
 ```bash

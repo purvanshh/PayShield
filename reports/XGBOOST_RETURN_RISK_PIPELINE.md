@@ -15,10 +15,11 @@ hand-weighted composite as an automatic fallback. The data-generating process
 noise — so XGBoost learns from noisy, incomplete signal, exactly like real
 merchant data. Absolute PR-AUC is therefore lower but **more honest**.
 
-**Headline:** tuned XGBoost **PR-AUC 0.8067** (raw features) — beats the
-hand-weighted scorer (0.7896) and clearly beats both naive rules (0.6991,
-0.5884). The live Redis-enriched system measures **0.9311**; the **0.12 gap is
-feature engineering, not model choice.**
+**Headline:** tuned XGBoost **PR-AUC 0.8067** (raw features, `returned` label)
+— beats the hand-weighted scorer (0.7896) and clearly beats both naive rules
+(0.6991, 0.5884). The Redis-enriched feature pipeline exists but the model has
+**not** been recalibrated to it — that is future work, not a headline (see
+Mistake 6 in `MISTAKES_AND_LEARNINGS.md`).
 
 ---
 
@@ -100,10 +101,10 @@ Artifacts: `models/return_risk_xgb_best.json`, `models/xgb_tuning_results.json`.
   `engine: "hand_weighted"` (model absent).
 
 ### Phase 5 — Documentation (video skipped) ✅
-- **`README.md`**: new top section with the two-pipeline numbers table
-  (0.8067 vs 0.9311), the honest DGP disclosure, updated model/ablation/tuning
-  tables, an updated architecture diagram (XGBoost primary), and a cost-model
-  table with both feature paths (live ₹20.9L vs offline ₹17.5L).
+- **`README.md`**: single-number headline (offline XGBoost 0.8067), honest DGP
+  disclosure, model/ablation/tuning tables, updated architecture diagram
+  (XGBoost primary), the offline cost-model gate sweep, and a "What I'd Do
+  Next" section (retrain on the enriched pipeline).
 - **`models/README.md`**: documents the five artifacts.
 - **`Makefile`**: `train-xgb`, `ablation-xgb`, `tune-xgb` targets.
 - **`scripts/verify_live_stack.py`**: HIGH bound widened to 0.7–1.0.
@@ -111,29 +112,25 @@ Artifacts: `models/return_risk_xgb_best.json`, `models/xgb_tuning_results.json`.
 
 ---
 
-## 2.5 PR-AUC mismatch (0.8067 vs 0.9311) — resolved
+## 2.5 The 0.9311 attribution — resolved by removal
 
-| Pipeline | PR-AUC | What it measures |
-|---|---|---|
-| Offline XGBoost (new) | 0.8067 | Raw 7 features + hidden DGP noise — architecture validation |
-| Live Redis scorer | 0.9311 | Real user history, merchant baselines, device fingerprints — production path |
-| **Gap** | **+0.12** | Feature enrichment matters more than model choice |
+An earlier headline compared offline XGBoost (0.8067, `returned` label) with a
+"live Redis-backed" system (0.9311). Investigation showed these were **not
+comparable**: 0.9311 was the *hand-weighted* scorer on the *`high_risk`
+archetype* label from the Track-2 generator — a different target, engine and
+data source. The "+0.12 = feature enrichment" framing was therefore false (on
+the same `returned` label the enriched path scores ~0.52, because that
+generator's `returned` outcome depends only on the user's latent rate).
 
-The offline number is lower than the old circular-DGP 0.8729 **on purpose**: the
-labels now include unobserved confounders, so the achievable PR-AUC is
-genuinely bounded. The +0.017 XGBoost-over-hand-weighted lift is real
-(interactions), and the +0.12 live gap proves the enrichment story.
+**Resolution:** removed 0.9311 from all headline surfaces. The single
+defensible number is **0.8067 → ₹17.5L at the 0.50 gate** (P 0.677, R 0.774,
+measured confusion matrix). The enriched pipeline is documented as future work
+(needs model recalibration), and the generator-design limitation is documented
+in `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md` and Mistake 6 of
+`MISTAKES_AND_LEARNINGS.md`.
 
-**Cost model survives (with an honest two-path framing).** On a 10k-order
-fashion merchant, the 0.50 review gate saves:
-
-| Feature path | Operating point | Monthly savings | ROI |
-|---|---|---|---|
-| Live (Redis-enriched, production) | P 0.984 · R 0.605 | **₹20.9L** | +41.6% |
-| Offline XGBoost (raw features) | P 0.677 · R 0.774 | ₹17.5L | +34.9% |
-
-The ₹3.4L/month difference is feature enrichment — the same story as the PR-AUC
-gap.
+**Cost model (offline operating point):** on a 10k-order fashion merchant, the
+0.50 review gate saves **₹17.5L/month** (ROI 34.9%).
 
 ---
 
@@ -160,9 +157,10 @@ gap.
 4. **Optional, honest limitations to disclose:**
    - `device_fingerprint_match` is a **neutral 0.5** at inference (no device
      store in the return-risk module) — the model leans on the other six features.
-   - The live 0.9311 number and the ₹20.9L cost row come from the separate
-     Redis-backed benchmark (`benchmark_return_risk.py`), distinct from the
-     offline XGBoost pipeline; the README explains the gap explicitly (§2.5).
+   - The Redis-enriched feature pipeline is not yet a comparable benchmark:
+     the XGBoost model has not been recalibrated to enriched distributions, and
+     the Track-2 generator's `returned` label is near-independent of the 7
+     features (see `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`).
 
 ---
 

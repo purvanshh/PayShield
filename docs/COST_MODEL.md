@@ -7,11 +7,11 @@ operating point minimises expected merchant spend — not because it scores
 highest, but because the *cost function* says so.
 
 Interactive: `python docs/cost_model/calculator.py` (or `--scenario
-electronics|grocery`, `--sensitivity`). Everything below is the exact
-output of that calculator. Operating points are the **measured** results of
-`scripts/benchmark_return_risk.py` on the 10,000-order calibrated dataset
-(seed 42, priors aligned to public Indian e-commerce distributions —
-Amazon India 2025 category margins).
+electronics|grocery`, `--sensitivity`, `--vertical-sensitivity`). Everything
+below is the exact output of that calculator. Operating points are the
+**measured** results of `scripts/train_xgb_return_risk.py` — the offline
+XGBoost model on the 2,000-order held-out test set (per-user chronological
+hold-out, seed 42, non-circular DGP).
 
 ## Assumptions (Indian e-commerce, 2026)
 
@@ -71,23 +71,30 @@ non-blocking system. So:
 This is why the ROI flips positive at wider recall: flagging a good order
 for review is cheap; blocking it is expensive.
 
-## PayShield Operating Points (measured, calibrated 10k hold-out)
+## PayShield Operating Points (measured offline XGBoost, 2,000-order hold-out)
 
-Positive rate on the calibrated population is ~40% (Amazon-margin priors).
-The calibrated score distribution is cleanly bimodal — no test orders land
-between 0.50 and 0.70 — so the MEDIUM+ review gate and the HIGH gate select
-the same 25% of orders:
+The offline XGBoost model is evaluated on the `returned` label. Measured
+confusion matrices at each gate feed the cost model:
 
-| Tier | Threshold | Precision | Recall | Use case |
+| Gate | Flag rate | Precision | Recall | Use case |
 |------|-----------|-----------|--------|----------|
-| HIGH | ≥ 0.70 | 0.9837 | 0.6050 | Prepaid gate: block at checkout |
-| MEDIUM+ | ≥ 0.50 | 0.9837 | 0.6050 | Review gate: flag for manual review (≤2% wrong, ₹200 each) |
-| LOW | < 0.50 | — | — | Normal flow |
+| 0.30 | 63.9% | 0.559 | 0.902 | Aggressive review — catches most returns, more wrong flags |
+| 0.40 | 53.5% | 0.623 | 0.841 | — |
+| **0.50** | **45.3%** | **0.677** | **0.774** | **Review gate: flag for manual review (₹200 per wrong flag)** |
+| 0.60 | 38.1% | 0.729 | 0.701 | — |
+| 0.70 | 29.8% | 0.790 | 0.595 | Prepaid gate: block at checkout (₹3,180 per wrong block) |
 
 The review threshold is config-driven (`configs/return_risk_rules.yaml`
 → `operating_point.medium_review_threshold`) and must be tuned per merchant
-vertical: 0.50 for high-return populations, 0.30–0.35 for low-return ones
-(fashion ~14–18%).
+vertical — the [vertical sensitivity](#vertical-sensitivity-analysis-where-the-050-gate-breaks)
+below shows 0.50 is right for high-return populations and drifts up for
+low-return ones.
+
+> **Enriched pipeline:** the Redis-enriched feature engine exists in the
+> codebase, but the XGBoost model has **not** been recalibrated to enriched
+> feature distributions. This cost model therefore uses the **offline** model
+> operating point. Retraining on enriched features (and on real merchant data)
+> is the highest-priority next step.
 
 ## Scenario: Fashion Merchant, 10,000 Orders / Month
 
@@ -97,43 +104,43 @@ vertical: 0.50 for high-return populations, 0.30–0.35 for low-return ones
 1,800 returns (18% rate) × ₹2,795  = ₹50,31,000 / month
 ```
 
-**With PayShield MEDIUM+ review gate** (calculator output):
+**With PayShield MEDIUM+ review gate (0.50)** (calculator output, offline XGBoost):
 
 ```
-Flagged (recall)          1,089 orders
-  wrong flags               18 orders (1.6% of flagged, = 1 − precision)
-  true catches           1,071 orders
-Returns prevented          750 orders (70% diversion effectiveness)
-Remaining returns        1,050 orders
-Wrong-flag cost          18 × ₹200 = ₹3,600   (review, not full order!)
-Return cost on remaining 1,050 × ₹2,795 = ₹29,34,750
-Total with PayShield        ₹29,38,350 / month
-Net savings                 ₹20,92,650 / month   (41.6% ROI)
-Annual savings              ₹2,51,11,800 (~₹2.51 Cr)
+Flagged (recall)          1,393 orders
+  wrong flags              450 orders (32.3% of flagged, = 1 − precision)
+  true catches              943 orders
+Returns prevented          660 orders (70% diversion effectiveness)
+Remaining returns        1,140 orders
+Wrong-flag cost          450 × ₹200 = ₹90,000   (review, not full order!)
+Return cost on remaining 1,140 × ₹2,795 = ₹31,86,300
+Total with PayShield        ₹32,76,300 / month
+Net savings                 ₹17,54,700 / month   (34.9% ROI)
+Annual savings              ₹2,10,56,400 (~₹2.11 Cr)
 ```
 
-Per **1,000 orders**: baseline ₹5,03,100 → with PayShield ₹2,93,835 →
-**net savings ₹2,09,265**.
+Per **1,000 orders**: baseline ₹5,03,100 → with PayShield ₹3,27,630 →
+**net savings ₹1,75,470**.
 
-## Scenario Sweep (calculator output, MEDIUM+ review gate)
+## Scenario Sweep (calculator output, MEDIUM+ review gate 0.50)
 
 | Merchant | AOV | Return rate | Cost false-allow / wrong-flag | Monthly savings | Annual savings | ROI |
 |----------|-----|-------------|-------------------------------|-----------------|----------------|-----|
-| Fashion | ₹2,500 | 18% | ₹2,795 / ₹200 | **₹20,92,650** | ₹2.51 Cr | 41.6% |
-| Electronics | ₹8,000 | 12% | ₹8,520 / ₹200 | **₹42,57,600** | ₹5.11 Cr | 41.6% |
-| Grocery | ₹800 | 4% | ₹961 / ₹200 | **₹1,48,155** | ₹17.8 L | 38.5% |
+| Fashion | ₹2,500 | 18% | ₹2,795 / ₹200 | **₹17,54,700** | ₹2.11 Cr | 34.9% |
+| Electronics | ₹8,000 | 12% | ₹8,520 / ₹200 | **₹36,88,800** | ₹4.43 Cr | 36.1% |
+| Grocery | ₹800 | 4% | ₹961 / ₹200 | **₹1,10,696** | ₹13.3 L | 28.8% |
 
 Electronics shows the leverage of high AOV: each prevented return is worth
-₹8.5k, so even a 12% return rate yields ~₹42.6L/month. Grocery shows the
-floor: at ₹800 AOV and a 4% baseline a review gate still saves ₹1.5L/month.
+₹8.5k, so even a 12% return rate yields ~₹36.9L/month. Grocery shows the
+floor: at ₹800 AOV and a 4% baseline a review gate still saves ~₹1.1L/month.
 
-## Sensitivity Analysis (AOV × return rate, MEDIUM+ review gate)
+## Sensitivity Analysis (AOV × return rate, MEDIUM+ review gate 0.50)
 
 | AOV | Return rate | Monthly savings | Annual savings | ROI |
 |-----|-------------|-----------------|----------------|-----|
-| ₹1,500 | 12% | ₹8,85,100 | ₹1.06 Cr | 41.6% |
-| ₹2,500 | 18% | ₹20,92,650 | ₹2.51 Cr | 41.6% |
-| ₹4,000 | 25% | ₹44,97,325 | ₹5.40 Cr | 41.6% |
+| ₹1,500 | 12% | ₹7,21,000 | ₹86.5 L | 33.8% |
+| ₹2,500 | 18% | ₹17,54,700 | ₹2.11 Cr | 34.9% |
+| ₹4,000 | 25% | ₹38,41,025 | ₹4.61 Cr | 35.5% |
 
 ## Vertical Sensitivity Analysis (where the 0.50 gate breaks)
 
@@ -161,20 +168,23 @@ recalibrate the model on that merchant's data.
 > These are **synthetic projections** — real merchant data would calibrate the
 > base rate and gate jointly. `vertical_sensitivity.json` holds the full sweep.
 
-## Why MEDIUM+ Is the Optimal Point
+## Why MEDIUM+ (0.50) Is the Optimal Gate
 
-1. **98.4% precision** → only ~1 in 60 flagged orders is a wrong flag.
-2. **60.5% recall** → most clearly-above-threshold returners are caught; the
-   gate is deliberately tight because false-block-vs-review cost balance
-   favours precision-leaning operation on high-return verticals.
-3. **Review vs block asymmetry**: a wrong MEDIUM flag costs ₹200 of operator
-   time; a wrong HIGH block costs ₹3,180. The review tier is therefore the
-   cheapest place to catch most of the risk — and the HIGH/prepaid gate is
-   reserved for the clearly-high segment.
+1. **67.7% precision at 0.50** — the wrong-flag cost is ₹200 of operator
+   review time (the order still ships), not the ₹3,180 full-order loss. Even
+   with ~32% wrong flags, review stays cheap relative to the returns it
+   prevents.
+2. **77.4% recall** — catches most of the high-return tail while flagging
+   ~45% of orders; higher precision than the 0.30 gate, which flags 64% of
+   orders for only a few more catches.
+3. **Review vs block asymmetry**: a wrong MEDIUM flag costs ₹200; a wrong HIGH
+   block costs ₹3,180. The review tier is the cheapest place to catch most of
+   the risk — the HIGH/prepaid gate is reserved for the clearly-high segment.
 
-Precision > recall at the review tier is a **cost decision**: with these
-unit economics the minimiser flags for review, keeps false orders flowing
-(they still ship), and only prepaid-gates the obvious tail.
+The 0.50 gate is the cost minimiser for a high-return fashion vertical (the
+gate sweep above: ₹17.5L at 0.50 vs ₹16.3L at 0.30 and ₹16.1L at 0.70).
+On low-return verticals the gate must move up (0.60–0.70) — see the vertical
+sensitivity section.
 
 ## Usage
 

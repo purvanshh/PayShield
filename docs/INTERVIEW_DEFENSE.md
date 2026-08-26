@@ -1,6 +1,6 @@
 # Interview Defense — Prepared Answers
 
-Three questions are near-certain in the panel. These are the honest, measured
+Four questions are near-certain in the panel. These are the honest, measured
 answers — every number traces to a script in this repo.
 
 ---
@@ -27,22 +27,22 @@ the transparent fallback when the model file is absent.
 
 The **evaluated return-risk surface is small and hermetic**. The model path
 runs with zero services: `scripts/train_xgb_return_risk.py`,
-`scripts/ablation_study.py`, `scripts/tune_xgb.py`, `scripts/benchmark_return_risk.py`
-and `docs/cost_model/calculator.py` all run standalone on a laptop. The seven
+`scripts/ablation_study.py`, `scripts/tune_xgb.py` and
+`docs/cost_model/calculator.py` all run standalone on a laptop. The seven
 feature inputs are plain numbers; the scorer (`return_risk/`) is a few hundred
 lines of Python.
 
-The infrastructure exists for two things the brief actually asks about:
-**the enrichment story** (Redis holds the user/merchant history that takes the
-same features from 0.8067 to 0.9311 — that gap *is* the finding), and **the
-platform extensions** (fraud/chargeback on the same audit chain), which are
-explicitly demoted to future work in the README. Everything else — Postgres,
-Neo4j, Ollama, the Celery workers, the React dashboard and the k8s manifests —
-was **removed in a deliberate scope cut**: the repo went from ~40 top-level
-directories to ~19 and from 579 tests to 455, all still green. If I had 24
-hours, I'd keep Redis and the return-risk evidence scripts exactly as they are
-and spend any saved time on the vertical-sensitivity analysis now in
-`docs/COST_MODEL.md`.
+The infrastructure exists for the things the brief actually asks about: the
+**enriched feature pipeline** (Redis holds the user/merchant history the live
+scorer runs on — though the XGBoost model has not yet been recalibrated to it,
+which is the honest next step), and the **platform extensions** (fraud/
+chargeback on the same audit chain), which are explicitly demoted to future
+work in the README. Everything else — Postgres, Neo4j, Ollama, the Celery
+workers, the React dashboard and the k8s manifests — was **removed in a
+deliberate scope cut**: the repo went from ~40 top-level directories to ~19
+and from 579 tests to 455, all still green. If I had 24 hours, I'd keep Redis
+and the return-risk evidence scripts exactly as they are and spend any saved
+time on the vertical-sensitivity analysis now in `docs/COST_MODEL.md`.
 
 ## Q3: "Your data is synthetic. Why should we trust this?"
 
@@ -59,13 +59,23 @@ Three reasons, each measurable:
    data presents. The honest PR-AUC is **0.8067**, *lower* than a circular
    DGP would produce, and we say so in the README.
 3. **Triangulated with evidence.** Every feature is validated by a
-   leave-one-feature-out ablation; the model beats two naive merchant rules on
-   the same hold-out; and the live Redis-enriched system reaches 0.9311 through
-   feature enrichment, not model swapping.
+   leave-one-feature-out ablation, and the model beats two naive merchant rules
+   on the same hold-out. The enriched feature pipeline exists but is honestly
+   scoped as future work — the model has not been recalibrated to it.
 
 Real merchant data would change the *calibration* of the base rate and the
 gate — it would not invalidate the architecture. That is precisely what the
 "A/B test with a real merchant" next step is built to prove.
+
+## Q4: "Your README used to claim 0.9311. What happened?"
+
+> We found that 0.9311 was the hand-weighted scorer on the `high_risk`
+> archetype label — different target, different engine, different generator
+> than the evaluated XGBoost model. It wasn't a comparable "better" number; it
+> was a different metric. We removed it and now lead with the single defensible
+> number: **0.8067 on the `returned` label**, which ties to **₹17.5L** in the
+> cost model. The enriched pipeline is real code, but recalibrating XGBoost to
+> it — and ideally to real merchant data — is the next step, not a headline.
 
 ---
 
@@ -74,6 +84,8 @@ gate — it would not invalidate the architecture. That is precisely what the
 - **Why XGBoost?** The +0.017 over a linear scorer is the nonlinear signal
   (interactions); it costs <5 ms at inference.
 - **Over-engineered?** The evaluated model runs hermetically with zero
-  services; the infrastructure is the demo and the extensions.
+  services; the infrastructure is the enriched pipeline and the extensions.
 - **Synthetic data?** Calibrated priors + hidden confounders + ablation +
   baselines; the lower-but-honest PR-AUC is the point.
+- **What happened to 0.9311?** It was a different metric (archetype label,
+  hand-weighted); we removed it and lead with the defensible 0.8067.

@@ -1,7 +1,7 @@
 # PayShield: Return-Risk Scorer for Indian E-Commerce
 
 **One-sentence:** PayShield scores every order *before it ships*, catches
-high-risk returns at high precision, and saves a fashion merchant **₹20.9
+high-risk returns at high precision, and saves a fashion merchant **₹17.5
 lakh/month** on 10,000 orders.
 
 **For evaluators:** Start with [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) —
@@ -9,12 +9,8 @@ lakh/month** on 10,000 orders.
 Honest ledger: [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
 **The numbers:**
-- **Offline XGBoost:** PR-AUC **0.8067** — learns from noisy, incomplete signal
-- **Live Redis-backed:** PR-AUC **0.9311** — real user history enrichment
-- **Cost model:** the 0.50 review gate saves ₹20.9L/month on 10K orders
-
-**The fix:** raising the config-driven review gate from **0.30 → 0.50** flips a
-high-return merchant from losing ₹9.8 cr to saving ₹0.81 cr/month.
+- **Offline XGBoost PR-AUC:** **0.8067** — learns from noisy, incomplete signal
+- **Cost at the 0.50 gate:** **₹17.5L/month** on 10K orders
 
 **Run it (hermetic):** `python scripts/train_xgb_return_risk.py`
 
@@ -27,20 +23,19 @@ production software.
 
 ---
 
-## The Numbers (30 seconds)
+## The Number
 
-### Two pipeline numbers — explained
+| Metric | Value | What It Measures |
+|---|---|---|
+| **Offline XGBoost PR-AUC** | **0.8067** | Model learns from raw 7 features + hidden DGP noise on the `returned` label (architecture validation) |
+| **Cost at 0.50 gate** | **₹17.5L/month** | Monthly savings on 10k orders, fashion vertical, review cost ₹200 |
 
-The system is validated on **two different feature sets** — do not compare the
-two PR-AUCs directly:
+The model is trained on a non-circular synthetic DGP: visible features plus
+hidden confounders (product rating, delivery speed, packaging, weather,
+customer mood) that the model never observes. That makes the absolute PR-AUC
+lower but more honest than a circular benchmark.
 
-| Pipeline | PR-AUC | What It Measures |
-|----------|--------|------------------|
-| **Offline XGBoost** | **0.8067** | Model learns from raw 7 features + hidden DGP noise (architecture) |
-| **Live Redis-backed** | **0.9311** | Real user history, merchant baselines, device fingerprints enrich features (production) |
-| **Gap** | **+0.12** | Feature engineering matters as much as model choice |
-
-### Offline model (raw features, 2,000-order hold-out, gate 0.50)
+### The model (raw features, 2,000-order hold-out, gate 0.50)
 
 | Model | PR-AUC | Precision | Recall | F1 |
 |---|---|---|---|---|
@@ -54,17 +49,24 @@ XGBoost edges the hand-weighted scorer (**+0.017 PR-AUC**) and clearly beats
 both naive rules (**+0.11 over the best naive baseline**). Full details in
 ["What We Measured"](#what-we-measured) below.
 
-### The cost fix (in ₹, not accuracy)
+### Cost model — the 0.50 review gate
 
-| Review gate | Flag rate | Precision | Net ₹ / month | ROI |
-|---|---|---|---|---|
-| **0.30 (before)** | 75.3% | 0.464 | **−₹9.8 cr** | **−38.9%** |
-| 0.45 | 19.9% | 0.612 | +₹0.46 cr | +1.8% |
-| **0.50 (after)** | 18.3% | 0.633 | **+₹0.81 cr** | **+3.2%** |
+On a 10k-order fashion merchant (₹2.5k AOV, 18% return rate), the **0.50 review
+gate** saves **₹17.5L/month** at precision 0.677 and recall 0.774 — the
+offline XGBoost operating point, measured on the held-out test set. The
+config-driven gate sweep:
 
-A 10k-order fashion merchant **saves ₹20.9 lakh/month** at the 0.50 gate
-(`docs/cost_model/calculator.py`). Full economics, the false-flag costs and the
-per-vertical sensitivity sweep live in [`docs/COST_MODEL.md`](docs/COST_MODEL.md).
+| Review gate | Flag rate | Precision | Recall | Net ₹ / month | ROI |
+|---|---|---|---|---|---|
+| 0.30 | 63.9% | 0.559 | 0.902 | ₹16.3L | 32.4% |
+| 0.40 | 53.5% | 0.623 | 0.841 | ₹17.3L | 34.4% |
+| **0.50** | **45.3%** | **0.677** | **0.774** | **₹17.5L** | **34.9%** |
+| 0.60 | 38.1% | 0.729 | 0.701 | ₹17.3L | 34.4% |
+| 0.70 | 29.8% | 0.790 | 0.595 | ₹16.1L | 32.0% |
+
+The 0.50 gate is optimal for this vertical. See [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
+for the vertical sensitivity sweep (fashion-high vs. fashion-low vs.
+electronics vs. grocery).
 
 ---
 
@@ -120,12 +122,12 @@ than blocking, the gate optimizes for precision at the review tier, and the
 threshold is config-driven per vertical
 (`configs/return_risk_rules.yaml`).
 
-**Why we don't report XGBoost on Redis-enriched features:** the live system is
-a hybrid — XGBoost primary, hand-weighted fallback, both on the same enriched
-pipeline — so isolating XGBoost would require disabling the fallback that never
-disables in production. The 0.8067 → 0.9311 gap already proves enrichment beats
-model choice; an A/B test on live data is our first "What I'd Do Next" item. We
-don't yet know XGBoost-on-enriched PR-AUC, and we say so.
+**The enriched feature pipeline** (`return_risk/feature_engine.py` + Redis
+user/merchant profiles) exists in the codebase and the live scorer runs on it,
+but the XGBoost model has **not yet been recalibrated to enriched feature
+distributions** — it was trained on the offline DGP's features. Retraining it
+on the enriched pipeline is the highest-priority next step (see
+["What I'd Do Next"](#what-id-do-next)).
 
 ---
 
@@ -137,7 +139,6 @@ Hermetic (no services needed):
 python scripts/train_xgb_return_risk.py      # train + baseline comparison (~20s)
 python scripts/ablation_study.py             # leave-one-feature-out ablation (~60s)
 python scripts/tune_xgb.py                   # 144-combo hyperparameter search (~15s)
-python scripts/benchmark_return_risk.py      # Redis-backed scorer benchmark
 python docs/cost_model/calculator.py         # the numbers in ₹
 python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate breaks
 ```
@@ -177,19 +178,9 @@ user-history signal; removing **both** costs **−10.5%**, the largest block.
 The drop is genuine feature importance measured against hidden confounders —
 not circular recovery.
 
-### Confusion matrices (2,000-order hold-out, gate 0.50)
+### Confusion matrix (offline XGBoost, 2,000-order hold-out, gate 0.50)
 
-**Live Redis-enriched path** (`scripts/benchmark_return_risk.py`):
-
-```
-                     Not Flagged   Flagged
-Actual No Return         1192         8   (TN=1192, FP=8)
-Actual Return             316       484   (FN=316, TP=484)
-```
-
-Precision **0.9837** · recall **0.6050** · one wrong flag in ~60.
-
-**Offline XGBoost path** (`scripts/train_xgb_return_risk.py`):
+From `scripts/train_xgb_return_risk.py`:
 
 ```
                      Not Flagged   Flagged
@@ -197,8 +188,7 @@ Actual No Return          915       293   (TN=915, FP=293)
 Actual Return             179       613   (FN=179, TP=613)
 ```
 
-Precision **0.677** · recall **0.774** · F1 **0.722**. Higher recall, lower
-precision than the enriched path — the offline raw-features model alone.
+Precision **0.677** · recall **0.774** · F1 **0.722**.
 
 ### Tuning
 
@@ -211,6 +201,25 @@ Grid search over 144 combinations (`max_depth` × `n_estimators` ×
 All ten curated scenarios pass against the running Docker stack — serial
 returner → HIGH, honest → LOW, chargeback responses, signed webhooks, drift.
 Full table in `scripts/verify_live_stack.py`.
+
+---
+
+## What I'd Do Next
+
+1. **Retrain XGBoost on the enriched feature pipeline.** The current model is
+   trained on the offline DGP's features; applied to the enriched feature
+   engine it scores 0.82 on the serial/fraud-archetype target (where the
+   hand-weighted scorer reaches 0.93) and ~0.50 on the per-order `returned`
+   label — because that generator's `returned` outcome depends only on the
+   user's latent rate (see `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`).
+   Closing the gap means recalibrating the model to enriched feature
+   distributions — ideally on real merchant data — not just more data.
+2. **A/B test with a Razorpay merchant** — the champion/challenger harness is
+   built; needs live orders to validate the 0.50 gate on real return
+   distributions.
+3. **Vertical-specific gates** — the config system supports per-vertical
+   thresholds (fashion-high 0.50, low-return verticals 0.60–0.70); needs
+   merchant data to tune.
 
 ---
 

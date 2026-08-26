@@ -54,11 +54,13 @@ class OperatingPoint:
 
 
 OPERATING_POINTS = {
-    # Calibrated benchmark (Amazon-margin generator, seed 42, 10k orders):
-    # POS rates ~40%, both gates select the same 25% of orders (bimodal score
-    # distribution with a gap between 0.50 and 0.70).
-    "HIGH": OperatingPoint("HIGH", 0.70, 0.9837, 0.6050, action="block"),
-    "MEDIUM+": OperatingPoint("MEDIUM+", 0.50, 0.9837, 0.6050, action="review"),
+    # Offline XGBoost operating points, measured on the seed-42 2,000-order
+    # held-out test set (scripts/train_xgb_return_risk.py, PR-AUC 0.8067 on
+    # the returned label). The enriched feature pipeline exists in the
+    # codebase but the XGBoost model has not been recalibrated to enriched
+    # distributions — see MISTAKES_AND_LEARNINGS.md (Mistake 6).
+    "HIGH": OperatingPoint("HIGH", 0.70, 0.790, 0.595, action="block"),
+    "MEDIUM+": OperatingPoint("MEDIUM+", 0.50, 0.677, 0.774, action="review"),
 }
 
 # Operating curve of the tuned XGBoost model: {gate: (flag_rate, recall)}.
