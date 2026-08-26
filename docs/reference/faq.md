@@ -15,17 +15,16 @@ with a transparent hand-weighted composite as the automatic fallback. The score
 maps to a tier: LOW → ship, MEDIUM → review, HIGH → require prepaid. Every score
 carries a per-feature value, weight, contribution and source tag.
 
-## Why are there two PR-AUC numbers?
+## Why is there one PR-AUC number?
 
-| Pipeline | PR-AUC | What it measures |
-|---|---|---|
-| Offline XGBoost | 0.8067 | Raw 7 features + hidden-DGP noise (architecture validation) |
-| Live Redis-backed | 0.9311 | Features enriched with real user history/baselines (production path) |
-
-The **+0.12 gap is feature engineering, not model choice** — enriching the same
-features with real history matters more than algorithm tuning. We don't yet know
-XGBoost-on-enriched PR-AUC; the A/B harness to measure it is built but needs a
-live merchant.
+The evaluated number is the **offline XGBoost model, PR-AUC 0.8067** on the
+`returned` label — trained on a non-circular DGP, validated on a per-user
+chronological hold-out. The Redis-enriched feature pipeline exists in the
+codebase and the live scorer runs on it, but the XGBoost model has **not yet
+been recalibrated to enriched feature distributions**, so there is no comparable
+enriched model number to report — that is the honest next step, not a headline.
+See [`MISTAKES_AND_LEARNINGS.md`](../../MISTAKES_AND_LEARNINGS.md) (Mistake 6)
+for how the earlier 0.9311 archetype metric was removed.
 
 ## Is the data synthetic?
 
@@ -37,11 +36,12 @@ PR-AUC is lower than a circular benchmark would produce.
 
 ## What does the cost model say?
 
-A 10k-order fashion merchant saves **₹20.9 lakh/month** at the 0.50 review gate
-(live enriched path). A wrong MEDIUM flag costs ₹200 of operator time (order
-still ships); a wrong HIGH block costs ₹3,180. The 0.30 gate flags 75% of orders
-and *loses* money; 0.50 flags 18% and saves. See [`docs/COST_MODEL.md`](../COST_MODEL.md)
-including where the 0.50 gate breaks (vertical sensitivity).
+A 10k-order fashion merchant saves **₹17.5 lakh/month** at the 0.50 review gate
+(offline XGBoost operating point: precision 0.677, recall 0.774). A wrong MEDIUM
+flag costs ₹200 of operator time (order still ships); a wrong HIGH block costs
+₹3,180. The measured gate sweep shows 0.50 is optimal for high-return
+verticals. See [`docs/COST_MODEL.md`](../COST_MODEL.md) including where the gate
+breaks (vertical sensitivity).
 
 ## How do I reproduce the numbers?
 

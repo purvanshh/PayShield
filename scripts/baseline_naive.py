@@ -3,9 +3,12 @@
 
 Three heuristics any merchant could implement without ML. PayShield is
 required to beat them convincingly to prove the 7-feature model adds value
-beyond obvious rules. Evaluated on the SAME chronological per-user test
-split (and gate 0.50) as ``scripts/benchmark_return_risk.py`` so the
-comparison with PayShield's PR-AUC 0.9311 is apples-to-apples.
+beyond obvious rules. The PayShield reference is the **offline XGBoost
+model** (PR-AUC 0.8067 on the `returned` label, 2,000-order held-out test
+set from ``scripts/train_xgb_return_risk.py``); the naive heuristics are
+computed here on the Track-2 generator split. The headline baseline
+comparison (same generator, same split) lives in
+``scripts/train_xgb_return_risk.py``.
 
 Baselines (all computed from train-window statistics only, no labels leaked):
   1. COD + high AOV (> Rs75,000 on this market's ~Rs74k AOV) -> 0.6
@@ -153,7 +156,7 @@ def main():
     print(header)
     print("-" * len(header))
     ps = payshield
-    print(f"{'PayShield (7 features + rules)':<38}{ps['pr_auc']:>8.4f}"
+    print(f"{'Offline XGBoost (tuned)':<38}{ps['pr_auc']:>8.4f}"
           f"{ps['precision_at_0.50']:>8.4f}{ps['recall_at_0.50']:>8.4f}{ps['f1_at_0.50']:>8.4f}")
     for b in baselines:
         print(f"{b['name']:<38}{b['pr_auc']:>8.4f}{b['precision_at_0.50']:>8.4f}"
@@ -163,17 +166,17 @@ def main():
 
 
 def _load_payshield_reference():
-    path = Path("models/return_risk_benchmark_results.json")
-    if path.exists():
-        data = json.loads(path.read_text())
-        med = data["metrics"]["medium_or_higher"]
-        return {
-            "pr_auc": data["metrics"]["pr_auc"],
-            "precision_at_0.50": med["precision"],
-            "recall_at_0.50": med["recall"],
-            "f1_at_0.50": med["f1"],
-        }
-    return {"pr_auc": 0.9311, "precision_at_0.50": 0.9837, "recall_at_0.50": 0.6050, "f1_at_0.50": 0.7492}
+    """Offline XGBoost (tuned) reference, measured on the held-out test set.
+
+    PR-AUC 0.8067 on the `returned` label; precision/recall/F1 at gate 0.50.
+    See scripts/train_xgb_return_risk.py and models/return_risk_xgb_best.json.
+    """
+    return {
+        "pr_auc": 0.8067,
+        "precision_at_0.50": 0.677,
+        "recall_at_0.50": 0.774,
+        "f1_at_0.50": 0.722,
+    }
 
 
 if __name__ == "__main__":

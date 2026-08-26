@@ -1,9 +1,9 @@
 {
   "payshield_reference": {
-    "pr_auc": 0.9311,
-    "precision_at_0.50": 0.9837,
-    "recall_at_0.50": 0.605,
-    "f1_at_0.50": 0.7492
+    "pr_auc": 0.8067,
+    "precision_at_0.50": 0.677,
+    "recall_at_0.50": 0.774,
+    "f1_at_0.50": 0.722
   },
   "naive_baselines": [
     {
@@ -28,5 +28,5 @@
       "f1_at_0.50": 0.0
     }
   ],
-  "interpretation": "PayShield PR-AUC is 0.9311 vs. best naive baseline 0.6272 (Naive: serial returner (>40%)). The 7-feature model captures signal beyond obvious heuristics."
+  "interpretation": "PayShield PR-AUC is 0.8067 vs. best naive baseline 0.6272 (Naive: serial returner (>40%)). The 7-feature model captures signal beyond obvious heuristics."
 }
