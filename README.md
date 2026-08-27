@@ -129,6 +129,43 @@ distributions** — it was trained on the offline DGP's features. Retraining it
 on the enriched pipeline is the highest-priority next step (see
 ["What I'd Do Next"](#what-id-do-next)).
 
+**Every response carries a provenance-honest `confidence`** (0–1) blending how
+decisive the score is (distance from the ambiguous 0.5 boundary), how much of
+the signal comes from real data vs. population defaults, and the user's history
+depth — so a brand-new user with no history scores ~40% confidence (mostly
+priors, honestly labelled) while a full-history profile reaches ~97%.
+
+---
+
+## Agent Orchestration
+
+The stack runs an **agent worker** (`python -m agents.worker`) that keeps four
+live agents operating on real scored orders — not mock scaffolding. Each agent
+is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
+owns the lifecycle:
+
+- a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
+  (TTL 60s) so the dashboard **Agents** page and `GET /admin/agents/health`
+  report live `RUNNING` status (<30s staleness rule)
+- a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
+  into the transaction + profile agents every 15s
+- a **reflection loop** triggers the reflection agent over the last 24h every
+  5 minutes
+
+| Agent | Type | What it does |
+|---|---|---|
+| `transaction_agent` | TRANSACTION | Analyzes each scored order — order velocity, COD exposure, amount-vs-category risk, live merchant return rate from Redis — emits `TXN_ANALYSIS_RESULT` with evidence |
+| `profile_agent` | PROFILE | Builds per-user return-risk profiles (order count, avg amount, COD share, avg score) and broadcasts `PROFILE_ANOMALY` when a user's recent behavior drifts from their own history |
+| `reflection_agent` | REFLECTION | Reflects over the return-risk + chargeback audit chain (tier skew, score drift, merchant concentration, new-user bias) using the deterministic risk-suite analysis; routes recommendations to human-review |
+| `human_review_agent` | HUMAN_REVIEW | Handles analyst feedback + escalations; feeds accuracy signals back to reflection |
+
+The agent framework (`agents/base.py`, `agents/message.py`, `agents/state.py`)
+was restored from the pre-scope history and **rewired to the return-risk
+surface** — the original fraud/LLM agents were deleted in the repo scoping
+commit, leaving the UI and health endpoint as scaffolding with nothing behind
+them. The worker is a first-class compose service (`docker-compose.yml` →
+`worker`).
+
 ---
 
 ## Run It
@@ -144,11 +181,17 @@ python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate b
 ```
 
 Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`
-starts **api + redis + dashboard + agent worker**. The worker runs the four
-live agents (transaction, profile, reflection, human-review) against real
-scored orders from the audit chain, renewing Redis heartbeats every 20s —
-see the dashboard **Agents** page or `GET /admin/agents/health`. Then
-`python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
+starts **api + redis + dashboard + agent worker**:
+
+- **API** — `http://localhost:8000` (FastAPI, return-risk hero surface)
+- **Dashboard** — `http://localhost:3000` (SPA: Return Risk, Fraud, Chargeback,
+  Cost Model, Drift, A/B Experiments, Agents; login `admin` / `admin`)
+- **Agent worker** — runs the four live agents (transaction, profile,
+  reflection, human-review) against real scored orders from the audit chain,
+  renewing Redis heartbeats every 20s. See the dashboard **Agents** page or
+  `GET /admin/agents/health`.
+
+Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
 (10 scenarios against real Redis — see ["Live verification"](#live-verification)).
 
 ---
@@ -250,6 +293,11 @@ this track** — their API routes (`/v1/score`, `/v1/chargeback/*`) remain
 mounted for completeness but are out of scope, and every number, metric and
 cost figure here covers the return-risk surface only.
 
+In scope and live: the **dashboard** (`dashboard/`, SPA on :3000) and the
+**agent worker** (`agents/`, compose `worker` service) both operate on the
+return-risk surface — the agents analyze scored orders from the audit chain and
+report live heartbeats, but they do not change the measured model metrics.
+
 **Compliance:** PCI-DSS, RBI and EU AI Act certifications are **out of scope
 for this PoC**. The audit-chain infrastructure (`store/audit_log.py`) is
 designed to support future certification, not to claim it — see
@@ -277,10 +325,16 @@ designed to support future certification, not to claim it — see
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/v1/return/score` | API Key | Score an order for return risk (transparent breakdown, `engine`, `feature_importance`) |
+| `POST` | `/v1/return/score` | API Key | Score an order for return risk (transparent breakdown, `engine`, `feature_importance`, `confidence`) |
 | `POST` | `/v1/return/update` | API Key + RBAC | Record a return event → refresh profile |
 | `GET` | `/v1/return/profile/{user_id}` | API Key + RBAC | Merchant-dashboard user return history |
+| `GET` | `/v1/investigations` | API Key + RBAC | Paginated ledger of scored orders (audit-chain backed) |
+| `GET` | `/v1/investigation/{order_id}` | API Key + RBAC | Detail view for one scored order |
+| `GET` | `/v1/meta/return-risk/cost` | API Key + RBAC | Cost model (scenarios + sensitivity) from the committed calculator output |
+| `GET` | `/v1/meta/return-risk/benchmark` | API Key + RBAC | Committed calibrated benchmark (PR-AUC / gate metrics) |
+| `GET` | `/v1/meta/experiments` | API Key + RBAC | Champion/challenger A/B verdict |
 | `GET` | `/admin/drift/return-risk` | API Key + RBAC | PSI drift report on the return-risk feature surface |
+| `GET` | `/admin/agents/health` | API Key + RBAC | Live agent heartbeats (transaction/profile/reflection/human-review) |
 
 Extension endpoints (fraud, chargeback, admin) and the full surface:
 [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md).
@@ -324,6 +378,11 @@ told as full stories (root cause, debugging trail, lesson) in
 | 27 | `scripts/ablation.py` crashed: `NameError: pd` | `pd.DataFrame` referenced without importing pandas | added `import pandas as pd` |
 | 28 | Makefile warned "overriding commands for target `benchmark`" | duplicate `benchmark:` target — second definition silently overrode the first | renamed the optimizer benchmark to `benchmark-opt` |
 | 29 | PyJWT `InsecureKeyLengthWarning` (29-byte secret < 32 for HS256) | hardcoded short dev JWT secret | extended default to 37 bytes; rotate via `JWT_SECRET` env in prod |
+| 30 | Return-risk router skipped at startup → `POST /v1/return/score` 404 | `return_risk/scorer.py` imports `xgboost`, absent from `requirements.txt` | add `xgboost>=2.0.0` |
+| 31 | Dashboard cost model served stale numbers (0.98 precision / ₹20.9L) vs README (0.677 / ₹17.5L) | committed `models/cost_model_results.json` predated the XGBoost recalibration | regenerate from `docs/cost_model/calculator.py` |
+| 32 | Transactions/Dashboard/Notifications polled `/v1/investigations` → 404 | route deleted in repo scoping | audit-backed `/v1/investigations` + `/v1/investigation/{order_id}` views over `RETURN_RISK_SCORED` entries |
+| 33 | Every fresh-user analysis showed `confidence 0.0%` | old formula deducted 0.05 per default feature — 16 defaults → clamped to 0 | confidence = 40% decisiveness (score vs 0.5 boundary) + 35% provenance + 25% history depth |
+| 34 | Agents page stuck on `not_started` | agent code + worker deleted in scoping; only the health endpoint remained | restore + rewire four agents to the return-risk surface; run as a `worker` compose service with real Redis heartbeats |
 
 ---
 
@@ -338,6 +397,8 @@ PayShield/
 ├── api/                       # FastAPI app (return-risk routes are the hero surface)
 ├── agents/                    # Live agent orchestration (worker service: transaction,
 │                              #   profile, reflection, human-review — Redis heartbeats)
+├── dashboard/                 # React SPA (nginx-served on :3000): score, ledger, cost
+│                              #   model, drift, experiments, agent health, new-analysis form
 ├── integrations/              # Razorpay adapter + webhooks (order.paid → score)
 ├── engine/                    # (extension) fraud: L1 filter, L2 GNN, ensemble
 ├── chargeback/                # (extension) dispute rebuttal builder + Razorpay client
