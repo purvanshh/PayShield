@@ -53,32 +53,28 @@ class OperatingPoint:
     action: Literal["review", "block"] = "review"
 
 
-OPERATING_POINTS = {
-    # Offline XGBoost operating points, measured on the seed-42 2,000-order
-    # held-out test set (scripts/train_xgb_return_risk.py, PR-AUC 0.8067 on
-    # the returned label). The enriched feature pipeline exists in the
-    # codebase but the XGBoost model has not been recalibrated to enriched
-    # distributions — see MISTAKES_AND_LEARNINGS.md (Mistake 6).
-    "HIGH": OperatingPoint("HIGH", 0.70, 0.790, 0.595, action="block"),
-    "MEDIUM+": OperatingPoint("MEDIUM+", 0.50, 0.677, 0.774, action="review"),
-}
-
-# Operating curve of the tuned XGBoost model: {gate: (flag_rate, recall)}.
-# Measured on the seed-42 2,000-order hold-out of
-# scripts/train_xgb_return_risk.py (models/return_risk_xgb_best.json). Used by
-# vertical_sensitivity() to project precision at any base rate via
+# Operating curve of the basic-scenario XGBoost model, measured on the
+# seed-42 2,000-order hold-out and emitted to
+# models/return_risk_results_basic.json by scripts/train_xgb_return_risk.py.
+# Used by vertical_sensitivity() to project precision at any base rate via
 # precision(gate, b) = recall(gate) * b / flag_rate(gate).
-_XGB_OPERATING_CURVE = {
-    0.20: (0.7665, 0.9545),
-    0.25: (0.6995, 0.9242),
-    0.30: (0.6385, 0.9015),
-    0.35: (0.5855, 0.8737),
-    0.40: (0.5345, 0.8409),
-    0.45: (0.4920, 0.8081),
-    0.50: (0.4530, 0.7740),
-    0.60: (0.3805, 0.7008),
-    0.70: (0.2980, 0.5947),
-}
+#
+# NO HARDCODED CONSTANT — the curve is loaded from the measured JSON so the ₹
+# figures always track the actual model. Using stale constants caused Mistake 6
+# (₹20.9L attribution error). See MISTAKES_AND_LEARNINGS.md.
+def _load_basic_curve() -> dict[float, tuple[float, float]]:
+    """Return ``{gate: (flag_rate, recall)}`` from the basic results JSON.
+
+    Hard-fails if the JSON is missing — no fallback to stale constants.
+    """
+    path = Path("models") / "return_risk_results_basic.json"
+    with open(path) as f:
+        data = json.load(f)
+    curve = data.get("operating_curve", {})
+    out: dict[float, tuple[float, float]] = {}
+    for gate_str, pt in curve.items():
+        out[float(gate_str)] = (pt["flag_rate"], pt["recall"])
+    return out
 
 
 def vertical_sensitivity(
@@ -90,9 +86,10 @@ def vertical_sensitivity(
 
     At a fixed gate, precision scales with the base rate (fewer real returns
     among the flagged tail), while recall and the flag rate stay fixed. So
-    ``precision(gate, b) = recall(gate) * b / flag_rate(gate)`` using the tuned
-    model's measured operating curve. The review gate (₹200/flag) is the only
-    action considered - blocking (₹3,180) is a separate, stricter surface.
+    ``precision(gate, b) = recall(gate) * b / flag_rate(gate)`` using the basic
+    model's *measured* operating curve (loaded from JSON, never a stale
+    constant). The review gate (₹200/flag) is the only action considered -
+    blocking (₹3,180) is a separate, stricter surface.
 
     Prints a markdown table and writes ``vertical_sensitivity.json``.
     """
@@ -105,14 +102,17 @@ def vertical_sensitivity(
         ("Grocery", 0.04),
     ]
 
+    # Measured curve from the basic results JSON (no hardcoded fallback).
+    curve = _load_basic_curve()
+
     rows = []
     for label, base_rate in verticals:
         best: tuple[float, float, dict] | None = None  # (savings, gate, result)
         at_050: dict[str, Any] | None = None
         for gate in gates:
-            if gate not in _XGB_OPERATING_CURVE:
+            if gate not in curve:
                 continue
-            flag_rate, recall = _XGB_OPERATING_CURVE[gate]
+            flag_rate, recall = curve[gate]
             precision = min(1.0, recall * base_rate / max(flag_rate, 1e-9))
             op = OperatingPoint("MEDIUM+", gate, precision, recall, action="review")
             assumptions = CostAssumptions(return_rate=base_rate)
@@ -277,10 +277,22 @@ def _format_result(result: dict[str, Any], op: OperatingPoint) -> None:
     print(f"ROI                      : {result['roi_pct']:.1f}%")
 
 
+def _load_basic_operating_point(gate: float = 0.50) -> OperatingPoint:
+    """Load the basic-scenario operating point from the measured JSON.
+
+    NO FALLBACK — the legacy vertical-only path must use measured numbers,
+    not the stale hardcoded constants that caused Mistake 6.
+    """
+    op, _curve = load_maturity_operating_point("basic", gate=gate)
+    return op
+
+
 def _run_scenario(scenario: str, orders: int, op_name: str) -> None:
     config = load_scenario(scenario)
     assumptions = _scenario_assumptions(config)
-    op = OPERATING_POINTS[op_name]
+    # Legacy path: load measured P/R from basic results JSON.
+    # NO FALLBACK — using stale constants caused Mistake 6.
+    op = _load_basic_operating_point(gate=0.50)
     _print_header()
     print(f"\nScenario : {scenario} ({config.get('description', '')})")
     result = evaluate_scenario(orders, assumptions, op)
@@ -289,7 +301,9 @@ def _run_scenario(scenario: str, orders: int, op_name: str) -> None:
 
 def _run_sensitivity(orders: int, op_name: str) -> None:
     base = CostAssumptions()
-    op = OPERATING_POINTS[op_name]
+    # Legacy path: load measured P/R from basic results JSON.
+    # NO FALLBACK — using stale constants caused Mistake 6.
+    op = _load_basic_operating_point(gate=0.50)
     _print_header()
     print("\nSensitivity: monthly savings across AOV × return-rate (MEDIUM+ gate)")
     print(
@@ -316,7 +330,7 @@ def _run_sensitivity(orders: int, op_name: str) -> None:
         )
 
 
-def _build_json_report(orders: int, op_name: str, path: Path) -> None:
+def _build_json_report(orders: int, path: Path) -> None:
     """Write the cost model's authoritative result set to ``path``.
 
     Consumed by the dashboard via ``GET /v1/meta/return-risk/cost`` so the UI
@@ -324,7 +338,9 @@ def _build_json_report(orders: int, op_name: str, path: Path) -> None:
     """
     from datetime import UTC, datetime
 
-    op = OPERATING_POINTS[op_name]
+    # Legacy path: load measured P/R from basic results JSON.
+    # NO FALLBACK — using stale constants caused Mistake 6.
+    op = _load_basic_operating_point(gate=0.50)
 
     scenarios = []
     for key in ("fashion", "electronics", "grocery"):
@@ -398,9 +414,10 @@ def _build_json_report(orders: int, op_name: str, path: Path) -> None:
 # Each maturity stage ships a measured operating curve in
 # models/return_risk_results_{maturity}.json (written by train_xgb_return_risk).
 # The calculator loads the *measured* precision/recall at the 0.50 gate instead
-# of the stale hardcoded OPERATING_POINTS, so the ₹ figures track the actual
-# model. The headline method is unchanged: measured P/R@0.50 applied to each
-# vertical's assumed return rate (the same way the existing ₹17.5L is derived).
+# of stale hardcoded constants, so the ₹ figures track the actual model. NO
+# FALLBACK — using stale constants caused Mistake 6 (₹20.9L attribution error).
+# The headline method is unchanged: measured P/R@0.50 applied to each vertical's
+# assumed return rate (the same way the existing ₹17.0L is derived).
 
 MATURITY_STAGES = ("basic", "enriched", "premium")
 
@@ -409,21 +426,23 @@ def load_maturity_operating_point(maturity: str, gate: float = 0.50) -> tuple[Op
     """Read the measured operating curve + 0.50-gate P/R for one maturity stage.
 
     Returns the OperatingPoint (MEDIUM+, review action) and the full curve dict
-    ``{gate: {flag_rate, precision, recall}}``. Falls back to the legacy
-    hardcoded OPERATING_POINTS/curve if the per-stage results file is missing
-    (keeps the calculator hermetic when run before training).
+    ``{gate: {flag_rate, precision, recall}}``.
+
+    NO FALLBACK — using stale constants caused Mistake 6 (₹20.9L attribution
+    error). If the per-stage results file is missing, the script crashes.
     """
+    # Load measured P/R from the training script output.
+    # NO FALLBACK — using stale constants caused Mistake 6 (see MISTAKES_AND_LEARNINGS.md).
     path = Path("models") / f"return_risk_results_{maturity}.json"
-    if path.exists():
-        data = json.loads(path.read_text())
-        curve = data.get("operating_curve", {})
-        key = f"{gate:.2f}"
-        if key in curve:
-            pt = curve[key]
-            op = OperatingPoint("MEDIUM+", gate, pt["precision"], pt["recall"], action="review")
-            return op, curve
-    # Legacy fallback (basic, pre-scenario artifacts).
-    return OPERATING_POINTS["MEDIUM+"], {f"{g:.2f}": {"flag_rate": fr, "recall": r} for g, (fr, r) in _XGB_OPERATING_CURVE.items()}
+    with open(path) as f:
+        data = json.load(f)
+    curve = data.get("operating_curve", {})
+    key = f"{gate:.2f}"
+    if key not in curve:
+        raise KeyError(f"Gate {key} not found in operating curve for {maturity}")
+    pt = curve[key]
+    op = OperatingPoint("MEDIUM+", gate, pt["precision"], pt["recall"], action="review")
+    return op, curve
 
 
 def compute_maturity_table(orders: int = 10_000) -> dict[str, Any]:
@@ -535,7 +554,6 @@ def main() -> None:
         help="basic | enriched | premium (merchant maturity stage) — uses the stage's measured P/R",
     )
     parser.add_argument("--all-maturity", action="store_true", help="print the unified 3-stage × 2-vertical table")
-    parser.add_argument("--operating-point", default="MEDIUM+", help="HIGH | MEDIUM+")
     parser.add_argument("--sensitivity", action="store_true", help="AOV × return-rate grid")
     parser.add_argument(
         "--vertical-sensitivity",
@@ -548,10 +566,6 @@ def main() -> None:
         help="write models/cost_model_results.json and exit (consumed by the dashboard)",
     )
     args = parser.parse_args()
-
-    op_name = args.operating_point.upper()
-    if op_name not in OPERATING_POINTS:
-        sys.exit(f"unknown operating point: {args.operating_point}")
 
     if args.all_maturity:
         table = compute_maturity_table(args.orders)
@@ -575,14 +589,14 @@ def main() -> None:
         return
 
     if args.json:
-        _build_json_report(args.orders, op_name, Path("models/cost_model_results.json"))
+        _build_json_report(args.orders, Path("models/cost_model_results.json"))
         print("wrote models/cost_model_results.json")
         return
 
     if args.sensitivity:
-        _run_sensitivity(args.orders, op_name)
+        _run_sensitivity(args.orders, "MEDIUM+")
     else:
-        _run_scenario(args.scenario.lower(), args.orders, op_name)
+        _run_scenario(args.scenario.lower(), args.orders, "MEDIUM+")
 
 
 if __name__ == "__main__":

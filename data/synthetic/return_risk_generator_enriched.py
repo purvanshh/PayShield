@@ -18,6 +18,15 @@ explicit weights (mirroring the semantics already encoded in the hidden logit:
 low rating and slow delivery both raise return risk) so the achievable PR-AUC
 is *calibratable* rather than accidental. Calibrated for PR-AUC ~0.88-0.90.
 
+Weight scaling rationale (product_rating / delivery_speed_days):
+- Stage 2 weights 2.0/1.5 reflect "newly collected" data: ratings may be sparse
+  (not every product has enough reviews), delivery tracking may have gaps
+  (courier integrations are partial).
+- These weights are intentionally modest compared to Stage 3 (10.0/6.0) because
+  the signal-to-noise is lower: HIDDEN_SCALE is 18.0 (vs 10.0 in Stage 3) and
+  LABEL_NOISE_STD is 0.08 (vs 0.05 in Stage 3), so the visible signal cannot
+  dominate as strongly without shifting the base rate.
+
 Everything else — the per-user chronological structure, the seven base visible
 features, the category/payment/device/amount/recency signals, the
 interactions, the hidden-feature drawing — is identical to Stage 1 so the
@@ -183,6 +192,8 @@ def _logit_weights() -> dict[str, float]:
         "inter_amount_x_device_risk": 4.00,
         "inter_90d_x_category": 3.20,
         # Stage 2 newly-visible features (centred; calibration knob).
+        # Weights 2.0/1.5 reflect "newly collected, noisier" data vs Stage 3's
+        # 10.0/6.0 "verified, real-time" signal. See module docstring.
         "product_rating": 2.00,
         "delivery_speed_days": 1.50,
     }

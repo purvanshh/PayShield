@@ -11,6 +11,19 @@ unobserved logistics variance**:
 - ``LABEL_NOISE_STD = 0.05`` (vs 0.08 enriched / 0.10 basic) — lower
   irreducible noise.
 
+Weight scaling rationale (product_rating / delivery_speed_days):
+- Enriched scenario (Stage 2): weights 2.0/1.5 reflect "newly collected" data
+  (ratings may be sparse, delivery tracking may have gaps).
+- Premium scenario (Stage 3): weights 10.0/6.0 reflect "verified, real-time"
+  data (ratings are post-purchase verified, delivery SLAs are tracked via
+  courier API).
+- The ~5× scale factor comes from signal-to-noise: HIDDEN_SCALE drops 18→10
+  and LABEL_NOISE drops 0.08→0.05, so the visible signal must dominate to
+  maintain the ~0.40 base rate. If weights were kept at 2.0/1.5 with
+  HIDDEN_SCALE=10, the hidden term would dominate and the base rate would drift.
+  The 10.0/6.0 weights are calibrated jointly with HIDDEN_SCALE and
+  LABEL_NOISE_STD to maintain base rate ~0.40 and target PR-AUC ~0.94.
+
 This is a real merchant segment (large marketplaces with mature data stacks
 where most return drivers are observed), not a circular benchmark. Calibrated
 for PR-AUC ~0.94. The label remains the per-order ``returned`` outcome, drawn
@@ -143,9 +156,15 @@ def _logit_weights() -> dict[str, float]:
     weights), with stronger visible weights for the two precisely-observed
     features (a premium merchant measures ratings and delivery SLAs cleanly, so
     their effective signal-to-noise is higher). Applied to the centred
-    normalized form so the base rate stays stable. These weights + ``HIDDEN_SCALE=10``
-    + ``LABEL_NOISE_STD=0.05`` settle the achievable PR-AUC near ~0.94.
+    normalized form so the base rate stays stable.
+
+    Weights are calibrated jointly with HIDDEN_SCALE=10 and LABEL_NOISE_STD=0.05
+    to maintain base rate ~0.40 and target PR-AUC ~0.94. See module docstring
+    for the full signal-to-noise rationale.
     """
+    # Weights are calibrated jointly with HIDDEN_SCALE and LABEL_NOISE_STD
+    # to maintain base rate ~0.40 and target PR-AUC ~0.94.
+    # See module docstring for the full signal-to-noise rationale.
     return {
         "intercept": -4.60,
         "user_return_rate_30d": 3.60,
@@ -159,8 +178,8 @@ def _logit_weights() -> dict[str, float]:
         "inter_30d_x_payment": 5.00,
         "inter_amount_x_device_risk": 4.00,
         "inter_90d_x_category": 3.20,
-        "product_rating": 10.00,
-        "delivery_speed_days": 6.00,
+        "product_rating": 10.00,        # verified ratings are strong protective signal
+        "delivery_speed_days": 6.00,    # slow delivery is strong risk signal (courier API)
     }
 
 

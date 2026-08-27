@@ -13,6 +13,11 @@ ablation and the honest way to answer "does this feature matter?".
 
 Writes:
     models/ablation_study.json   (baseline PR-AUC + per-feature drops)
+
+GUARDRAIL: This script MUST use the base generator (seed=99) for the hold-out
+test set. Do NOT substitute enriched/premium generators - that would
+invalidate the independent hold-out and repeat Mistake 5 (see
+MISTAKES_AND_LEARNINGS.md).
 """
 
 from __future__ import annotations

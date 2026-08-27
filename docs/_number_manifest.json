@@ -1,0 +1,35 @@
+{
+  "_comment": "Single source of truth for headline numbers quoted in docs. All values are the DEFAULT-hyperparameter XGBoost model (models/return_risk_results_{scenario}.json) — the shipped return_risk_xgb_v1.json equivalent — so every number in a scenario row comes from one file (no tuned-vs-default mixing). Tuned champion AUCs live in models/tune_results_{scenario}.json and reports/scenario_comparison.md only.",
+  "scenarios": {
+    "basic": {
+      "pr_auc": 0.8042,
+      "roc_auc": 0.8448,
+      "precision_50": 0.635,
+      "recall_50": 0.811,
+      "f1_50": 0.712,
+      "fashion_savings_lakhs": 17.0,
+      "electronics_savings_lakhs": 36.2
+    },
+    "enriched": {
+      "pr_auc": 0.8881,
+      "roc_auc": 0.9217,
+      "precision_50": 0.728,
+      "recall_50": 0.874,
+      "f1_50": 0.794,
+      "fashion_savings_lakhs": 21.6,
+      "electronics_savings_lakhs": 45.0
+    },
+    "premium": {
+      "pr_auc": 0.9467,
+      "roc_auc": 0.9593,
+      "precision_50": 0.826,
+      "recall_50": 0.914,
+      "f1_50": 0.868,
+      "fashion_savings_lakhs": 26.0,
+      "electronics_savings_lakhs": 53.6
+    }
+  },
+  "ablation_baseline": 0.8118,
+  "tuned_champion_pr_auc": { "basic": 0.8089, "enriched": 0.8875, "premium": 0.9483 },
+  "tuned_champion_roc_auc": { "basic": 0.8477, "enriched": 0.9211, "premium": 0.9602 }
+}
