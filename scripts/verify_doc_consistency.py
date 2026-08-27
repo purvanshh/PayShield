@@ -19,8 +19,13 @@ DOC_PATHS = [
     Path("README.md"),
     Path("BUSINESS_IMPACT.md"),
     Path("MISTAKES_AND_LEARNINGS.md"),
+    Path("EVALUATOR_GUIDE.md"),
     Path("docs/DESIGN_DECISIONS.md"),
     Path("docs/INTERVIEW_DEFENSE.md"),
+    Path("docs/COST_MODEL.md"),
+    Path("docs/reference/faq.md"),
+    Path("models/README.md"),
+    Path("reports/XGBOOST_RETURN_RISK_PIPELINE.md"),
 ]
 
 # Known stale numbers from the old single-scenario era that must not appear
@@ -57,7 +62,10 @@ def verify_doc_consistency() -> None:
         text = doc_path.read_text()
 
         # 1. Detect stale numbers in non-historical docs.
-        is_historical_doc = doc_path.name in ("MISTAKES_AND_LEARNINGS.md",)
+        is_historical_doc = doc_path.name in (
+            "MISTAKES_AND_LEARNINGS.md",
+            "XGBOOST_RETURN_RISK_PIPELINE.md",
+        )
         for stale, description in STALE_NUMBERS.items():
             # Look for the stale number as a standalone token.
             pattern = re.compile(rf"\b{re.escape(str(stale))}\b")
@@ -78,8 +86,8 @@ def verify_doc_consistency() -> None:
                     )
 
         # 2. Verify headline tables contain the correct manifest numbers.
-        # Only check README and BUSINESS_IMPACT for the three-scenario table.
-        if doc_path.name in ("README.md", "BUSINESS_IMPACT.md"):
+        # Only check the root README and BUSINESS_IMPACT for the three-scenario table.
+        if str(doc_path) in ("README.md", "BUSINESS_IMPACT.md"):
             for scenario, metrics in manifest.get("scenarios", {}).items():
                 for metric, expected in metrics.items():
                     if metric in ("pr_auc", "roc_auc"):

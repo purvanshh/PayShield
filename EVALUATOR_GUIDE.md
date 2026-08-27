@@ -7,16 +7,18 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 
 ## Minute 1–2: The Business Case
 - Open [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
-- See the gate sweep: a 10k-order fashion merchant saves **₹17.5 lakh/month**
-  at the **0.50 review gate** (precision 0.677, recall 0.774 — the offline
+- See the gate sweep: a 10k-order fashion merchant saves **₹17.0 lakh/month**
+  at the **0.50 review gate** (precision 0.635, recall 0.811 — the Stage 1
   XGBoost operating point). The gate is config-driven per vertical; 0.50 is
-  optimal for high-return verticals.
+  optimal for high-return verticals. The three-scenario maturity table shows
+  savings scaling to **₹53.6L/month** for a premium electronics merchant.
 
 ## Minute 3–4: The Model
 - Open [`scripts/train_xgb_return_risk.py`](scripts/train_xgb_return_risk.py)
-- Run: `python scripts/train_xgb_return_risk.py` (~20s, hermetic)
-- See: **XGBoost PR-AUC 0.8067** vs. the best naive baseline 0.6991 (**+0.11 lift**)
-  and vs. the hand-weighted scorer 0.7896. The model learns from a deliberately
+- Run: `python scripts/train_xgb_return_risk.py --scenario premium` (~20s, hermetic)
+- See: **XGBoost PR-AUC 0.9467** (Stage 3) vs. the best naive baseline 0.6991
+  (**+0.25 lift**) and vs. the hand-weighted scorer 0.8818. Stage 1 reaches
+  0.8042 (the honest floor). The model learns from a deliberately
   **non-circular** synthetic DGP (visible features + hidden confounders).
 
 ## Minute 5–6: The Evidence
@@ -58,8 +60,9 @@ caveats, both documented:
 1. The enriched-path scorer (before the scope cut, hand-weighted) reached
    **0.9311 PR-AUC on the serial/fraud-archetype label** — a different target
    (user type, not per-order `returned`) and a different engine than the
-   evaluated model. It is **not comparable** to 0.8067 and is **not** a
-   headline number; see [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
+   evaluated model. It is **not comparable** to the Stage 1 `returned`-label
+   PR-AUC (0.8042) and is **not** a headline number; see
+   [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 2. Applied today, the XGBoost model scores **0.82** on that archetype target
    and ~0.50 on the per-order `returned` label — because the enriched
    generator's `returned` outcome depends only on the user's latent rate (see

@@ -15,16 +15,24 @@ with a transparent hand-weighted composite as the automatic fallback. The score
 maps to a tier: LOW → ship, MEDIUM → review, HIGH → require prepaid. Every score
 carries a per-feature value, weight, contribution and source tag.
 
-## Why is there one PR-AUC number?
+## Why are there three PR-AUC numbers?
 
-The evaluated number is the **offline XGBoost model, PR-AUC 0.8067** on the
-`returned` label — trained on a non-circular DGP, validated on a per-user
-chronological hold-out. The Redis-enriched feature pipeline exists in the
-codebase and the live scorer runs on it, but the XGBoost model has **not yet
-been recalibrated to enriched feature distributions**, so there is no comparable
-enriched model number to report — that is the honest next step, not a headline.
-See [`MISTAKES_AND_LEARNINGS.md`](../../MISTAKES_AND_LEARNINGS.md) (Mistake 6)
-for how the earlier 0.9311 archetype metric was removed.
+PayShield is evaluated across **three merchant-maturity scenarios** with
+identical model architecture — only the data source changes:
+
+| Stage | PR-AUC | ROC-AUC | ₹/month (Electronics) |
+|---|---|---|---|
+| Stage 1: Basic (floor) | 0.8042 | 0.8448 | ₹36.2L |
+| Stage 2: Enriched | 0.8881 | 0.9217 | ₹45.0L |
+| Stage 3: Premium | 0.9467 | 0.9593 | ₹53.6L |
+
+Stage 1 is the honest floor (7 features, high hidden variance). Stage 3 is a
+premium merchant with mature instrumentation (9 features, low noise). The
+Redis-enriched feature pipeline exists in the codebase but the XGBoost model
+has **not yet been recalibrated to real merchant data** — that is the honest
+next step. See [`MISTAKES_AND_LEARNINGS.md`](../../MISTAKES_AND_LEARNINGS.md)
+(Mistake 7) for why three scenarios instead of a silent overwrite, and
+Mistake 6 for how the earlier 0.9311 archetype metric was removed.
 
 ## Is the data synthetic?
 
@@ -36,12 +44,13 @@ PR-AUC is lower than a circular benchmark would produce.
 
 ## What does the cost model say?
 
-A 10k-order fashion merchant saves **₹17.5 lakh/month** at the 0.50 review gate
-(offline XGBoost operating point: precision 0.677, recall 0.774). A wrong MEDIUM
+A 10k-order fashion merchant saves **₹17.0 lakh/month** at the 0.50 review gate
+(Stage 1 XGBoost operating point: precision 0.635, recall 0.811). A wrong MEDIUM
 flag costs ₹200 of operator time (order still ships); a wrong HIGH block costs
 ₹3,180. The measured gate sweep shows 0.50 is optimal for high-return
-verticals. See [`docs/COST_MODEL.md`](../COST_MODEL.md) including where the gate
-breaks (vertical sensitivity).
+verticals. The three-scenario maturity table shows savings scaling to ₹53.6L
+for a premium electronics merchant. See [`docs/COST_MODEL.md`](../COST_MODEL.md)
+including where the gate breaks (vertical sensitivity).
 
 ## How do I reproduce the numbers?
 

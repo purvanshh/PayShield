@@ -15,11 +15,13 @@ hand-weighted composite as an automatic fallback. The data-generating process
 noise — so XGBoost learns from noisy, incomplete signal, exactly like real
 merchant data. Absolute PR-AUC is therefore lower but **more honest**.
 
-**Headline:** tuned XGBoost **PR-AUC 0.8067** (raw features, `returned` label)
-— beats the hand-weighted scorer (0.7896) and clearly beats both naive rules
-(0.6991, 0.5884). The Redis-enriched feature pipeline exists but the model has
-**not** been recalibrated to it — that is future work, not a headline (see
-Mistake 6 in `MISTAKES_AND_LEARNINGS.md`).
+**Headline:** Stage 1 XGBoost **PR-AUC 0.8042** (default) / **0.8089** (tuned)
+on raw features, `returned` label — beats the hand-weighted scorer (0.7896)
+and clearly beats both naive rules (0.6991, 0.5884). The three-scenario
+maturity framing extends this to Stage 2 (0.8881) and Stage 3 (0.9467). The
+Redis-enriched feature pipeline exists but the model has **not** been
+recalibrated to real merchant data — that is future work, not a headline
+(see Mistake 6/7 in `MISTAKES_AND_LEARNINGS.md`).
 
 ---
 
@@ -74,13 +76,14 @@ user-history signal; removing **both** at once costs **−10.5%**, the single
 largest block of signal. Artifact: `models/ablation_study.json`.
 
 ### Phase 3 — Hyperparameter tuning ✅
-- **`scripts/tune_xgb.py`** (new): exhaustive grid search over **144
-  combinations** (`max_depth` × `n_estimators` × `learning_rate` ×
-  `scale_pos_weight`), selected on the validation split (never the test set).
-- Best: `max_depth=3, n_estimators=200, learning_rate=0.05, scale_pos_weight=1.5`
-  → **test PR-AUC 0.8067** (up from default 0.8042).
+- **`scripts/tune_xgb.py`** (updated): scenario-aware `HalvingGridSearchCV` over
+  a widened grid (`max_depth` × `n_estimators` × `learning_rate` ×
+  `scale_pos_weight` × `min_child_weight` × `reg_lambda` × `reg_alpha` × `gamma`),
+  selected on validation PR-AUC.
+- Best (Stage 1): `max_depth=4, n_estimators=300, learning_rate=0.05,
+  scale_pos_weight=1.5` → **test PR-AUC 0.8089** (up from default 0.8042).
 
-Artifacts: `models/return_risk_xgb_best.json`, `models/xgb_tuning_results.json`.
+Artifacts: `models/return_risk_xgb_best_{scenario}.json`, `models/tune_results_{scenario}.json`.
 
 ### Phase 4 — Integrate into the production scorer ✅
 - **`return_risk/feature_engine.py`**: exposes the ML inputs the model needs —
@@ -101,11 +104,11 @@ Artifacts: `models/return_risk_xgb_best.json`, `models/xgb_tuning_results.json`.
   `engine: "hand_weighted"` (model absent).
 
 ### Phase 5 — Documentation (video skipped) ✅
-- **`README.md`**: single-number headline (offline XGBoost 0.8067), honest DGP
-  disclosure, model/ablation/tuning tables, updated architecture diagram
-  (XGBoost primary), the offline cost-model gate sweep, and a "What I'd Do
-  Next" section (retrain on the enriched pipeline).
-- **`models/README.md`**: documents the five artifacts.
+- **`README.md`**: three-scenario maturity headline table (Stage 1 floor 0.8042
+  → Stage 3 0.9467), honest DGP disclosure, model/ablation/tuning tables,
+  updated architecture diagram (XGBoost primary), the measured cost-model gate
+  sweep, and a "What I'd Do Next" section (retrain on real merchant data).
+- **`models/README.md`**: documents all artifacts including per-scenario results.
 - **`Makefile`**: `train-xgb`, `ablation-xgb`, `tune-xgb` targets.
 - **`scripts/verify_live_stack.py`**: HIGH bound widened to 0.7–1.0.
 - **`tests/unit/return_risk/test_scorer.py`**: engine-aware invariant.
@@ -114,23 +117,26 @@ Artifacts: `models/return_risk_xgb_best.json`, `models/xgb_tuning_results.json`.
 
 ## 2.5 The 0.9311 attribution — resolved by removal
 
-An earlier headline compared offline XGBoost (0.8067, `returned` label) with a
-"live Redis-backed" system (0.9311). Investigation showed these were **not
+An earlier headline compared offline XGBoost (Stage 1 PR-AUC 0.8042, `returned`
+label) with a "live Redis-backed" system (0.9311). Investigation showed these
+were **not
 comparable**: 0.9311 was the *hand-weighted* scorer on the *`high_risk`
 archetype* label from the Track-2 generator — a different target, engine and
 data source. The "+0.12 = feature enrichment" framing was therefore false (on
 the same `returned` label the enriched path scores ~0.52, because that
 generator's `returned` outcome depends only on the user's latent rate).
 
-**Resolution:** removed 0.9311 from all headline surfaces. The single
-defensible number is **0.8067 → ₹17.5L at the 0.50 gate** (P 0.677, R 0.774,
-measured confusion matrix). The enriched pipeline is documented as future work
-(needs model recalibration), and the generator-design limitation is documented
-in `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md` and Mistake 6 of
+**Resolution:** removed 0.9311 from all headline surfaces. The defensible
+Stage 1 number is **PR-AUC 0.8042 → ₹17.0L at the 0.50 gate** (P 0.635,
+R 0.811, measured confusion matrix). The three-scenario maturity framing
+extends this to Stage 3 (0.9467 → ₹53.6L electronics). The enriched pipeline
+is documented as future work (needs model recalibration), and the
+generator-design limitation is documented in
+`docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md` and Mistakes 6/7 of
 `MISTAKES_AND_LEARNINGS.md`.
 
-**Cost model (offline operating point):** on a 10k-order fashion merchant, the
-0.50 review gate saves **₹17.5L/month** (ROI 34.9%).
+**Cost model (Stage 1 operating point):** on a 10k-order fashion merchant, the
+0.50 review gate saves **₹17.0L/month** (ROI 33.9%).
 
 ---
 
@@ -168,14 +174,17 @@ in `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md` and Mistake 6 of
 
 | File | Purpose |
 |---|---|
-| `data/synthetic/return_risk_generator.py` | 7-feature + hidden-DGP data engine |
-| `scripts/train_xgb_return_risk.py` | Phase 1 train + baseline comparison |
-| `scripts/ablation_study.py` | Phase 2 LOFO ablation |
-| `scripts/tune_xgb.py` | Phase 3 grid search |
+| `data/synthetic/return_risk_generator.py` | Stage 1: 7-feature + hidden-DGP data engine |
+| `data/synthetic/return_risk_generator_enriched.py` | Stage 2: 9-feature (rating + delivery observed) |
+| `data/synthetic/return_risk_generator_premium.py` | Stage 3: 9-feature, low hidden variance |
+| `scripts/train_xgb_return_risk.py` | Scenario-aware train + baseline comparison |
+| `scripts/ablation_study.py` | Phase 2 LOFO ablation (seed 99 hold-out) |
+| `scripts/tune_xgb.py` | Phase 3 HalvingGridSearchCV per scenario |
+| `scripts/run_all_scenarios.py` | Master runner + `--full-verify` suite |
 | `return_risk/scorer.py` | XGBoost primary + hand-weighted fallback |
 | `return_risk/feature_engine.py` | ML inference features |
 | `api/schemas/return_risk.py` · `api/routes/return_risk.py` | API surface |
-| `models/return_risk_xgb_best.json` | **Shipped tuned model (PR-AUC 0.8067)** |
+| `models/return_risk_xgb_best.json` | **Shipped tuned model (Stage 1 PR-AUC 0.8089)** |
 
 **Reproduce everything:**
 ```bash

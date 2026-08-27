@@ -78,11 +78,12 @@ confusion matrices at each gate feed the cost model:
 
 | Gate | Flag rate | Precision | Recall | Use case |
 |------|-----------|-----------|--------|----------|
-| 0.30 | 63.9% | 0.559 | 0.902 | Aggressive review — catches most returns, more wrong flags |
-| 0.40 | 53.5% | 0.623 | 0.841 | — |
-| **0.50** | **45.3%** | **0.677** | **0.774** | **Review gate: flag for manual review (₹200 per wrong flag)** |
-| 0.60 | 38.1% | 0.729 | 0.701 | — |
-| 0.70 | 29.8% | 0.790 | 0.595 | Prepaid gate: block at checkout (₹3,180 per wrong block) |
+| 0.30 | 70.0% | 0.524 | 0.925 | Aggressive review — catches most returns, more wrong flags |
+| 0.40 | 59.8% | 0.582 | 0.877 | — |
+| 0.45 | 54.7% | 0.614 | 0.849 | — |
+| **0.50** | **50.5%** | **0.635** | **0.811** | **Review gate: flag for manual review (₹200 per wrong flag)** |
+| 0.60 | 43.3% | 0.693 | 0.758 | — |
+| 0.70 | 34.5% | 0.752 | 0.657 | Prepaid gate: block at checkout (₹3,180 per wrong block) |
 
 The review threshold is config-driven (`configs/return_risk_rules.yaml`
 → `operating_point.medium_review_threshold`) and must be tuned per merchant
@@ -126,12 +127,12 @@ Per **1,000 orders**: baseline ₹5,03,100 → with PayShield ₹3,27,630 →
 
 | Merchant | AOV | Return rate | Cost false-allow / wrong-flag | Monthly savings | Annual savings | ROI |
 |----------|-----|-------------|-------------------------------|-----------------|----------------|-----|
-| Fashion | ₹2,500 | 18% | ₹2,795 / ₹200 | **₹17,54,700** | ₹2.11 Cr | 34.9% |
-| Electronics | ₹8,000 | 12% | ₹8,520 / ₹200 | **₹36,88,800** | ₹4.43 Cr | 36.1% |
-| Grocery | ₹800 | 4% | ₹961 / ₹200 | **₹1,10,696** | ₹13.3 L | 28.8% |
+| Fashion | ₹2,500 | 18% | ₹2,795 / ₹200 | **₹17,04,560** | ₹2.05 Cr | 33.9% |
+| Electronics | ₹8,000 | 12% | ₹8,520 / ₹200 | **₹36,18,000** | ₹4.34 Cr | 35.4% |
+| Grocery | ₹800 | 4% | ₹961 / ₹200 | **₹1,10,696** | ₹13.3 L | 27.4% |
 
 Electronics shows the leverage of high AOV: each prevented return is worth
-₹8.5k, so even a 12% return rate yields ~₹36.9L/month. Grocery shows the
+₹8.5k, so even a 12% return rate yields ~₹36.2L/month. Grocery shows the
 floor: at ₹800 AOV and a 4% baseline a review gate still saves ~₹1.1L/month.
 
 ## Sensitivity Analysis (AOV × return rate, MEDIUM+ review gate 0.50)
@@ -182,7 +183,7 @@ recalibrate the model on that merchant's data.
    the risk — the HIGH/prepaid gate is reserved for the clearly-high segment.
 
 The 0.50 gate is the cost minimiser for a high-return fashion vertical (the
-gate sweep above: ₹17.5L at 0.50 vs ₹16.3L at 0.30 and ₹16.1L at 0.70).
+gate sweep above: ₹17.0L at 0.50 vs ₹15.5L at 0.30 and ₹16.8L at 0.70).
 On low-return verticals the gate must move up (0.60–0.70) — see the vertical
 sensitivity section.
 

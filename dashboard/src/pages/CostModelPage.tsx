@@ -25,6 +25,27 @@ interface CostSensitivityRow {
   roi_pct: number;
 }
 
+interface MaturityRow {
+  maturity: string;
+  vertical: string;
+  aov: number;
+  return_rate: number;
+  pr_auc: number | null;
+  roc_auc: number | null;
+  precision_at_050: number;
+  recall_at_050: number;
+  monthly_savings: number;
+  annual_savings: number;
+  roi_pct: number;
+}
+
+interface MaturityScenarios {
+  orders: number;
+  generated_at: string;
+  rows: MaturityRow[];
+  note: string;
+}
+
 interface CostReport {
   operating_point: {
     name: string;
@@ -38,7 +59,14 @@ interface CostReport {
   sensitivity: CostSensitivityRow[];
   orders: number;
   generated_at?: string;
+  maturity_scenarios?: MaturityScenarios;
 }
+
+const STAGE_LABELS: Record<string, string> = {
+  basic: "Stage 1: Basic",
+  enriched: "Stage 2: Enriched",
+  premium: "Stage 3: Premium",
+};
 
 const inr = (n: number) => Math.round(n).toLocaleString("en-IN");
 
@@ -81,6 +109,7 @@ export function CostModelPage() {
   const op = report.operating_point;
   const scenarios = report.scenarios;
   const sensitivity = report.sensitivity;
+  const maturity = report.maturity_scenarios;
 
   return (
     <div className="flex flex-col">
@@ -153,6 +182,72 @@ export function CostModelPage() {
           </div>
         </div>
       </div>
+
+      {/* Progressive Merchant Maturity */}
+      {maturity && maturity.rows.length > 0 && (
+        <section className="mb-section-gap">
+          <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-4">
+            <div>
+              <h3 className="font-headline-md text-headline-md text-on-surface">
+                Progressive Merchant Maturity
+              </h3>
+              <p className="font-body-md text-body-md text-outline mt-2 max-w-2xl">
+                Three named merchant segments with identical model architecture —
+                only the data source (observed features + unobserved-variance budget)
+                changes. ROC-AUC is measured, never hardcoded.
+              </p>
+            </div>
+          </div>
+          <div className="w-full">
+            <div className="grid grid-cols-12 gap-4 py-4 border-b border-white/10 font-label-caps text-label-caps text-outline mb-2">
+              <div className="col-span-3">Scenario</div>
+              <div className="col-span-2">Vertical</div>
+              <div className="col-span-1 text-right">PR-AUC</div>
+              <div className="col-span-1 text-right">ROC-AUC</div>
+              <div className="col-span-1 text-right">P@0.50</div>
+              <div className="col-span-1 text-right">R@0.50</div>
+              <div className="col-span-2 text-right">Net ₹/month</div>
+              <div className="col-span-1 text-right">ROI</div>
+            </div>
+            {maturity.rows.map((r, i) => (
+              <div
+                key={`${r.maturity}-${r.vertical}-${i}`}
+                className="grid grid-cols-12 gap-4 py-4 border-b border-white/5 items-center"
+              >
+                <div className="col-span-3 font-body-md text-body-md text-on-surface">
+                  {STAGE_LABELS[r.maturity] ?? r.maturity}
+                </div>
+                <div className="col-span-2 font-mono-data text-mono-data text-on-surface-variant capitalize">
+                  {r.vertical}
+                </div>
+                <div className="col-span-1 text-right font-mono-data text-mono-data text-on-surface">
+                  {r.pr_auc?.toFixed(4) ?? "n/a"}
+                </div>
+                <div className="col-span-1 text-right font-mono-data text-mono-data text-on-surface">
+                  {r.roc_auc?.toFixed(4) ?? "n/a"}
+                </div>
+                <div className="col-span-1 text-right font-mono-data text-mono-data text-outline">
+                  {r.precision_at_050.toFixed(3)}
+                </div>
+                <div className="col-span-1 text-right font-mono-data text-mono-data text-outline">
+                  {r.recall_at_050.toFixed(3)}
+                </div>
+                <div className="col-span-2 text-right font-mono-data text-mono-data text-primary">
+                  ₹{inr(r.monthly_savings)}
+                </div>
+                <div className="col-span-1 text-right font-mono-data text-mono-data text-secondary">
+                  {r.roi_pct.toFixed(1)}%
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="font-body-sm text-body-sm text-outline mt-4">
+            Stage 1 is the honest floor; Stage 3 is a premium merchant with mature
+            instrumentation. The ₹ lift comes from improved measured P/R at the
+            0.50 gate — not from base-rate or AOV changes.
+          </p>
+        </section>
+      )}
 
       {/* Scenario sweep */}
       <section className="mb-section-gap">

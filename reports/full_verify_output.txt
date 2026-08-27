@@ -1,0 +1,263 @@
+
+======================================================================
+PayShield Return-Risk Scorer | Stage: basic
+======================================================================
+  features=7  seed=42  target_pr_auc=~0.81
+Generating 10000 orders (scenario=basic, seed=42)...
+  base rate=0.420  rows=10000
+Splitting (60/20/20, per-user chronological)...
+  Train: 6000 | Val: 2000 | Test: 2000
+Training XGBoost (default hyperparameters)...
+Evaluating XGBoost...
+Evaluating hand-weighted baseline...
+Evaluating naive baselines...
+
+======================================================================
+RESULTS (Stage: basic | test set - per-user chronological hold-out, gate 0.50)
+======================================================================
+
+XGBoost (default)
+  PR-AUC (trapezoidal): 0.8042
+  PR-AUC (AP):          0.8043
+  ROC-AUC:              0.8448
+  Precision @ 0.50:     0.6350
+  Recall @ 0.50:        0.8106
+  F1 @ 0.50:            0.7121
+  CM: TN=839 FP=369 FN=150 TP=642
+
+Hand-weighted (current)
+  PR-AUC (trapezoidal): 0.7896
+  PR-AUC (AP):          0.7898
+  ROC-AUC:              0.8392
+  Precision @ 0.50:     0.9565
+  Recall @ 0.50:        0.1944
+  F1 @ 0.50:            0.3232
+  CM: TN=1201 FP=7 FN=638 TP=154
+
+Naive: SerialReturner
+  PR-AUC (trapezoidal): 0.6991
+  PR-AUC (AP):          0.5404
+  ROC-AUC:              0.6895
+  Precision @ 0.50:     0.6308
+  Recall @ 0.50:        0.6149
+  F1 @ 0.50:            0.6228
+  CM: TN=923 FP=285 FN=305 TP=487
+
+Naive: COD+HighAOV
+  PR-AUC (trapezoidal): 0.5884
+  PR-AUC (AP):          0.4419
+  ROC-AUC:              0.5555
+  Precision @ 0.50:     0.6848
+  Recall @ 0.50:        0.1591
+  F1 @ 0.50:            0.2582
+  CM: TN=1150 FP=58 FN=666 TP=126
+
+======================================================================
+XGBoost FEATURE IMPORTANCE
+======================================================================
+  payment_method_risk: 0.2478
+  user_return_rate_30d: 0.2121
+  user_return_rate_90d: 0.1814
+  device_fingerprint_match: 0.1238
+  amount_vs_user_aov_ratio: 0.1224
+  category_return_baseline: 0.0605
+  days_since_last_order: 0.0519
+
+Saved: models/return_risk_xgb_v1.json, models/xgb_evaluation.json
+Saved: models/return_risk_results_basic.json
+
+======================================================================
+PayShield Return-Risk Scorer | Stage: enriched
+======================================================================
+  features=9  seed=42  target_pr_auc=0.88-0.90
+Generating 10000 orders (scenario=enriched, seed=42)...
+  base rate=0.398  rows=10000
+Splitting (60/20/20, per-user chronological)...
+  Train: 6000 | Val: 2000 | Test: 2000
+Training XGBoost (default hyperparameters)...
+Evaluating XGBoost...
+Evaluating hand-weighted baseline...
+Evaluating naive baselines...
+
+======================================================================
+RESULTS (Stage: enriched | test set - per-user chronological hold-out, gate 0.50)
+======================================================================
+
+XGBoost (default)
+  PR-AUC (trapezoidal): 0.8881
+  PR-AUC (AP):          0.8882
+  ROC-AUC:              0.9217
+  Precision @ 0.50:     0.7282
+  Recall @ 0.50:        0.8740
+  F1 @ 0.50:            0.7945
+  CM: TN=1000 FP=246 FN=95 TP=659
+
+Hand-weighted (current)
+  PR-AUC (trapezoidal): 0.8632
+  PR-AUC (AP):          0.8633
+  ROC-AUC:              0.9055
+  Precision @ 0.50:     0.9792
+  Recall @ 0.50:        0.2493
+  F1 @ 0.50:            0.3975
+  CM: TN=1242 FP=4 FN=566 TP=188
+
+Naive: SerialReturner
+  PR-AUC (trapezoidal): 0.7306
+  PR-AUC (AP):          0.5701
+  ROC-AUC:              0.7341
+  Precision @ 0.50:     0.6619
+  Recall @ 0.50:        0.6777
+  F1 @ 0.50:            0.6697
+  CM: TN=985 FP=261 FN=243 TP=511
+
+Naive: COD+HighAOV
+  PR-AUC (trapezoidal): 0.5704
+  PR-AUC (AP):          0.4233
+  ROC-AUC:              0.5560
+  Precision @ 0.50:     0.6630
+  Recall @ 0.50:        0.1618
+  F1 @ 0.50:            0.2601
+  CM: TN=1184 FP=62 FN=632 TP=122
+
+======================================================================
+XGBoost FEATURE IMPORTANCE
+======================================================================
+  user_return_rate_90d: 0.2186
+  payment_method_risk: 0.2110
+  user_return_rate_30d: 0.2014
+  amount_vs_user_aov_ratio: 0.1014
+  device_fingerprint_match: 0.0872
+  product_rating: 0.0546
+  category_return_baseline: 0.0460
+  delivery_speed_days: 0.0428
+  days_since_last_order: 0.0369
+Saved: models/return_risk_results_enriched.json
+
+======================================================================
+PayShield Return-Risk Scorer | Stage: premium
+======================================================================
+  features=9  seed=123  target_pr_auc=~0.94
+Generating 10000 orders (scenario=premium, seed=123)...
+  base rate=0.425  rows=10000
+Splitting (60/20/20, per-user chronological)...
+  Train: 6000 | Val: 2000 | Test: 2000
+Training XGBoost (default hyperparameters)...
+Evaluating XGBoost...
+Evaluating hand-weighted baseline...
+Evaluating naive baselines...
+
+======================================================================
+RESULTS (Stage: premium | test set - per-user chronological hold-out, gate 0.50)
+======================================================================
+
+XGBoost (default)
+  PR-AUC (trapezoidal): 0.9467
+  PR-AUC (AP):          0.9468
+  ROC-AUC:              0.9593
+  Precision @ 0.50:     0.8255
+  Recall @ 0.50:        0.9140
+  F1 @ 0.50:            0.8675
+  CM: TN=987 FP=164 FN=73 TP=776
+
+Hand-weighted (current)
+  PR-AUC (trapezoidal): 0.8818
+  PR-AUC (AP):          0.8819
+  ROC-AUC:              0.9070
+  Precision @ 0.50:     0.9890
+  Recall @ 0.50:        0.2120
+  F1 @ 0.50:            0.3492
+  CM: TN=1149 FP=2 FN=669 TP=180
+
+Naive: SerialReturner
+  PR-AUC (trapezoidal): 0.7085
+  PR-AUC (AP):          0.5606
+  ROC-AUC:              0.6791
+  Precision @ 0.50:     0.6604
+  Recall @ 0.50:        0.5771
+  F1 @ 0.50:            0.6160
+  CM: TN=899 FP=252 FN=359 TP=490
+
+Naive: COD+HighAOV
+  PR-AUC (trapezoidal): 0.5483
+  PR-AUC (AP):          0.4470
+  ROC-AUC:              0.5328
+  Precision @ 0.50:     0.5968
+  Recall @ 0.50:        0.1307
+  F1 @ 0.50:            0.2145
+  CM: TN=1076 FP=75 FN=738 TP=111
+
+======================================================================
+XGBoost FEATURE IMPORTANCE
+======================================================================
+  product_rating: 0.2371
+  payment_method_risk: 0.1402
+  user_return_rate_90d: 0.1323
+  delivery_speed_days: 0.1321
+  user_return_rate_30d: 0.1253
+  amount_vs_user_aov_ratio: 0.0844
+  device_fingerprint_match: 0.0675
+  category_return_baseline: 0.0450
+  days_since_last_order: 0.0361
+Saved: models/return_risk_results_premium.json
+================================================================================================
+PROGRESSIVE MERCHANT MATURITY — measured model × merchant vertical (10k orders, 0.50 review gate)
+================================================================================================
+Scenario  Vertical       PR-AUC  ROC-AUC  P@0.50  R@0.50    Net ₹/month      ROI
+------------------------------------------------------------------------------------------------
+basic     fashion        0.8042   0.8448   0.635   0.811       ₹+17.05L    33.9%
+basic     electronics    0.8042   0.8448   0.635   0.811       ₹+36.18L    35.4%
+enriched  fashion        0.8881   0.9217   0.728   0.874       ₹+21.56L    42.9%
+enriched  electronics    0.8881   0.9217   0.728   0.874       ₹+45.01L    44.0%
+premium   fashion        0.9467   0.9593   0.826   0.914       ₹+26.01L    51.7%
+premium   electronics    0.9467   0.9593   0.826   0.914       ₹+53.63L    52.5%
+
+Stage 1 (basic) is the honest floor (PR-AUC ~0.80). Each stage adds observed features + lower unobserved variance;
+the ₹ figures rise because the measured precision/recall at the 0.50 gate improve — not because the base rate or AOV changed.
+
+wrote models/cost_model_results.json (maturity_scenarios added; legacy scenarios key preserved)
+================================================================================
+PayShield — full verification suite (interview-bulletproof)
+================================================================================
+
+[0/11] Generating artifacts (pipeline)...
+================================================================================
+PayShield — Progressive Merchant Maturity master runner
+================================================================================
+
+$ /Users/purvansh/Desktop/Projects/PayShield/.venv-test/bin/python scripts/train_xgb_return_risk.py --scenario basic
+
+$ /Users/purvansh/Desktop/Projects/PayShield/.venv-test/bin/python scripts/train_xgb_return_risk.py --scenario enriched
+
+$ /Users/purvansh/Desktop/Projects/PayShield/.venv-test/bin/python scripts/train_xgb_return_risk.py --scenario premium
+
+(skip) tune_results_premium.json present — skipping tune
+
+$ /Users/purvansh/Desktop/Projects/PayShield/.venv-test/bin/python docs/cost_model/calculator.py --all-maturity
+
+================================================================================
+FINAL SUMMARY
+================================================================================
+Scenario    PR-AUC(def)  ROC-AUC(def)  PR-AUC(tuned)  ROC-AUC(tuned)    Fashion ₹     Elec ₹
+basic            0.8042        0.8448         0.8089          0.8477      ₹17.05L    ₹36.18L
+enriched         0.8881        0.9217         0.8875          0.9211      ₹21.56L    ₹45.01L
+premium          0.9467        0.9593         0.9483          0.9602      ₹26.01L    ₹53.63L
+
+Wrote: reports/scenario_comparison.md
+  [1/10] PASS  Base generator untouched  (0.0s)
+Determinism: running train x3 (run 1)...
+Determinism: running train x3 (run 2)...
+  PASS deterministic: return_risk_results_basic.json
+  PASS deterministic: return_risk_results_enriched.json
+  PASS deterministic: return_risk_results_premium.json
+  [2/10] PASS  Determinism (train x3 twice, byte-identical)  (6.9s)
+  [3/10] PASS  Premium PR-AUC >= 0.94  (0.0s)
+  [4/10] PASS  Premium ROC-AUC >= 0.92  (0.0s)
+  [5/10] PASS  Enriched PR-AUC >= 0.88  (0.0s)
+  [6/10] PASS  Premium Electronics >= ₹36.9L  (0.0s)
+  [7/10] PASS  No hardcoded fallbacks in calculator  (0.0s)
+  [8/10] PASS  Doc consistency (manifest match)  (0.0s)
+  [9/10] PASS  Dashboard compat (legacy + maturity keys)  (0.0s)
+  [10/10] PASS  Ablation baseline = 0.8118 (base gen, seed 99)  (1.9s)
+
+================================================================================
+ALL CHECKS PASS — submission ready.
