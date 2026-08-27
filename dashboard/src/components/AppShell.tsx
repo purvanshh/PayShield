@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { NewAnalysisModal } from "./NewAnalysisModal";
+import { ReturnRiskFormModal } from "./ReturnRiskFormModal";
 import { NotificationsButton } from "./Notifications";
 import { useAuthStore } from "../store/authStore";
 
@@ -57,6 +58,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [returnRiskFormOpen, setReturnRiskFormOpen] = useState(false);
 
   const signOut = () => {
     logout();
@@ -204,7 +206,15 @@ export function AppShell() {
         </NavLink>
       </div>
 
-      <NewAnalysisModal open={analysisOpen} onClose={() => setAnalysisOpen(false)} />
+      <NewAnalysisModal
+        open={analysisOpen}
+        onClose={() => setAnalysisOpen(false)}
+        onStartReturnRisk={() => setReturnRiskFormOpen(true)}
+      />
+      <ReturnRiskFormModal
+        open={returnRiskFormOpen}
+        onClose={() => setReturnRiskFormOpen(false)}
+      />
     </div>
   );
 }

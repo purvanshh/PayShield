@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 interface NewAnalysisModalProps {
   open: boolean;
   onClose: () => void;
+  onStartReturnRisk?: () => void;
 }
 
 const WORKFLOWS = [
@@ -29,7 +30,7 @@ const WORKFLOWS = [
   },
 ];
 
-export function NewAnalysisModal({ open, onClose }: NewAnalysisModalProps) {
+export function NewAnalysisModal({ open, onClose, onStartReturnRisk }: NewAnalysisModalProps) {
   const navigate = useNavigate();
 
   if (!open) return null;
@@ -68,7 +69,11 @@ export function NewAnalysisModal({ open, onClose }: NewAnalysisModalProps) {
               key={w.key}
               onClick={() => {
                 onClose();
-                navigate(w.to);
+                if (w.key === "return-risk" && onStartReturnRisk) {
+                  onStartReturnRisk();
+                } else {
+                  navigate(w.to);
+                }
               }}
               className="group flex items-start gap-4 p-5 border border-subtle rounded bg-surface hover:border-primary transition-colors text-left"
             >
