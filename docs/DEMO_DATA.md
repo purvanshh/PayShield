@@ -36,7 +36,7 @@ the real collector+builder, the L1 numbers from the real statistical filter.
   - + rule adjustment 0.25 (capped: R-01+R-02+R-03+R-04 = 0.45 → cap 0.25)
   - rules fired: `R-RULE-01, R-RULE-02, R-RULE-03, R-RULE-04, R-RULE-06`
   - recommendations: prepaid-only + manual review + signature on delivery
-  - confidence 1.0 (full history, no defaults)
+  - confidence ≈ 0.97 (full history, all features real-data-sourced)
 - Demo line: *"the merchant sees 0.83 with five auditable nudges — and the
   exact arithmetic in the feature breakdown."*
 

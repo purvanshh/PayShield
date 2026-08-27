@@ -372,20 +372,39 @@ class ReturnRiskScorer:
 
     @staticmethod
     def _calculate_confidence(features: dict[str, Any]) -> float:
-        """Confidence drops for new users, default-sourced features and gaps."""
-        confidence = 1.0
+        """Confidence that the score rests on measured data, not priors.
 
-        if features.get("user_is_new", {}).get("value", False):
-            confidence -= 0.3
+        A prediction is only as trustworthy as the evidence behind it. The
+        score blends three provenance signals:
 
-        default_count = sum(
+        - ``provenance`` (50%): the fraction of features backed by real
+          data (redis store / merchant lookup / computed from inputs) vs
+          population defaults and placeholders. A brand-new user still gets
+          credit for the transaction context it *does* carry (category
+          baseline, amount, payment method, COD flag).
+        - ``history_depth`` (35%): how much user history exists — a scorer
+          on 10+ orders has seen the return patterns it is judging.
+        - ``baseline`` (15%): the deterministic transaction layer always
+          contributes a floor.
+
+        Missing critical features subtract from the result.
+        """
+        total = sum(1 for f in features.values() if isinstance(f, dict))
+        real = sum(
             1
             for f in features.values()
-            if isinstance(f, dict) and f.get("source", "").startswith("default")
+            if isinstance(f, dict)
+            and not f.get("source", "").startswith("default")
+            and f.get("source") not in ("placeholder", "unknown", "")
         )
-        confidence -= default_count * 0.05
+        provenance = (real / total) if total else 0.0
+
+        total_orders = float(features.get("user_total_orders", {}).get("value", 0) or 0)
+        history_depth = min(1.0, total_orders / 10.0)
 
         missing = sum(1 for name in CRITICAL_FEATURES if name not in features)
+
+        confidence = 0.50 * provenance + 0.35 * history_depth + 0.15
         confidence -= missing * 0.1
 
         return max(0.0, min(1.0, confidence))
