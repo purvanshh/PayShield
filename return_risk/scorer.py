@@ -223,7 +223,7 @@ class ReturnRiskScorer:
 
         risk_tier = self._determine_tier(score)
         recommendations = self._generate_recommendations(risk_tier, rules_triggered, features)
-        confidence = self._calculate_confidence(features)
+        confidence = self._calculate_confidence(features, score)
         user_profile = self._build_user_profile(features)
 
         return {
@@ -371,21 +371,25 @@ class ReturnRiskScorer:
         return sorted(set(recommendations))
 
     @staticmethod
-    def _calculate_confidence(features: dict[str, Any]) -> float:
-        """Confidence that the score rests on measured data, not priors.
+    def _calculate_confidence(features: dict[str, Any], score: float = 0.0) -> float:
+        """Confidence that the assessment is decisive AND well-evidenced.
 
-        A prediction is only as trustworthy as the evidence behind it. The
-        score blends three provenance signals:
+        A single number can't express "confident about what I predict" and
+        "confident I have enough data" separately, so it blends three
+        signals:
 
-        - ``provenance`` (50%): the fraction of features backed by real
+        - ``decisiveness`` (40%): how far the score sits from the ambiguous
+          ``0.5`` boundary. A 0.06 or 0.94 score is a clear call; a 0.45 is
+          right at the edge and deserves low confidence. This makes the
+          number respond to the actual analysis, not just the user's
+          profile.
+        - ``provenance`` (35%): the fraction of features backed by real
           data (redis store / merchant lookup / computed from inputs) vs
           population defaults and placeholders. A brand-new user still gets
           credit for the transaction context it *does* carry (category
           baseline, amount, payment method, COD flag).
-        - ``history_depth`` (35%): how much user history exists — a scorer
+        - ``history_depth`` (25%): how much user history exists — a scorer
           on 10+ orders has seen the return patterns it is judging.
-        - ``baseline`` (15%): the deterministic transaction layer always
-          contributes a floor.
 
         Missing critical features subtract from the result.
         """
@@ -402,9 +406,11 @@ class ReturnRiskScorer:
         total_orders = float(features.get("user_total_orders", {}).get("value", 0) or 0)
         history_depth = min(1.0, total_orders / 10.0)
 
+        decisiveness = min(1.0, max(0.0, abs(score - 0.5) * 2.0))
+
         missing = sum(1 for name in CRITICAL_FEATURES if name not in features)
 
-        confidence = 0.50 * provenance + 0.35 * history_depth + 0.15
+        confidence = 0.40 * decisiveness + 0.35 * provenance + 0.25 * history_depth
         confidence -= missing * 0.1
 
         return max(0.0, min(1.0, confidence))
