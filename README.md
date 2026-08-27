@@ -143,8 +143,12 @@ python docs/cost_model/calculator.py         # the numbers in ₹
 python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate breaks
 ```
 
-Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`,
-then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
+Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`
+starts **api + redis + dashboard + agent worker**. The worker runs the four
+live agents (transaction, profile, reflection, human-review) against real
+scored orders from the audit chain, renewing Redis heartbeats every 20s —
+see the dashboard **Agents** page or `GET /admin/agents/health`. Then
+`python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
 (10 scenarios against real Redis — see ["Live verification"](#live-verification)).
 
 ---
@@ -332,6 +336,8 @@ PayShield/
 ├── scripts/                   # train/ablation/tune/benchmark/verify — the evidence
 ├── docs/ + docs/cost_model/   # cost model + calculator + vertical sensitivity
 ├── api/                       # FastAPI app (return-risk routes are the hero surface)
+├── agents/                    # Live agent orchestration (worker service: transaction,
+│                              #   profile, reflection, human-review — Redis heartbeats)
 ├── integrations/              # Razorpay adapter + webhooks (order.paid → score)
 ├── engine/                    # (extension) fraud: L1 filter, L2 GNN, ensemble
 ├── chargeback/                # (extension) dispute rebuttal builder + Razorpay client

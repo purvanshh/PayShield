@@ -52,6 +52,25 @@ services:
       api:
         condition: service_started
 
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    command: python -m agents.worker
+    volumes:
+      - store_data:/app/store/audit_logs
+      - store_data:/app/store/feedback
+    environment:
+      - REDIS_HOST=redis
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-pay-shield-dev-aes256-key-0001}
+      - ENFORCE_RBAC=true
+      - DATA_REGION=IN
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
 volumes:
   redis_data:
   store_data:

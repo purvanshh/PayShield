@@ -85,7 +85,7 @@ export function AgentsPage() {
         <p className="font-body-lg text-body-lg text-outline max-w-3xl">
           The four live agents that power the risk path — their heartbeat status is
           reported from real Redis keys (<code className="text-on-surface-variant">/admin/agents/health</code>),
-          renewed by the API process every ~20s.
+          renewed by the agent worker every ~20s.
         </p>
       </div>
 
