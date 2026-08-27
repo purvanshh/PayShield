@@ -92,10 +92,11 @@ below shows 0.50 is right for high-return populations and drifts up for
 low-return ones.
 
 > **Enriched pipeline:** the Redis-enriched feature engine exists in the
-> codebase, but the XGBoost model has **not** been recalibrated to enriched
-> feature distributions. This cost model therefore uses the **offline** model
-> operating point. Retraining on enriched features (and on real merchant data)
-> is the highest-priority next step.
+> codebase, but the XGBoost model has **not** been recalibrated to real merchant
+> data. This cost model therefore uses the **Stage 1** model operating point
+> (measured P/R from `models/return_risk_results_basic.json`). The three-scenario
+> maturity table shows how savings scale with data quality. Retraining on real
+> merchant data is the highest-priority next step.
 
 ## Scenario: Fashion Merchant, 10,000 Orders / Month
 
@@ -105,23 +106,23 @@ low-return ones.
 1,800 returns (18% rate) × ₹2,795  = ₹50,31,000 / month
 ```
 
-**With PayShield MEDIUM+ review gate (0.50)** (calculator output, offline XGBoost):
+**With PayShield MEDIUM+ review gate (0.50)** (calculator output, Stage 1 XGBoost):
 
 ```
-Flagged (recall)          1,393 orders
-  wrong flags              450 orders (32.3% of flagged, = 1 − precision)
-  true catches              943 orders
-Returns prevented          660 orders (70% diversion effectiveness)
-Remaining returns        1,140 orders
-Wrong-flag cost          450 × ₹200 = ₹90,000   (review, not full order!)
-Return cost on remaining 1,140 × ₹2,795 = ₹31,86,300
-Total with PayShield        ₹32,76,300 / month
-Net savings                 ₹17,54,700 / month   (34.9% ROI)
-Annual savings              ₹2,10,56,400 (~₹2.11 Cr)
+Flagged (recall)          1,459 orders
+  wrong flags              533 orders (36.5% of flagged, = 1 − precision)
+  true catches              926 orders
+Returns prevented          648 orders (70% diversion effectiveness)
+Remaining returns        1,152 orders
+Wrong-flag cost          533 × ₹200 = ₹1,06,600   (review, not full order!)
+Return cost on remaining 1,152 × ₹2,795 = ₹32,19,840
+Total with PayShield        ₹33,26,440 / month
+Net savings                 ₹17,04,560 / month   (33.9% ROI)
+Annual savings              ₹2,05,44,720 (~₹2.05 Cr)
 ```
 
-Per **1,000 orders**: baseline ₹5,03,100 → with PayShield ₹3,27,630 →
-**net savings ₹1,75,470**.
+Per **1,000 orders**: baseline ₹5,03,100 → with PayShield ₹3,32,644 →
+**net savings ₹1,70,456**.
 
 ## Scenario Sweep (calculator output, MEDIUM+ review gate 0.50)
 
@@ -139,9 +140,9 @@ floor: at ₹800 AOV and a 4% baseline a review gate still saves ~₹1.1L/month.
 
 | AOV | Return rate | Monthly savings | Annual savings | ROI |
 |-----|-------------|-----------------|----------------|-----|
-| ₹1,500 | 12% | ₹7,21,000 | ₹86.5 L | 33.8% |
-| ₹2,500 | 18% | ₹17,54,700 | ₹2.11 Cr | 34.9% |
-| ₹4,000 | 25% | ₹38,41,025 | ₹4.61 Cr | 35.5% |
+| ₹1,500 | 12% | ₹6,97,575 | ₹83.7 L | 32.8% |
+| ₹2,500 | 18% | ₹17,04,560 | ₹2.05 Cr | 33.9% |
+| ₹4,000 | 25% | ₹37,49,025 | ₹4.50 Cr | 34.7% |
 
 ## Vertical Sensitivity Analysis (where the 0.50 gate breaks)
 

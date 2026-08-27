@@ -12,6 +12,7 @@ services:
       - store_data:/app/store/feedback
       - explanations_data:/app/models/production/explanations
       - compliance_reports_data:/app/compliance/reports
+      - ../models/cost_model_results.json:/app/models/cost_model_results.json:ro
     environment:
       - REDIS_HOST=redis
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-pay-shield-dev-aes256-key-0001}
