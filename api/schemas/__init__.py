@@ -80,7 +80,7 @@ class BatchScoreResponse(BaseModel):
 class InvestigationReportResponse(BaseModel):
     txn_id: str
     narrative: str
-    fraud_type: Literal["MULE_RING", "BURST_ATTACK", "MERCHANT_COLLUSION", "ACCOUNT_TAKEOVER", "OTHER"]
+    fraud_type: Literal["MULE_RING", "BURST_ATTACK", "MERCHANT_COLLUSION", "ACCOUNT_TAKEOVER", "RETURN_RISK", "OTHER"]
     confidence: str
     recommended_action: str
     key_evidence: list[str]

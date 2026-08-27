@@ -129,5 +129,11 @@ def _include_routers(app: FastAPI):
     except Exception as e:
         logger.warning(f"meta_router_skipped: {e}")
 
+    try:
+        from api.routes.investigation import router as investigation_router
+        app.include_router(investigation_router, prefix="/v1", tags=["investigation"])
+    except Exception as e:
+        logger.warning(f"investigation_router_skipped: {e}")
+
 
 app = create_app()

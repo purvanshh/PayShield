@@ -2,8 +2,8 @@
   "operating_point": {
     "name": "MEDIUM+",
     "threshold": 0.5,
-    "precision": 0.9837,
-    "recall": 0.605,
+    "precision": 0.677,
+    "recall": 0.774,
     "action": "review",
     "wrong_flag_cost": 200.0
   },
@@ -14,13 +14,13 @@
       "description": "Fashion apparel merchant (Myntra/Flipkart-style). High category return baseline, mid AOV.",
       "aov": 2500.0,
       "return_rate": 0.18,
-      "monthly_savings": 2092650.0,
-      "annual_savings": 25111800.0,
-      "roi_pct": 41.595110316040554,
-      "prevented": 750,
-      "wrong_flags": 18,
+      "monthly_savings": 1754700.0,
+      "annual_savings": 21056400.0,
+      "roi_pct": 34.877757901013716,
+      "prevented": 660,
+      "wrong_flags": 450,
       "baseline_cost": 5031000.0,
-      "payshield_cost": 2938350.0,
+      "payshield_cost": 3276300.0,
       "false_allow_cost": 2795.0
     },
     {
@@ -29,13 +29,13 @@
       "description": "Consumer-electronics merchant. Low volume, high AOV, buy-now-later-return dynamics.",
       "aov": 8000.0,
       "return_rate": 0.12,
-      "monthly_savings": 4257600.0,
-      "annual_savings": 51091200.0,
-      "roi_pct": 41.64319248826291,
-      "prevented": 500,
-      "wrong_flags": 12,
+      "monthly_savings": 3688800.0,
+      "annual_savings": 44265600.0,
+      "roi_pct": 36.07981220657277,
+      "prevented": 440,
+      "wrong_flags": 300,
       "baseline_cost": 10224000.0,
-      "payshield_cost": 5966400.0,
+      "payshield_cost": 6535200.0,
       "false_allow_cost": 8520.0
     },
     {
@@ -44,13 +44,13 @@
       "description": "Grocery merchant. High frequency, tiny AOV, low category return rate.",
       "aov": 800.0,
       "return_rate": 0.04,
-      "monthly_savings": 148155.0,
-      "annual_savings": 1777860.0,
-      "roi_pct": 38.54188345473465,
-      "prevented": 155,
-      "wrong_flags": 4,
+      "monthly_savings": 110696.0,
+      "annual_savings": 1328352.0,
+      "roi_pct": 28.797086368366287,
+      "prevented": 136,
+      "wrong_flags": 100,
       "baseline_cost": 384400.0,
-      "payshield_cost": 236245.0,
+      "payshield_cost": 273704.0,
       "false_allow_cost": 961.0
     }
   ],
@@ -58,25 +58,25 @@
     {
       "aov": 1500,
       "return_rate": 0.12,
-      "monthly_savings": 885100.0,
-      "annual_savings": 10621200.0,
-      "roi_pct": 41.55399061032864
+      "monthly_savings": 721000.0,
+      "annual_savings": 8652000.0,
+      "roi_pct": 33.84976525821596
     },
     {
       "aov": 2500,
       "return_rate": 0.18,
-      "monthly_savings": 2092650.0,
-      "annual_savings": 25111800.0,
-      "roi_pct": 41.595110316040554
+      "monthly_savings": 1754700.0,
+      "annual_savings": 21056400.0,
+      "roi_pct": 34.877757901013716
     },
     {
       "aov": 4000,
       "return_rate": 0.25,
-      "monthly_savings": 4497325.0,
-      "annual_savings": 53967900.0,
-      "roi_pct": 41.59375722543353
+      "monthly_savings": 3841025.0,
+      "annual_savings": 46092300.0,
+      "roi_pct": 35.523930635838155
     }
   ],
   "orders": 10000,
-  "generated_at": "2026-08-24T14:48:58.694227+00:00"
+  "generated_at": "2026-08-27T05:54:32.654227+00:00"
 }
