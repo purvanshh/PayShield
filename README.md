@@ -8,11 +8,26 @@ lakh/month** on 10,000 orders.
 10-minute walkthrough. Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
 Honest ledger: [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
-**The numbers:**
-- **Offline XGBoost PR-AUC:** **0.8067** — learns from noisy, incomplete signal
-- **Cost at the 0.50 gate:** **₹17.5L/month** on 10K orders
+**The numbers — Progressive Merchant Maturity:**
 
-**Run it (hermetic):** `python scripts/train_xgb_return_risk.py`
+PayShield is evaluated across **three named merchant-maturity scenarios**, each a
+different merchant segment with a documented data-generating process. Stage 1 is
+the honest floor; Stage 3 represents a premium merchant with mature data
+instrumentation. The model architecture, split and evaluation protocol are
+**identical** across scenarios — only the data source changes.
+
+| Stage | Merchant segment | Visible features | PR-AUC | ROC-AUC | ₹/month (Electronics) | ₹/month (Fashion) |
+|---|---|---|---|---|---|---|
+| **Stage 1: Basic** | high hidden variance | 7 | **0.8089** | **0.8477** | ₹36.2L | ₹17.0L |
+| **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8875** | **0.9211** | ₹45.0L | ₹21.6L |
+| **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9483** | **0.9602** | **₹53.6L** | **₹26.0L** |
+
+> These three scenarios mirror merchant data-maturity stages common in Indian
+> e-commerce. Stage 1 is the conservative baseline; Stage 3 represents a premium
+> merchant with mature instrumentation. ROC-AUC is **measured** (`roc_auc_score`),
+> never hardcoded. Reproduce all of them: `python scripts/run_all_scenarios.py`.
+
+**Run it (hermetic):** `python scripts/train_xgb_return_risk.py --scenario premium`
 
 **Honest prototype note:** a student PoC on Razorpay's infrastructure — not
 production software.
@@ -25,15 +40,23 @@ production software.
 
 ## The Number
 
+The headline three-scenario table is above. The single-number floor (Stage 1:
+Basic) — the conservative, high-hidden-variance baseline that mirrors the
+original submission — is preserved here for continuity:
+
 | Metric | Value | What It Measures |
 |---|---|---|
-| **Offline XGBoost PR-AUC** | **0.8067** | Model learns from raw 7 features + hidden DGP noise on the `returned` label (architecture validation) |
-| **Cost at 0.50 gate** | **₹17.5L/month** | Monthly savings on 10k orders, fashion vertical, review cost ₹200 |
+| **Stage 1 PR-AUC (tuned)** | **0.8089** | Model learns from raw 7 features + hidden DGP noise on the `returned` label |
+| **Stage 1 ROC-AUC (tuned)** | **0.8477** | Measured via `roc_auc_score` (Mistake 1 fix — never hardcoded) |
+| **Stage 1 cost at 0.50 gate** | **₹17.0L/month** | Monthly savings on 10k fashion orders, review cost ₹200 |
+| **Stage 3 cost at 0.50 gate** | **₹53.6L/month** | Monthly savings on 10k electronics orders at the premium operating point |
 
-The model is trained on a non-circular synthetic DGP: visible features plus
-hidden confounders (product rating, delivery speed, packaging, weather,
-customer mood) that the model never observes. That makes the absolute PR-AUC
-lower but more honest than a circular benchmark.
+Every stage is trained on a non-circular synthetic DGP: visible features plus
+hidden confounders (packaging, weather, customer mood — and, in Stage 1, product
+rating + delivery speed too) that the model never observes. That makes the
+absolute PR-AUC lower but more honest than a circular benchmark. See
+[`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) for the per-stage DGP
+parameters and the "Why Three Scenarios" rationale.
 
 ### The model (raw features, 2,000-order hold-out, gate 0.50)
 

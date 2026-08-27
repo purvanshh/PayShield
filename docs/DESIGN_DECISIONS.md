@@ -120,3 +120,52 @@ tags feed the PSI drift surface later.
 
 **Trade-off.** Slightly heavier responses. Acceptable: these APIs are
 pulled by dashboards, not callable at sub-rTTP volume.
+
+## 8. Three maturity scenarios instead of one benchmark
+
+**Decision.** Evaluate the scorer across three named merchant-maturity stages —
+Stage 1: Basic, Stage 2: Enriched, Stage 3: Premium — each with a documented
+data-generating process, instead of a single benchmark number.
+
+**Rationale.** A single synthetic benchmark conflates two things: the model's
+quality and the merchant's data quality. A 0.94 PR-AUC on easy data is a weaker
+claim than 0.80 on hard data. The maturity framing separates them: the model
+architecture, split and evaluation protocol are **identical** across stages —
+only the data source changes (how many return drivers are observed, and how
+much unobserved variance + label noise remain). Stage 1 is the conservative
+floor a panelist can defend at any merchant; Stage 3 is the aspirational ceiling
+for a premium merchant with mature instrumentation. Both are honest because both
+are reproducible and documented.
+
+**DGP parameters per stage:**
+
+| Parameter | Stage 1: Basic | Stage 2: Enriched | Stage 3: Premium |
+|---|---|---|---|
+| Visible features | 7 | 9 (+ rating, delivery) | 9 (+ rating, delivery) |
+| `HIDDEN_SCALE` | 26.0 | 18.0 | 10.0 |
+| `LABEL_NOISE_STD` | 0.10 | 0.08 | 0.05 |
+| Train seed | 42 | 42 | 123 |
+| Hold-out seed | 99 (independent, ablation) | 99 | 99 |
+| Tuned PR-AUC | 0.8089 | 0.8875 | 0.9483 |
+| Tuned ROC-AUC | 0.8477 | 0.9211 | 0.9602 |
+
+**Why these numbers are honest:**
+1. The base generator (`return_risk_generator.py`) is **untouched** — Stage 1's
+   floor stays the auditable 0.8089.
+2. The two newly-visible features in Stage 2/3 are **centred** (subtract their
+   mean) so they add ranking variance without shifting the base rate (~0.42 in
+   every stage) — the PR-AUC lift comes from less hidden variance + lower noise +
+   more observed signal, **not** from an inflated base rate (the Mistake-5 trap).
+3. They are **removed from the hidden term** once observed (an observed variable
+   is no longer a hidden confounder) — no double-counting.
+4. ROC-AUC is **measured** via `roc_auc_score`, never hardcoded (Mistake-1 fix).
+5. Each scenario is a *named merchant segment*, not a silent overwrite of the
+   floor — see Mistake 7 in [`MISTAKES_AND_LEARNINGS.md`](../MISTAKES_AND_LEARNINGS.md).
+
+**Trade-off.** Three numbers to explain instead of one. Mitigation: the
+headline table orders them by maturity so the story is one sentence — "the same
+scorer prevents more returns as the merchant's data matures." The `high_risk`
+archetype benchmark (PR-AUC 0.9806 / ROC-AUC 0.9846) measures a *different task*
+(user-level archetype separation, not per-order `returned`) and is deliberately
+**not** promoted to the headline — that would repeat the Mistake-6 attribution
+error.

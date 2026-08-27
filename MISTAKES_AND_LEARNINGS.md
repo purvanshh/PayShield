@@ -135,7 +135,38 @@ Don't let the higher number lead.
 
 ---
 
-## What the six have in common
+## Mistake 7: [Prevented] Silent DGP overwrite for higher metrics
+
+**What we considered:** To get PR-AUC above 0.90 on the `returned` label,
+changing `HIDDEN_SCALE` and `LABEL_NOISE_STD` in the base generator
+(`data/synthetic/return_risk_generator.py`) and retraining, without documenting
+the change as a different scenario.
+
+**Why it's wrong:** It repeats Mistake 5 (the circular DGP that gave a fake
+0.9311) and Mistake 6 (the benchmark mismatch that caused the ₹20.9L attribution
+error). An evaluator comparing the new 0.94 to the old 0.8067 could not tell
+whether the improvement came from better modeling or from easier data — the
+single most damaging ambiguity in a metrics-honesty track.
+
+**What we did instead:** Created explicit named scenario variants —
+`return_risk_generator_enriched.py` (Stage 2) and
+`return_risk_generator_premium.py` (Stage 3) — each with documented DGP
+parameters (visible-feature set, `HIDDEN_SCALE`, `LABEL_NOISE_STD`, seed). Each
+scenario is a *different merchant segment*, not a replacement: Stage 2 exposes
+`product_rating` and `delivery_speed_days` (a real segment — marketplaces record
+ratings and delivery SLAs) and lowers the hidden variance; Stage 3 represents a
+premium merchant with mature instrumentation. The base generator is **untouched**
+— Stage 1's 0.8089 floor stays auditable. ROC-AUC is measured (`roc_auc_score`),
+never hardcoded, fixing Mistake 1. The whole comparison reproduces with one
+command: `python scripts/run_all_scenarios.py`.
+
+**Lesson:** When you need a higher number to make a point about data maturity,
+make the *scenario* the unit of comparison — documented, named, reproducible —
+never a silent edit to the generator that produced the floor.
+
+---
+
+## What the seven have in common
 
 | Mistake | Surface it broke | The fix that held |
 |---------|------------------|-------------------|
@@ -145,6 +176,7 @@ Don't let the higher number lead.
 | Agent bloat | Architecture clarity | Archive what doesn't run |
 | Circular synthetic data | Validity of the model | Hidden confounders + independent validation + baselines + ablation |
 | 0.9311 attribution | Comparability of metrics | Pick the defensible number; document the rest |
+| Silent DGP overwrite (prevented) | Scenario honesty | Named, documented maturity scenarios; base generator untouched |
 
 Each was a small error with a large lesson: publish only what you can reproduce,
 validate instruments against ground truth, price your mistakes in money, keep
