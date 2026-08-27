@@ -42,6 +42,16 @@ services:
     volumes:
       - redis_data:/data
 
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: ../docker/Dockerfile.dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   redis_data:
   store_data:
