@@ -1,8 +1,9 @@
 # PayShield: Return-Risk Scorer for Indian E-Commerce
 
 **One-sentence:** PayShield scores every order *before it ships*, catches
-high-risk returns at high precision, and saves a fashion merchant **₹17.5
-lakh/month** on 10,000 orders.
+high-risk returns at high precision, and saves a fashion merchant **₹17.0
+lakh/month** on 10,000 orders (Stage 1) — up to **₹53.6 lakh/month** for a
+premium electronics merchant (Stage 3).
 
 **For evaluators:** Start with [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) —
 10-minute walkthrough. Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
@@ -18,14 +19,17 @@ instrumentation. The model architecture, split and evaluation protocol are
 
 | Stage | Merchant segment | Visible features | PR-AUC | ROC-AUC | ₹/month (Electronics) | ₹/month (Fashion) |
 |---|---|---|---|---|---|---|
-| **Stage 1: Basic** | high hidden variance | 7 | **0.8089** | **0.8477** | ₹36.2L | ₹17.0L |
-| **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8875** | **0.9211** | ₹45.0L | ₹21.6L |
-| **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9483** | **0.9602** | **₹53.6L** | **₹26.0L** |
+| **Stage 1: Basic** | high hidden variance | 7 | **0.8042** | **0.8448** | ₹36.2L | ₹17.0L |
+| **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8881** | **0.9217** | ₹45.0L | ₹21.6L |
+| **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9467** | **0.9593** | **₹53.6L** | **₹26.0L** |
 
 > These three scenarios mirror merchant data-maturity stages common in Indian
 > e-commerce. Stage 1 is the conservative baseline; Stage 3 represents a premium
 > merchant with mature instrumentation. ROC-AUC is **measured** (`roc_auc_score`),
-> never hardcoded. Reproduce all of them: `python scripts/run_all_scenarios.py`.
+> never hardcoded. All numbers in a row come from one model (the default-XGBoost
+> `return_risk_results_{scenario}.json`); the tuned champion reaches 0.8089 /
+> 0.8875 / 0.9483 PR-AUC (see `reports/scenario_comparison.md`). Reproduce:
+> `python scripts/run_all_scenarios.py`.
 
 **Run it (hermetic):** `python scripts/train_xgb_return_risk.py --scenario premium`
 
@@ -46,8 +50,8 @@ original submission — is preserved here for continuity:
 
 | Metric | Value | What It Measures |
 |---|---|---|
-| **Stage 1 PR-AUC (tuned)** | **0.8089** | Model learns from raw 7 features + hidden DGP noise on the `returned` label |
-| **Stage 1 ROC-AUC (tuned)** | **0.8477** | Measured via `roc_auc_score` (Mistake 1 fix — never hardcoded) |
+| **Stage 1 PR-AUC** | **0.8042** | Default XGBoost on 7 features + hidden DGP noise on the `returned` label |
+| **Stage 1 ROC-AUC** | **0.8448** | Measured via `roc_auc_score` (Mistake 1 fix — never hardcoded) |
 | **Stage 1 cost at 0.50 gate** | **₹17.0L/month** | Monthly savings on 10k fashion orders, review cost ₹200 |
 | **Stage 3 cost at 0.50 gate** | **₹53.6L/month** | Monthly savings on 10k electronics orders at the premium operating point |
 
@@ -58,34 +62,37 @@ absolute PR-AUC lower but more honest than a circular benchmark. See
 [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) for the per-stage DGP
 parameters and the "Why Three Scenarios" rationale.
 
-### The model (raw features, 2,000-order hold-out, gate 0.50)
+### The model — Stage 1 (Basic) detail (2,000-order hold-out, gate 0.50)
 
-| Model | PR-AUC | Precision | Recall | F1 |
-|---|---|---|---|---|
-| **XGBoost (tuned)** | **0.8067** | **0.677** | **0.774** | **0.722** |
-| XGBoost (default) | 0.8042 | 0.635 | 0.811 | 0.712 |
-| Hand-weighted (fallback) | 0.7896 | 0.957 | 0.194 | 0.323 |
-| Naive: serial returner (>40%) | 0.6991 | 0.631 | 0.615 | 0.623 |
-| Naive: COD + high AOV | 0.5884 | 0.685 | 0.159 | 0.258 |
+| Model | PR-AUC | ROC-AUC | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| **XGBoost (default)** | **0.8042** | **0.8448** | **0.635** | **0.811** | **0.712** |
+| Hand-weighted (fallback) | 0.7896 | 0.8392 | 0.957 | 0.194 | 0.323 |
+| Naive: serial returner (>40%) | 0.6991 | 0.6895 | 0.631 | 0.615 | 0.623 |
+| Naive: COD + high AOV | 0.5884 | 0.5555 | 0.685 | 0.159 | 0.258 |
 
-XGBoost edges the hand-weighted scorer (**+0.017 PR-AUC**) and clearly beats
-both naive rules (**+0.11 over the best naive baseline**). Full details in
+XGBoost edges the hand-weighted scorer (**+0.015 PR-AUC**) and clearly beats
+both naive rules (**+0.11 over the best naive baseline**). The tuned champion
+(`scripts/tune_xgb.py`) reaches PR-AUC 0.8089 / ROC-AUC 0.8477 on the same
+hold-out — see `models/tune_results_basic.json`. Full details in
 ["What We Measured"](#what-we-measured) below.
 
 ### Cost model — the 0.50 review gate
 
 On a 10k-order fashion merchant (₹2.5k AOV, 18% return rate), the **0.50 review
-gate** saves **₹17.5L/month** at precision 0.677 and recall 0.774 — the
-offline XGBoost operating point, measured on the held-out test set. The
-config-driven gate sweep:
+gate** saves **₹17.0L/month** at precision 0.635 and recall 0.811 — the Stage 1
+XGBoost operating point, measured on the held-out test set. The config-driven
+gate sweep (computed from the measured operating curve in
+`models/return_risk_results_basic.json`):
 
 | Review gate | Flag rate | Precision | Recall | Net ₹ / month | ROI |
 |---|---|---|---|---|---|
-| 0.30 | 63.9% | 0.559 | 0.902 | ₹16.3L | 32.4% |
-| 0.40 | 53.5% | 0.623 | 0.841 | ₹17.3L | 34.4% |
-| **0.50** | **45.3%** | **0.677** | **0.774** | **₹17.5L** | **34.9%** |
-| 0.60 | 38.1% | 0.729 | 0.701 | ₹17.3L | 34.4% |
-| 0.70 | 29.8% | 0.790 | 0.595 | ₹16.1L | 32.0% |
+| 0.30 | 70.0% | 0.524 | 0.925 | ₹15.5L | 30.7% |
+| 0.40 | 59.8% | 0.582 | 0.877 | ₹16.6L | 33.1% |
+| 0.45 | 54.7% | 0.614 | 0.849 | ₹17.2L | 34.2% |
+| **0.50** | **50.5%** | **0.635** | **0.811** | **₹17.0L** | **33.9%** |
+| 0.60 | 43.3% | 0.693 | 0.758 | ₹17.7L | 35.1% |
+| 0.70 | 34.5% | 0.752 | 0.657 | ₹16.8L | 33.4% |
 
 The 0.50 gate is optimal for this vertical. See [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
 for the vertical sensitivity sweep (fashion-high vs. fashion-low vs.
@@ -221,14 +228,14 @@ Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py
 
 ## What We Measured
 
-### Baseline comparison (same 2,000-order hold-out, gate 0.50)
+### Baseline comparison (Stage 1: Basic, same 2,000-order hold-out, gate 0.50)
 
-| Model | PR-AUC | Precision | Recall | F1 |
-|---|---|---|---|---|
-| **XGBoost (tuned)** | **0.8067** | **0.677** | **0.774** | **0.722** |
-| Hand-weighted (fallback) | 0.7896 | 0.957 | 0.194 | 0.323 |
-| Naive: serial returner (>40%) | 0.6991 | 0.631 | 0.615 | 0.623 |
-| Naive: COD + high AOV | 0.5884 | 0.685 | 0.159 | 0.258 |
+| Model | PR-AUC | ROC-AUC | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| **XGBoost (default)** | **0.8042** | **0.8448** | **0.635** | **0.811** | **0.712** |
+| Hand-weighted (fallback) | 0.7896 | 0.8392 | 0.957 | 0.194 | 0.323 |
+| Naive: serial returner (>40%) | 0.6991 | 0.6895 | 0.631 | 0.615 | 0.623 |
+| Naive: COD + high AOV | 0.5884 | 0.5555 | 0.685 | 0.159 | 0.258 |
 
 ### Ablation — every feature earns its place (LOFO retraining, seed-99 test set)
 
@@ -248,23 +255,27 @@ user-history signal; removing **both** costs **−10.5%**, the largest block.
 The drop is genuine feature importance measured against hidden confounders —
 not circular recovery.
 
-### Confusion matrix (offline XGBoost, 2,000-order hold-out, gate 0.50)
+### Confusion matrix (Stage 1 XGBoost, 2,000-order hold-out, gate 0.50)
 
-From `scripts/train_xgb_return_risk.py`:
+From `scripts/train_xgb_return_risk.py --scenario basic`:
 
 ```
                      Not Flagged   Flagged
-Actual No Return          915       293   (TN=915, FP=293)
-Actual Return             179       613   (FN=179, TP=613)
+Actual No Return          839       369   (TN=839, FP=369)
+Actual Return             150       642   (FN=150, TP=642)
 ```
 
-Precision **0.677** · recall **0.774** · F1 **0.722**.
+Precision **0.635** · recall **0.811** · F1 **0.712**.
 
 ### Tuning
 
-Grid search over 144 combinations (`max_depth` × `n_estimators` ×
-`learning_rate` × `scale_pos_weight`), selected on validation: best
-`max_depth=3, n_estimators=200, lr=0.05, spw=1.5` → test PR-AUC **0.8067**.
+`HalvingGridSearchCV` over a widened grid (`max_depth` × `n_estimators` ×
+`learning_rate` × `scale_pos_weight` × `min_child_weight` × `reg_lambda` ×
+`reg_alpha` × `gamma`), selected on validation PR-AUC: best
+`max_depth=4, n_estimators=300, lr=0.05, spw=1.5, min_child_weight=1,
+reg_lambda=10` → test PR-AUC **0.8089** / ROC-AUC **0.8477**
+(`models/tune_results_basic.json`). The per-scenario tuned champions are in
+`reports/scenario_comparison.md`.
 
 ### Live verification
 
@@ -402,7 +413,7 @@ told as full stories (root cause, debugging trail, lesson) in
 | 28 | Makefile warned "overriding commands for target `benchmark`" | duplicate `benchmark:` target — second definition silently overrode the first | renamed the optimizer benchmark to `benchmark-opt` |
 | 29 | PyJWT `InsecureKeyLengthWarning` (29-byte secret < 32 for HS256) | hardcoded short dev JWT secret | extended default to 37 bytes; rotate via `JWT_SECRET` env in prod |
 | 30 | Return-risk router skipped at startup → `POST /v1/return/score` 404 | `return_risk/scorer.py` imports `xgboost`, absent from `requirements.txt` | add `xgboost>=2.0.0` |
-| 31 | Dashboard cost model served stale numbers (0.98 precision / ₹20.9L) vs README (0.677 / ₹17.5L) | committed `models/cost_model_results.json` predated the XGBoost recalibration | regenerate from `docs/cost_model/calculator.py` |
+| 31 | Dashboard cost model served stale numbers (0.98 precision / ₹20.9L) vs the then-README baseline (since re-anchored to measured P/R) | committed `models/cost_model_results.json` predated the XGBoost recalibration | regenerate from `docs/cost_model/calculator.py` |
 | 32 | Transactions/Dashboard/Notifications polled `/v1/investigations` → 404 | route deleted in repo scoping | audit-backed `/v1/investigations` + `/v1/investigation/{order_id}` views over `RETURN_RISK_SCORED` entries |
 | 33 | Every fresh-user analysis showed `confidence 0.0%` | old formula deducted 0.05 per default feature — 16 defaults → clamped to 0 | confidence = 40% decisiveness (score vs 0.5 boundary) + 35% provenance + 25% history depth |
 | 34 | Agents page stuck on `not_started` | agent code + worker deleted in scoping; only the health endpoint remained | restore + rewire four agents to the return-risk surface; run as a `worker` compose service with real Redis heartbeats |

@@ -1,91 +1,116 @@
 # Interview Defense — Prepared Answers
 
-Four questions are near-certain in the panel. These are the honest, measured
-answers — every number traces to a script in this repo.
+The panel asks variations of a few hard questions. These are the honest,
+measured answers — every number traces to a script in this repo, and every
+headline number lives in `docs/_number_manifest.json` (the single source of
+truth, checked by `scripts/verify_doc_consistency.py`).
+
+The headline framing is **Progressive Merchant Maturity**: three named scenarios
+(Stage 1: Basic, Stage 2: Enriched, Stage 3: Premium). Stage 1 is the honest
+floor (PR-AUC 0.8042 / ROC-AUC 0.8448, default XGBoost); Stage 3 is a premium
+merchant with mature instrumentation (PR-AUC 0.9467 / ROC-AUC 0.9593). The
+tuned champions reach 0.8089 / 0.8875 / 0.9483 PR-AUC.
 
 ---
 
-## Q1: "Why XGBoost for 7 features instead of logistic regression?"
+## Q1: "Your PR-AUC jumped from 0.81 to 0.95. Did you just make the data easier?"
 
-The hand-weighted composite is effectively a fixed-weight **linear** model on
-the same seven features — it reaches PR-AUC 0.7896 on the hold-out. Tuned
-XGBoost reaches **0.8067** (+0.017). That gap is the nonlinear structure the
-linear model structurally cannot express: the label depends on interactions
-(e.g. high recent-return-rate × COD, high value × unknown device), and the
-ablation confirms it — removing both return-rate features costs −10.5% PR-AUC
-even with the other five present.
+No — I created **explicit, named scenario variants**, each a different merchant
+segment with a documented data-generating process. Stage 1 (PR-AUC 0.8042) is
+the honest floor: 7 visible features, high hidden variance (`HIDDEN_SCALE=26`),
+high label noise (0.10). Stage 3 (0.9467) is a best-case merchant with mature
+instrumentation — verified product ratings and real-time delivery SLAs are
+observed (9 features), hidden variance drops to `HIDDEN_SCALE=10`, label noise
+to 0.05.
 
-So the honest framing is: the linear baseline was already near-optimal on the
-linear part of the signal, and XGBoost's edge is the residual nonlinearity. A
-logistic regression would land where the hand-weighted scorer does (≈0.79),
-not where XGBoost does (0.807). Inference cost is irrelevant here — the tuned
-model is 200 shallow trees, well under 5 ms per order on a laptop, so there is
-no complexity tax for the capacity gain. We keep the linear scorer anyway, as
-the transparent fallback when the model file is absent.
+Both are documented, reproducible, and the **base generator was never edited**
+(`git diff data/synthetic/return_risk_generator.py` is empty). The lift comes
+from less unobserved variance + two more observed features + lower noise — not
+from silently changing the floor. See `MISTAKES_AND_LEARNINGS.md` Mistake 7 for
+why I did this instead of overwriting. One command reproduces all three:
+`python scripts/run_all_scenarios.py`.
 
-## Q2: "You spent 5 days and built Redis, Postgres, Neo4j, React, Kubernetes. Did you over-engineer?"
+## Q2: "Why are the premium weights 10× larger than the enriched ones?"
 
-The **evaluated return-risk surface is small and hermetic**. The model path
-runs with zero services: `scripts/train_xgb_return_risk.py`,
-`scripts/ablation_study.py`, `scripts/tune_xgb.py` and
-`docs/cost_model/calculator.py` all run standalone on a laptop. The seven
-feature inputs are plain numbers; the scorer (`return_risk/`) is a few hundred
-lines of Python.
+The weights scale with **signal-to-noise**, jointly calibrated with
+`HIDDEN_SCALE` and `LABEL_NOISE_STD` to hold the base rate near ~0.40 across all
+stages. `HIDDEN_SCALE` drops 26→18→10 and `LABEL_NOISE` drops 0.10→0.08→0.05, so
+the visible signal must be stronger in Stage 3 to keep the base rate from
+drifting. If I kept the weights at Stage 2's 2.0/1.5 with `HIDDEN_SCALE=10`, the
+(hidden-confounder) term would dominate and the base rate would shift — the
+exact Mistake-5 trap (circular/inflated benchmark).
 
-The infrastructure exists for the things the brief actually asks about: the
-**enriched feature pipeline** (Redis holds the user/merchant history the live
-scorer runs on — though the XGBoost model has not yet been recalibrated to it,
-which is the honest next step), and the **platform extensions** (fraud/
-chargeback on the same audit chain), which are explicitly demoted to future
-work in the README. Everything else — Postgres, Neo4j, Ollama, the Celery
-workers, the React dashboard and the k8s manifests — was **removed in a
-deliberate scope cut**: the repo went from ~40 top-level directories to ~19
-and from 579 tests to 455, all still green. If I had 24 hours, I'd keep Redis
-and the return-risk evidence scripts exactly as they are and spend any saved
-time on the vertical-sensitivity analysis now in `docs/COST_MODEL.md`.
+Crucially, the two newly-visible features are **centred** (subtract their mean
+0.5) and **removed from the hidden term** once observed — so they add ranking
+variance without inflating the base rate, and there's no double-counting. The
+10.0/6.0 values are the single calibration knob; see the module docstring in
+`data/synthetic/return_risk_generator_premium.py` for the full rationale.
 
-## Q3: "Your data is synthetic. Why should we trust this?"
+## Q3: "Is 0.95 PR-AUC realistic for real data?"
+
+Probably not for most merchants — that's exactly why it's framed as **Stage 3
+(premium)**, an aspirational upper bound. Real merchants will land between
+Stage 1 (0.80) and Stage 2 (0.89). The 0.95 demonstrates the model's *capacity*
+when data quality is high (verified ratings, courier-API delivery tracking,
+low logistics noise). The honest claim for a typical merchant is Stage 1 or
+Stage 2. I deliberately did **not** lead the README with 0.95 as a single
+number — the headline table shows all three stages so the floor and the ceiling
+are visible together.
+
+## Q4: "Why not use the live scorer's 0.98 PR-AUC as the headline?"
+
+Because that's a **different task**. The `high_risk` archetype label (PR-AUC
+0.9806 / ROC-AUC 0.9846 in `scripts/benchmark_return_risk.py`) combines serial-
+returner + fraud archetype signals at the **user** level — it is not the
+per-order `returned` label the three maturity scenarios target. Promoting it
+without renaming the task would be benchmark laundering — repeating Mistake 6,
+where a non-comparable 0.9311 was led alongside the defensible per-order number and
+caused a ₹20.9L attribution error. The `returned` per-order label is the target in all
+three maturity scenarios; the archetype benchmark stays in its own doc.
+
+## Q5: "Your data is synthetic. Why should we trust this?"
 
 Three reasons, each measurable:
 
-1. **Calibrated, not fabricated.** The generator's archetypes, AOV and
-   category baselines are drawn from published Indian e-commerce data
-   (Amazon-India 2025 category margins, ~₹74.5k AOV, ~25% COD share) — see the
-   generator docstring.
-2. **Deliberately non-circular.** The return labels include **hidden
-   confounders** the model never observes (product rating, delivery speed,
-   packaging, weather delay, customer mood) plus label noise. XGBoost learns
-   from noisy, incomplete signal — which is exactly the situation real merchant
-   data presents. The honest PR-AUC is **0.8067**, *lower* than a circular
-   DGP would produce, and we say so in the README.
-3. **Triangulated with evidence.** Every feature is validated by a
-   leave-one-feature-out ablation, and the model beats two naive merchant rules
-   on the same hold-out. The enriched feature pipeline exists but is honestly
-   scoped as future work — the model has not been recalibrated to it.
+1. **Calibrated, not fabricated.** The generator's archetypes, AOV and category
+   baselines are drawn from published Indian e-commerce data (Amazon-India 2025
+   category margins, ~₹74.5k AOV, ~25% COD share).
+2. **Deliberately non-circular.** The return labels include **hidden confounders**
+   the model never observes (packaging, weather, customer mood — and in Stage 1,
+   product rating + delivery speed too) plus label noise. XGBoost learns from
+   noisy, incomplete signal — exactly what real merchant data presents. The
+   honest Stage-1 PR-AUC is 0.8042, *lower* than a circular DGP would produce.
+3. **Triangulated with evidence.** Every feature is validated by a leave-one-
+   feature-out ablation (baseline 0.8118 on the independent seed-99 hold-out),
+   and the model beats two naive merchant rules on the same hold-out.
 
-Real merchant data would change the *calibration* of the base rate and the
-gate — it would not invalidate the architecture. That is precisely what the
-"A/B test with a real merchant" next step is built to prove.
+Real merchant data would change the *calibration* of the base rate and the gate,
+not the architecture — which is what the "A/B test with a real merchant" next
+step is built to prove.
 
-## Q4: "Your README used to claim 0.9311. What happened?"
+## Q6: "Why XGBoost for 7-9 features instead of logistic regression?"
 
-> We found that 0.9311 was the hand-weighted scorer on the `high_risk`
-> archetype label — different target, different engine, different generator
-> than the evaluated XGBoost model. It wasn't a comparable "better" number; it
-> was a different metric. We removed it and now lead with the single defensible
-> number: **0.8067 on the `returned` label**, which ties to **₹17.5L** in the
-> cost model. The enriched pipeline is real code, but recalibrating XGBoost to
-> it — and ideally to real merchant data — is the next step, not a headline.
+The hand-weighted composite is effectively a fixed-weight **linear** model on
+the same features — it reaches PR-AUC 0.7896 on the Stage-1 hold-out. Default
+XGBoost reaches 0.8042 (+0.015). That gap is the nonlinear structure the linear
+model cannot express: the label depends on interactions (high recent-return-rate
+× COD, high value × unknown device), and the ablation confirms it — removing
+both return-rate features costs −10.5% PR-AUC even with the other five present.
+Inference cost is irrelevant: 200 shallow trees, <5 ms/order on a laptop.
 
 ---
 
 ## One-line versions
 
-- **Why XGBoost?** The +0.017 over a linear scorer is the nonlinear signal
-  (interactions); it costs <5 ms at inference.
-- **Over-engineered?** The evaluated model runs hermetically with zero
-  services; the infrastructure is the enriched pipeline and the extensions.
-- **Synthetic data?** Calibrated priors + hidden confounders + ablation +
-  baselines; the lower-but-honest PR-AUC is the point.
-- **What happened to 0.9311?** It was a different metric (archetype label,
-  hand-weighted); we removed it and lead with the defensible 0.8067.
+- **0.81→0.95 jump?** Three named scenarios (not a silent overwrite); base
+  generator untouched; reproduce with one command.
+- **10× weights?** Calibrated jointly with HIDDEN_SCALE/noise to hold the ~0.40
+  base rate; centred + removed from the hidden term (no double-counting).
+- **0.95 realistic?** No — it's the Stage-3 ceiling; real merchants land Stage 1
+  (0.80) to Stage 2 (0.89). The headline shows all three together.
+- **Why not 0.98?** Different task (archetype label vs per-order `returned`);
+  promoting it would repeat the Mistake-6 attribution error.
+- **Synthetic?** Calibrated priors + hidden confounders + ablation + baselines;
+  the lower-but-honest PR-AUC is the point.
+- **Why XGBoost?** +0.015 over a linear scorer is the nonlinear signal
+  (interactions); <5 ms inference.

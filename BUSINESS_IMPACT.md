@@ -20,9 +20,13 @@ low label noise).
 
 | Stage | PR-AUC | ROC-AUC | ₹/month (Fashion) | ₹/month (Electronics) | ROI (Electronics) |
 |---|---|---|---|---|---|
-| **Stage 1: Basic** | 0.8089 | 0.8477 | ₹17.0L | ₹36.2L | 35.4% |
-| **Stage 2: Enriched** | 0.8875 | 0.9211 | ₹21.6L | ₹45.0L | 44.0% |
-| **Stage 3: Premium** | 0.9483 | 0.9602 | ₹26.0L | **₹53.6L** | 52.5% |
+| **Stage 1: Basic** | 0.8042 | 0.8448 | ₹17.0L | ₹36.2L | 35.4% |
+| **Stage 2: Enriched** | 0.8881 | 0.9217 | ₹21.6L | ₹45.0L | 44.0% |
+| **Stage 3: Premium** | 0.9467 | 0.9593 | ₹26.0L | **₹53.6L** | 52.5% |
+
+> AUCs are the default-XGBoost model (one file per row, no tuned-vs-default
+> mixing); the tuned champions reach 0.8089 / 0.8875 / 0.9483 PR-AUC
+> (`reports/scenario_comparison.md`).
 
 The ₹ figures rise because the **measured** precision/recall at the 0.50 review
 gate improve with data maturity — not because the base rate or AOV changed. The
@@ -36,13 +40,14 @@ conservative floor a panelist can take to any merchant.
 | Scenario | Monthly Cost | Savings vs. Baseline |
 |----------|-------------|----------------------|
 | Baseline (no scorer) | ₹50.31L | — |
-| With PayShield MEDIUM+ gate (0.50) | ₹32.76L | **₹17.5L saved** |
-| Annual savings | — | **₹21.1L** |
-| Net savings per 1,000 orders | — | **₹1.75L** |
+| With PayShield MEDIUM+ gate (0.50) | ₹33.26L | **₹17.0L saved** |
+| Annual savings | — | **₹2.05 cr** |
+| Net savings per 1,000 orders | — | **₹1.70L** |
 
-Flags 1,393 of 1,800 expected returns; prevents ~660 returns/month (diversion
-effectiveness 70%); ROI **+34.9%**. Operating point: precision **0.677**,
-recall **0.774** — the offline XGBoost model measured on the held-out test set.
+Flags 1,459 of 1,800 expected returns; prevents ~648 returns/month (diversion
+effectiveness 70%); ROI **+33.9%**. Operating point: precision **0.635**,
+recall **0.811** — the Stage 1 XGBoost model measured on the held-out test set
+(`models/return_risk_results_basic.json`).
 
 ## Cost Asymmetry (Why This Works)
 
@@ -56,24 +61,25 @@ Because review is ~16× cheaper than blocking, the gate optimizes for
 sacrificing good orders. Threshold selection is a cost optimization, not an
 accuracy contest.
 
-## ROI by Vertical (offline XGBoost operating point, gate 0.50, 10,000 orders/month)
+## ROI by Vertical (Stage 1 XGBoost operating point, gate 0.50, 10,000 orders/month)
 
 | Vertical | Return Rate | Optimal Gate | Monthly Savings | ROI |
 |----------|-------------|--------------|-----------------|-----|
-| Fashion (high return) | 18% | 0.50 | **₹17.5L** | +34.9% |
-| Electronics (low volume, high AOV) | 12% | 0.50 | **₹36.9L** | +36.1% |
-| Grocery (very low, small AOV) | 4% | 0.50 | **₹1.1L** | +28.8% |
+| Fashion (high return) | 18% | 0.50 | **₹17.0L** | +33.9% |
+| Electronics (low volume, high AOV) | 12% | 0.50 | **₹36.2L** | +35.4% |
+| Grocery (very low, small AOV) | 4% | 0.50 | **₹1.1L** | +27.4% |
 
 The gate is config-driven per merchant vertical (`configs/return_risk_rules.yaml`
 → `operating_point.medium_review_threshold`). The vertical-sensitivity sweep in
 `docs/COST_MODEL.md` shows the optimal gate drifts up (0.60–0.70) as the base
 return rate falls — 0.50 is right for high-return verticals.
 
-> **Honest scope:** the cost model uses the **offline XGBoost** operating point
-> (P 0.677, R 0.774 @ 0.50). The Redis-enriched feature pipeline exists in the
-> codebase, but the XGBoost model has **not** been recalibrated to enriched
-> feature distributions — retraining on it (and on real merchant data) is the
-> first "What I'd Do Next" item.
+> **Honest scope:** the cost model uses the **Stage 1 XGBoost** operating point
+> (P 0.635, R 0.811 @ 0.50, measured in `models/return_risk_results_basic.json`).
+> The Stage 2/3 maturity scenarios show how savings scale with data quality; the
+> Redis-enriched feature pipeline exists in the codebase but the XGBoost model
+> has **not** been recalibrated to real merchant data — that is the first
+> "What I'd Do Next" item.
 
 ## How PayShield Differs from Typical Buildathon Submissions
 

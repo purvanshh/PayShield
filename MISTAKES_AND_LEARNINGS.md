@@ -156,9 +156,9 @@ scenario is a *different merchant segment*, not a replacement: Stage 2 exposes
 `product_rating` and `delivery_speed_days` (a real segment — marketplaces record
 ratings and delivery SLAs) and lowers the hidden variance; Stage 3 represents a
 premium merchant with mature instrumentation. The base generator is **untouched**
-— Stage 1's 0.8089 floor stays auditable. ROC-AUC is measured (`roc_auc_score`),
-never hardcoded, fixing Mistake 1. The whole comparison reproduces with one
-command: `python scripts/run_all_scenarios.py`.
+— Stage 1's floor stays auditable (PR-AUC 0.8042 default / 0.8089 tuned). ROC-AUC
+is measured (`roc_auc_score`), never hardcoded, fixing Mistake 1. The whole
+comparison reproduces with one command: `python scripts/run_all_scenarios.py`.
 
 **Lesson:** When you need a higher number to make a point about data maturity,
 make the *scenario* the unit of comparison — documented, named, reproducible —
