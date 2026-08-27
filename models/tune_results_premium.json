@@ -1,0 +1,23 @@
+{
+  "scenario": "premium",
+  "seed": 123,
+  "search": "HalvingGridSearchCV(factor=3, cv=3, scoring=PR-AUC)",
+  "best_params": {
+    "colsample_bytree": 0.8,
+    "gamma": 0,
+    "learning_rate": 0.05,
+    "max_depth": 4,
+    "min_child_weight": 3,
+    "n_estimators": 300,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1,
+    "scale_pos_weight": 2.0,
+    "subsample": 0.8
+  },
+  "best_val_pr_auc": 0.9135231176779347,
+  "test_pr_auc": 0.9483006265816698,
+  "test_average_precision": 0.9483321234231733,
+  "test_roc_auc": 0.9601631806827472,
+  "lightgbm_challenger": null,
+  "wall_time_s": 285.8
+}

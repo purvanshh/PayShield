@@ -1,0 +1,163 @@
+{
+  "scenario": "premium",
+  "gate": 0.5,
+  "seed": 123,
+  "n_orders": 10000,
+  "scenario_metadata": {
+    "stage": "premium",
+    "label": "Stage 3: Premium merchant",
+    "visible_features": [
+      "user_return_rate_30d",
+      "user_return_rate_90d",
+      "amount_vs_user_aov_ratio",
+      "category_return_baseline",
+      "payment_method_risk",
+      "device_fingerprint_match",
+      "days_since_last_order",
+      "product_rating",
+      "delivery_speed_days"
+    ],
+    "num_features": 9,
+    "hidden_scale": 10.0,
+    "label_noise_std": 0.05,
+    "seed": 123,
+    "newly_visible_features": [
+      "product_rating",
+      "delivery_speed_days"
+    ],
+    "target_pr_auc": "~0.94"
+  },
+  "base_rate": 0.4249,
+  "num_features": 9,
+  "features": [
+    "user_return_rate_30d",
+    "user_return_rate_90d",
+    "amount_vs_user_aov_ratio",
+    "category_return_baseline",
+    "payment_method_risk",
+    "device_fingerprint_match",
+    "days_since_last_order",
+    "product_rating",
+    "delivery_speed_days"
+  ],
+  "operating_curve": {
+    "0.20": {
+      "flag_rate": 0.583,
+      "precision": 0.7136,
+      "recall": 0.98
+    },
+    "0.25": {
+      "flag_rate": 0.558,
+      "precision": 0.7384,
+      "recall": 0.9706
+    },
+    "0.30": {
+      "flag_rate": 0.5385,
+      "precision": 0.7567,
+      "recall": 0.96
+    },
+    "0.35": {
+      "flag_rate": 0.5225,
+      "precision": 0.7703,
+      "recall": 0.9482
+    },
+    "0.40": {
+      "flag_rate": 0.503,
+      "precision": 0.7893,
+      "recall": 0.9352
+    },
+    "0.45": {
+      "flag_rate": 0.4865,
+      "precision": 0.8088,
+      "recall": 0.927
+    },
+    "0.50": {
+      "flag_rate": 0.47,
+      "precision": 0.8255,
+      "recall": 0.914
+    },
+    "0.60": {
+      "flag_rate": 0.4385,
+      "precision": 0.8506,
+      "recall": 0.8787
+    },
+    "0.70": {
+      "flag_rate": 0.4005,
+      "precision": 0.8889,
+      "recall": 0.8386
+    }
+  },
+  "models": [
+    {
+      "pr_auc": 0.9467252258156017,
+      "average_precision": 0.9467591742855281,
+      "roc_auc": 0.9593317226071659,
+      "precision_at_gate": 0.825531914893617,
+      "recall_at_gate": 0.9140164899882215,
+      "f1_at_gate": 0.8675237562884293,
+      "confusion_matrix": {
+        "tn": 987,
+        "fp": 164,
+        "fn": 73,
+        "tp": 776
+      },
+      "name": "XGBoost (default)",
+      "feature_importance": {
+        "user_return_rate_30d": 0.1253279447555542,
+        "user_return_rate_90d": 0.13234998285770416,
+        "amount_vs_user_aov_ratio": 0.08442837744951248,
+        "category_return_baseline": 0.044992320239543915,
+        "payment_method_risk": 0.14016954600811005,
+        "device_fingerprint_match": 0.06747665256261826,
+        "days_since_last_order": 0.03611698001623154,
+        "product_rating": 0.237068310379982,
+        "delivery_speed_days": 0.1320699006319046
+      }
+    },
+    {
+      "pr_auc": 0.8818338733559383,
+      "average_precision": 0.8819174386810323,
+      "roc_auc": 0.907038382151435,
+      "precision_at_gate": 0.989010989010989,
+      "recall_at_gate": 0.21201413427561838,
+      "f1_at_gate": 0.34917555771096026,
+      "confusion_matrix": {
+        "tn": 1149,
+        "fp": 2,
+        "fn": 669,
+        "tp": 180
+      },
+      "name": "Hand-weighted (current)"
+    },
+    {
+      "pr_auc": 0.7085134731204303,
+      "average_precision": 0.5606365202124586,
+      "roc_auc": 0.6791047678108554,
+      "precision_at_gate": 0.660377358490566,
+      "recall_at_gate": 0.5771495877502945,
+      "f1_at_gate": 0.6159648020113137,
+      "confusion_matrix": {
+        "tn": 899,
+        "fp": 252,
+        "fn": 359,
+        "tp": 490
+      },
+      "name": "Naive: SerialReturner"
+    },
+    {
+      "pr_auc": 0.5482581215091759,
+      "average_precision": 0.4470234811353015,
+      "roc_auc": 0.5327906598348955,
+      "precision_at_gate": 0.5967741935483871,
+      "recall_at_gate": 0.13074204946996468,
+      "f1_at_gate": 0.2144927536231884,
+      "confusion_matrix": {
+        "tn": 1076,
+        "fp": 75,
+        "fn": 738,
+        "tp": 111
+      },
+      "name": "Naive: COD+HighAOV"
+    }
+  ]
+}

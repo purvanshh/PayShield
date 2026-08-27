@@ -78,5 +78,90 @@
     }
   ],
   "orders": 10000,
-  "generated_at": "2026-08-27T05:54:32.654227+00:00"
+  "generated_at": "2026-08-27T17:43:12.651444+00:00",
+  "maturity_scenarios": {
+    "orders": 10000,
+    "generated_at": "2026-08-27T17:56:28.094317+00:00",
+    "rows": [
+      {
+        "maturity": "basic",
+        "vertical": "fashion",
+        "aov": 2500.0,
+        "return_rate": 0.18,
+        "pr_auc": 0.8042044591367973,
+        "roc_auc": 0.844792084754833,
+        "precision_at_050": 0.635,
+        "recall_at_050": 0.8106,
+        "monthly_savings": 1704560.0,
+        "annual_savings": 20454720.0,
+        "roi_pct": 33.88113695090439
+      },
+      {
+        "maturity": "basic",
+        "vertical": "electronics",
+        "aov": 8000.0,
+        "return_rate": 0.12,
+        "pr_auc": 0.8042044591367973,
+        "roc_auc": 0.844792084754833,
+        "precision_at_050": 0.635,
+        "recall_at_050": 0.8106,
+        "monthly_savings": 3618160.0,
+        "annual_savings": 43417920.0,
+        "roi_pct": 35.388888888888886
+      },
+      {
+        "maturity": "enriched",
+        "vertical": "fashion",
+        "aov": 2500.0,
+        "return_rate": 0.18,
+        "pr_auc": 0.8880744595362784,
+        "roc_auc": 0.9216814762146028,
+        "precision_at_050": 0.7282,
+        "recall_at_050": 0.874,
+        "monthly_savings": 2155990.0,
+        "annual_savings": 25871880.0,
+        "roi_pct": 42.854104551778974
+      },
+      {
+        "maturity": "enriched",
+        "vertical": "electronics",
+        "aov": 8000.0,
+        "return_rate": 0.12,
+        "pr_auc": 0.8880744595362784,
+        "roc_auc": 0.9216814762146028,
+        "precision_at_050": 0.7282,
+        "recall_at_050": 0.874,
+        "monthly_savings": 4501200.0,
+        "annual_savings": 54014400.0,
+        "roi_pct": 44.02582159624413
+      },
+      {
+        "maturity": "premium",
+        "vertical": "fashion",
+        "aov": 2500.0,
+        "return_rate": 0.18,
+        "pr_auc": 0.9467252258156017,
+        "roc_auc": 0.9593317226071659,
+        "precision_at_050": 0.8255,
+        "recall_at_050": 0.914,
+        "monthly_savings": 2600645.0,
+        "annual_savings": 31207740.0,
+        "roi_pct": 51.69240707612801
+      },
+      {
+        "maturity": "premium",
+        "vertical": "electronics",
+        "aov": 8000.0,
+        "return_rate": 0.12,
+        "pr_auc": 0.9467252258156017,
+        "roc_auc": 0.9593317226071659,
+        "precision_at_050": 0.8255,
+        "recall_at_050": 0.914,
+        "monthly_savings": 5363480.0,
+        "annual_savings": 64361760.0,
+        "roi_pct": 52.45970266040688
+      }
+    ],
+    "note": "Per-stage measured P/R@0.50 (from models/return_risk_results_{maturity}.json) applied to each vertical."
+  }
 }

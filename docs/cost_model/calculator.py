@@ -392,10 +392,149 @@ def _build_json_report(orders: int, op_name: str, path: Path) -> None:
     path.write_text(json.dumps(report, indent=2))
 
 
+# --------------------------------------------------------------------------- #
+# Progressive Merchant Maturity scenarios (basic | enriched | premium)
+# --------------------------------------------------------------------------- #
+# Each maturity stage ships a measured operating curve in
+# models/return_risk_results_{maturity}.json (written by train_xgb_return_risk).
+# The calculator loads the *measured* precision/recall at the 0.50 gate instead
+# of the stale hardcoded OPERATING_POINTS, so the ₹ figures track the actual
+# model. The headline method is unchanged: measured P/R@0.50 applied to each
+# vertical's assumed return rate (the same way the existing ₹17.5L is derived).
+
+MATURITY_STAGES = ("basic", "enriched", "premium")
+
+
+def load_maturity_operating_point(maturity: str, gate: float = 0.50) -> tuple[OperatingPoint, dict]:
+    """Read the measured operating curve + 0.50-gate P/R for one maturity stage.
+
+    Returns the OperatingPoint (MEDIUM+, review action) and the full curve dict
+    ``{gate: {flag_rate, precision, recall}}``. Falls back to the legacy
+    hardcoded OPERATING_POINTS/curve if the per-stage results file is missing
+    (keeps the calculator hermetic when run before training).
+    """
+    path = Path("models") / f"return_risk_results_{maturity}.json"
+    if path.exists():
+        data = json.loads(path.read_text())
+        curve = data.get("operating_curve", {})
+        key = f"{gate:.2f}"
+        if key in curve:
+            pt = curve[key]
+            op = OperatingPoint("MEDIUM+", gate, pt["precision"], pt["recall"], action="review")
+            return op, curve
+    # Legacy fallback (basic, pre-scenario artifacts).
+    return OPERATING_POINTS["MEDIUM+"], {f"{g:.2f}": {"flag_rate": fr, "recall": r} for g, (fr, r) in _XGB_OPERATING_CURVE.items()}
+
+
+def compute_maturity_table(orders: int = 10_000) -> dict[str, Any]:
+    """Unified 3-stage x 2-vertical table (Fashion + Electronics) with measured
+    PR-AUC / ROC-AUC / P@0.50 / R@0.50 / Net ₹/month / ROI.
+
+    Fashion = ₹2.5k AOV, 18% return; Electronics = ₹8k AOV, 12% return (the
+    existing scenarios.json values - Electronics' ₹8k AOV is what already yields
+    ₹36.9L at the basic operating point and >₹36.9L at premium).
+    """
+    verticals = [
+        ("fashion", load_scenario("fashion")),
+        ("electronics", load_scenario("electronics")),
+    ]
+    rows = []
+    for maturity in MATURITY_STAGES:
+        op, _curve = load_maturity_operating_point(maturity)
+        # Pull the headline metrics from the results file for the table.
+        rpath = Path("models") / f"return_risk_results_{maturity}.json"
+        pr_auc = roc_auc = None
+        if rpath.exists():
+            models = json.loads(rpath.read_text()).get("models", [])
+            for m in models:
+                if m.get("name") == "XGBoost (default)":
+                    pr_auc = m.get("pr_auc")
+                    roc_auc = m.get("roc_auc")
+                    break
+        for vkey, vcfg in verticals:
+            assumptions = _scenario_assumptions(vcfg)
+            res = evaluate_scenario(orders, assumptions, op)
+            rows.append(
+                {
+                    "maturity": maturity,
+                    "vertical": vkey,
+                    "aov": assumptions.aov,
+                    "return_rate": assumptions.return_rate,
+                    "pr_auc": pr_auc,
+                    "roc_auc": roc_auc,
+                    "precision_at_050": op.precision,
+                    "recall_at_050": op.recall,
+                    "monthly_savings": res["monthly_savings"],
+                    "annual_savings": res["annual_savings"],
+                    "roi_pct": res["roi_pct"],
+                }
+            )
+
+    _print_maturity_table(rows)
+    return {"orders": orders, "rows": rows}
+
+
+def _fmt_rupees(v: float) -> str:
+    cr = v / 10_000_000
+    if abs(cr) >= 1:
+        return f"{cr:+.2f} cr"
+    return f"₹{v / 100_000:+.2f}L"
+
+
+def _print_maturity_table(rows: list[dict[str, Any]]) -> None:
+    print("=" * 96)
+    print("PROGRESSIVE MERCHANT MATURITY — measured model × merchant vertical (10k orders, 0.50 review gate)")
+    print("=" * 96)
+    print(f"{'Scenario':<10}{'Vertical':<13}{'PR-AUC':>8}{'ROC-AUC':>9}{'P@0.50':>8}{'R@0.50':>8}{'Net ₹/month':>15}{'ROI':>9}")
+    print("-" * 96)
+    for r in rows:
+        pr = f"{r['pr_auc']:.4f}" if r["pr_auc"] is not None else "n/a"
+        roc = f"{r['roc_auc']:.4f}" if r["roc_auc"] is not None else "n/a"
+        print(
+            f"{r['maturity']:<10}{r['vertical']:<13}{pr:>8}{roc:>9}"
+            f"{r['precision_at_050']:>8.3f}{r['recall_at_050']:>8.3f}"
+            f"{_fmt_rupees(r['monthly_savings']):>15}{r['roi_pct']:>8.1f}%"
+        )
+    print(
+        "\nStage 1 (basic) is the honest floor (PR-AUC ~0.80). Each stage adds observed features + "
+        "lower unobserved variance;\nthe ₹ figures rise because the measured precision/recall at the "
+        "0.50 gate improve — not because the base rate or AOV changed."
+    )
+
+
+def _write_maturity_cost_report(orders: int, path: Path, table: dict[str, Any] | None = None) -> None:
+    """Append the maturity scenarios to models/cost_model_results.json (the
+    legacy ``scenarios`` key is preserved for backward dashboard compat)."""
+    from datetime import UTC, datetime
+
+    if table is None:
+        table = compute_maturity_table(orders)
+    existing: dict[str, Any] = {}
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            existing = {}
+    existing["maturity_scenarios"] = {
+        "orders": orders,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "rows": table["rows"],
+        "note": "Per-stage measured P/R@0.50 (from models/return_risk_results_{maturity}.json) applied to each vertical.",
+    }
+    path.write_text(json.dumps(existing, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Return-risk cost model calculator")
     parser.add_argument("--orders", type=int, default=10_000, help="orders per month")
-    parser.add_argument("--scenario", default="fashion", help="fashion | electronics | grocery")
+    parser.add_argument("--scenario", default="fashion", help="fashion | electronics | grocery (merchant vertical)")
+    parser.add_argument(
+        "--maturity",
+        choices=MATURITY_STAGES,
+        default=None,
+        help="basic | enriched | premium (merchant maturity stage) — uses the stage's measured P/R",
+    )
+    parser.add_argument("--all-maturity", action="store_true", help="print the unified 3-stage × 2-vertical table")
     parser.add_argument("--operating-point", default="MEDIUM+", help="HIGH | MEDIUM+")
     parser.add_argument("--sensitivity", action="store_true", help="AOV × return-rate grid")
     parser.add_argument(
@@ -413,6 +552,23 @@ def main() -> None:
     op_name = args.operating_point.upper()
     if op_name not in OPERATING_POINTS:
         sys.exit(f"unknown operating point: {args.operating_point}")
+
+    if args.all_maturity:
+        table = compute_maturity_table(args.orders)
+        _write_maturity_cost_report(args.orders, Path("models/cost_model_results.json"), table=table)
+        print("\nwrote models/cost_model_results.json (maturity_scenarios added; legacy scenarios key preserved)")
+        return
+
+    if args.maturity:
+        op, _curve = load_maturity_operating_point(args.maturity)
+        config = load_scenario(args.scenario)
+        assumptions = _scenario_assumptions(config)
+        _print_header()
+        print(f"\nMaturity stage : {args.maturity}  |  Vertical : {args.scenario}")
+        print(f"Measured P/R @0.50 : P={op.precision:.3f}  R={op.recall:.3f}")
+        res = evaluate_scenario(args.orders, assumptions, op)
+        _format_result(res, op)
+        return
 
     if args.vertical_sensitivity:
         vertical_sensitivity(orders=args.orders)
