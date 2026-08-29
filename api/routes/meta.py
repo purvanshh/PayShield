@@ -123,21 +123,21 @@ TRACK2_REQUIREMENTS = [
     },
     {
         "name": "Feature-Waterfall Explainability (XAI)",
-        "status": "planned",
-        "implementation": "POST /v1/return/explain (feature contributions per score)",
-        "evidence": "execution plan Phase 2",
+        "status": "done",
+        "implementation": "POST /v1/return/explain (per-feature gain importance x value)",
+        "evidence": "tests/integration/test_return_risk_api.py::TestReturnRiskExplain",
     },
     {
         "name": "Abuse-Ring Sentinel (shared address-hash velocity)",
-        "status": "planned",
-        "implementation": "return_risk/feature_engine.py address tracking + rules YAML",
-        "evidence": "execution plan Phase 3",
+        "status": "done",
+        "implementation": "return_risk/feature_engine.py address tracking + configs/return_risk_rules.yaml R-RULE-09",
+        "evidence": "tests/unit/return_risk/test_scorer.py::test_abuse_ring_sentinel_overrides_score_to_high",
     },
     {
         "name": "Temporal-Integrity Check (no look-ahead bias)",
-        "status": "planned",
-        "implementation": "scripts/verify_temporal_integrity.py + --full-verify",
-        "evidence": "execution plan Phase 3",
+        "status": "done",
+        "implementation": "scripts/verify_temporal_integrity.py (wired as --full-verify check 11)",
+        "evidence": "scripts/verify_temporal_integrity.py · reports/full_verify_output.txt",
     },
     {
         "name": "Guided Demo Mode (10-minute tour)",
@@ -163,9 +163,10 @@ TRACK2_OVERALL = (
     "Core Track 2 surfaces implemented and verified — return-risk scoring, "
     "fraud-spike detection, graph intelligence, chargeback response, Razorpay "
     "webhooks, honest FP/FN cost metrics, defense-only posture, audit chain, "
-    "drift monitoring, and reproducible evidence (10/10 hermetic, 11/11 live). "
-    "Five planned enhancements remain: XAI waterfall, abuse-ring sentinel, "
-    "temporal-integrity check, guided demo, review queue, calibration simulator."
+    "drift monitoring, reproducible evidence (10/10 hermetic, 11/11 live), "
+    "feature-waterfall explainability, abuse-ring sentinel, and a temporal-"
+    "integrity check. Three planned enhancements remain: guided demo, review "
+    "queue, calibration simulator."
 )
 
 

@@ -67,12 +67,15 @@ class TestTrack2Compliance:
             "Chargeback Evidence Responder",
             "Signed Razorpay Webhooks (HMAC, 400 on bad signature)",
             "Live-Stack Verification (11/11)",
+            "Feature-Waterfall Explainability (XAI)",
+            "Abuse-Ring Sentinel (shared address-hash velocity)",
+            "Temporal-Integrity Check (no look-ahead bias)",
         ):
             assert statuses.get(core) == "done", f"{core!r} must be marked done"
         # Planned items must not be misrepresented as done.
         for planned in (
-            "Abuse-Ring Sentinel (shared address-hash velocity)",
             "Guided Demo Mode (10-minute tour)",
-            "Feature-Waterfall Explainability (XAI)",
+            "Human-Review Queue UI",
+            "Calibration Simulator (drift sliders)",
         ):
             assert statuses.get(planned) == "planned", f"{planned!r} must be planned"
