@@ -41,8 +41,10 @@ def verify(n_orders: int = 3000, seed: int = 99) -> list[str]:
     # 1. Per-user chronology ------------------------------------------------- #
     for user_id, _group in df.groupby("user_id", sort=False):
         timestamps = _group["timestamp"].tolist()
-        if any(b < a for a, b in zip(timestamps, timestamps[1:], strict=True)):
-            failures.append(f"user {user_id}: orders not strictly chronological")
+        for a, b in zip(timestamps, timestamps[1:]):  # noqa: B905 - adjacent pairs, lengths differ by design
+            if b < a:
+                failures.append(f"user {user_id}: orders not strictly chronological")
+                break
 
     # 2. Split has no future leakage ---------------------------------------- #
     train, val, test = chronological_split(df.copy())
