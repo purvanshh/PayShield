@@ -16,6 +16,7 @@ const OPERATIONS = [
   { to: "/drift", label: "Drift Monitor", icon: "monitoring", end: false },
   { to: "/experiments", label: "A/B Experiments", icon: "science", end: false },
   { to: "/agents", label: "Agents", icon: "psychology", end: false },
+  { to: "/track2-compliance", label: "Track 2 Compliance", icon: "fact_check", end: false },
 ];
 
 const LEGAL_LINKS = [

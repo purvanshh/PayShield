@@ -12,6 +12,7 @@ import { LegalPage } from "./pages/LegalPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ReturnRiskPage } from "./pages/ReturnRiskPage";
 import { SupportPage } from "./pages/SupportPage";
+import { Track2CompliancePage } from "./pages/Track2CompliancePage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 
 function isAuthenticated() {
@@ -53,6 +54,7 @@ function App() {
             <Route path="/drift" element={<DriftPage />} />
             <Route path="/experiments" element={<ExperimentsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/track2-compliance" element={<Track2CompliancePage />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/legal/:slug" element={<LegalPage />} />
             <Route path="/investigation/:txnId" element={<InvestigationDetailPage />} />
