@@ -7,6 +7,8 @@ actually measured and committed under ``models/``:
 - ``/v1/meta/return-risk/cost``       -> ``models/cost_model_results.json``
   (regenerated on demand from ``docs/cost_model/calculator.py`` if missing)
 - ``/v1/meta/experiments``            -> ``models/ab_test_result.json``
+- ``/v1/meta/track2-compliance``      -> Track 2 requirement -> implementation
+  -> evidence map (mirrors ``docs/TRACK2_COMPLIANCE.md``)
 
 Authentication follows the standard API-key/Bearer path; these are read-only
 introspection endpoints with no side effects besides cache generation.
@@ -31,11 +33,159 @@ _BENCHMARK = ROOT / "models" / "return_risk_benchmark_results.json"
 _COST = ROOT / "models" / "cost_model_results.json"
 _AB = ROOT / "models" / "ab_test_result.json"
 
+# Track 2 compliance map — single source for the dashboard page. Kept in
+# lockstep with docs/TRACK2_COMPLIANCE.md. ``status`` is "done" (implemented +
+# verified) or "planned" (a later phase in the execution plan, not yet built).
+TRACK2_REQUIREMENTS = [
+    {
+        "name": "Return-Risk Scorer (pre-ship tier)",
+        "status": "done",
+        "implementation": "return_risk/scorer.py (XGBoost primary + hand-weighted fallback)",
+        "evidence": "tests/unit/return_risk/test_scorer.py · verify_live_stack.py",
+    },
+    {
+        "name": "Redis Feature Engine (user history, not placeholders)",
+        "status": "done",
+        "implementation": "return_risk/feature_engine.py",
+        "evidence": "tests/unit/return_risk/test_feature_engine.py",
+    },
+    {
+        "name": "Config-Driven Rules Engine",
+        "status": "done",
+        "implementation": "return_risk/rules_engine.py · configs/return_risk_rules.yaml",
+        "evidence": "tests/unit/return_risk/test_rules_engine.py",
+    },
+    {
+        "name": "Fraud-Spike Detector (velocity / geo / device)",
+        "status": "done",
+        "implementation": "engine/statistical_filter.py over Redis velocity:*",
+        "evidence": "tests/unit/test_statistical_filter.py · verify_live_stack.py (burst→BLOCK)",
+    },
+    {
+        "name": "Graph / Network Intelligence (L2)",
+        "status": "done",
+        "implementation": "engine/graph_loader.py · engine/graph_feature_engine.py · engine/ensemble.py",
+        "evidence": "tests/integration/test_graph_integration.py · tests/unit/test_ensemble.py",
+    },
+    {
+        "name": "Chargeback Evidence Responder",
+        "status": "done",
+        "implementation": "chargeback/evidence_collector.py · chargeback/rebuttal_builder.py",
+        "evidence": "tests/unit/chargeback/test_rebuttal_builder.py · test_evidence_collector.py",
+    },
+    {
+        "name": "Signed Razorpay Webhooks (HMAC, 400 on bad signature)",
+        "status": "done",
+        "implementation": "integrations/razorpay_webhook_handler.py · chargeback/signatures.py",
+        "evidence": "tests/integration/test_razorpay_webhooks.py · verify_live_stack.py",
+    },
+    {
+        "name": "Honest Metrics incl. FP/FN cost (₹200 / ₹3,180)",
+        "status": "done",
+        "implementation": "docs/cost_model/calculator.py (no hardcoded fallback)",
+        "evidence": "tests/unit/test_cost_model.py · docs/COST_MODEL.md",
+    },
+    {
+        "name": "Defense-Only Posture (FLAG_FOR_REVIEW / REQUIRE_PREPAID)",
+        "status": "done",
+        "implementation": "return_risk/scorer.py tiers + recommendations",
+        "evidence": "verify_live_stack.py (honest LOW · serial HIGH) · docs/DESIGN_DECISIONS.md",
+    },
+    {
+        "name": "Tamper-Evident, PII-Masked Audit Chain",
+        "status": "done",
+        "implementation": "store/audit_log.py (hash-chained JSONL)",
+        "evidence": "tests/unit/chargeback/test_audit_log_reader.py · test_security_hardening.py",
+    },
+    {
+        "name": "Human-in-the-Loop Chargeback Submit (chargeback:admin)",
+        "status": "done",
+        "implementation": "api/routes/chargeback.py · configs/rbac.yaml",
+        "evidence": "tests/integration/test_chargeback_api.py (RBAC)",
+    },
+    {
+        "name": "Drift Monitoring (PSI 43.4 → 3.86)",
+        "status": "done",
+        "implementation": "api/routes/admin.py (/admin/drift/return-risk)",
+        "evidence": "tests/unit/test_drift.py · test_drift_report.py",
+    },
+    {
+        "name": "Reproducible Evidence (10/10 hermetic)",
+        "status": "done",
+        "implementation": "scripts/run_all_scenarios.py --full-verify",
+        "evidence": "reports/full_verify_output.txt",
+    },
+    {
+        "name": "Live-Stack Verification (11/11)",
+        "status": "done",
+        "implementation": "scripts/seed_demo_data.py · scripts/verify_live_stack.py",
+        "evidence": "live Docker run · docs/CALIBRATION_GAP.md",
+    },
+    {
+        "name": "Feature-Waterfall Explainability (XAI)",
+        "status": "planned",
+        "implementation": "POST /v1/return/explain (feature contributions per score)",
+        "evidence": "execution plan Phase 2",
+    },
+    {
+        "name": "Abuse-Ring Sentinel (shared address-hash velocity)",
+        "status": "planned",
+        "implementation": "return_risk/feature_engine.py address tracking + rules YAML",
+        "evidence": "execution plan Phase 3",
+    },
+    {
+        "name": "Temporal-Integrity Check (no look-ahead bias)",
+        "status": "planned",
+        "implementation": "scripts/verify_temporal_integrity.py + --full-verify",
+        "evidence": "execution plan Phase 3",
+    },
+    {
+        "name": "Guided Demo Mode (10-minute tour)",
+        "status": "planned",
+        "implementation": "dashboard DemoTour page · /v1/meta/demo/guide",
+        "evidence": "execution plan Phase 4",
+    },
+    {
+        "name": "Human-Review Queue UI",
+        "status": "planned",
+        "implementation": "dashboard /review-queue · /v1/meta/review-queue",
+        "evidence": "execution plan Phase 5 (optional)",
+    },
+    {
+        "name": "Calibration Simulator (drift sliders)",
+        "status": "planned",
+        "implementation": "POST /v1/return/simulate · dashboard /simulator",
+        "evidence": "execution plan Phase 6 (optional)",
+    },
+]
+
+TRACK2_OVERALL = (
+    "Core Track 2 surfaces implemented and verified — return-risk scoring, "
+    "fraud-spike detection, graph intelligence, chargeback response, Razorpay "
+    "webhooks, honest FP/FN cost metrics, defense-only posture, audit chain, "
+    "drift monitoring, and reproducible evidence (10/10 hermetic, 11/11 live). "
+    "Five planned enhancements remain: XAI waterfall, abuse-ring sentinel, "
+    "temporal-integrity check, guided demo, review queue, calibration simulator."
+)
+
 
 def _load(path: Path):
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+@router.get("/v1/meta/track2-compliance")
+async def track2_compliance(
+    _=Depends(verify_api_key),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """Track 2 requirement -> implementation -> evidence map.
+
+    Mirrors docs/TRACK2_COMPLIANCE.md so the dashboard and the docs never
+    drift apart. ``status`` distinguishes verified ("done") from later-plan
+    ("planned") items — nothing is marked complete before it exists.
+    """
+    return {"requirements": TRACK2_REQUIREMENTS, "overall": TRACK2_OVERALL}
 
 
 @router.get("/v1/meta/return-risk/benchmark")
