@@ -303,7 +303,8 @@ Full table in `scripts/verify_live_stack.py`. The live feature pipeline is kept
 inside the model's training envelope: the scorer's `amount_vs_user_aov_ratio`
 never falls back to `avg_return_value` (a profile with cheap returns but no
 stored AOV previously produced an out-of-distribution ratio of 8.0 that spiked
-honest customers to MEDIUM/HIGH) — see `return_risk/feature_engine.py`.
+honest customers to MEDIUM/HIGH) — see `return_risk/feature_engine.py` and the
+honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 
 ### For judges (30-second version)
 

@@ -1,53 +1,53 @@
-# Judges' Cheat Sheet — PayShield
+# Track 2 Judges' Cheat Sheet — PayShield
 
-**30 seconds, everything you need.** Full evidence in [`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md).
+**The 30-second hook.** Full requirement-by-requirement map: [`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md).
 
 ---
 
-## What is it?
+## 30-Second Summary
 
-**PayShield** is a pre-shipping **return-risk scorer for Indian e-commerce**
-built on Razorpay's infrastructure. It scores every order *before dispatch* and
-tells the merchant **ship / review / require-prepaid** — and when a chargeback
-still happens, it assembles a defensible rebuttal from evidence captured at
-transaction time.
+- **What it is:** a pre-shipping **return-risk scorer** for Indian e-commerce on Razorpay's
+  infrastructure — plus fraud-spike detection and a chargeback evidence responder on the same
+  audit chain.
+- **Impact:** **₹17.4L/month** (Stage 1 fashion) → **₹53.5L/month** (Stage 3 premium electronics)
+  at the 0.50 review gate — measured, reproducible.
+- **Defense-only:** `MEDIUM → FLAG_FOR_REVIEW`, `HIGH → REQUIRE_PREPAID` — no autonomous blocks.
+- **Honest metrics:** a wrong MEDIUM flag costs **₹200** (review time), a wrong HIGH block
+  **₹3,180** (lost order) — both explicitly in the cost model.
 
-## The one number
+## 5-Minute Demo
 
-| Surface | Measured headline | How to verify |
-|---|---|---|
-| **Return-risk model** (3 merchant-maturity scenarios) | Premium PR-AUC **0.9497**, basic floor **0.7991** (measured, never hardcoded) | `python scripts/run_all_scenarios.py --full-verify` → **10/10 PASS** |
-| **Live stack** (Docker + Redis) | honest customer → **LOW 0.03** · serial returner → **HIGH 0.98** · suspicious burst → **BLOCK** | `seed_demo_data.py` then `verify_live_stack.py` → **11/11 PASS** |
-| **Business value** | ₹17.4L/mo (fashion) → ₹53.5L/mo (premium electronics) at the 0.50 review gate | `docs/cost_model/calculator.py --all-maturity` |
+1. `python scripts/train_xgb_return_risk.py --scenario premium` → **PR-AUC 0.9497** (measured).
+2. `python docs/cost_model/calculator.py --all-maturity` → **₹53.5L/month** premium electronics.
+3. `python scripts/run_all_scenarios.py --full-verify` → **ALL CHECKS PASS (10/10)**.
+4. Live Docker: `docker compose -f docker/docker-compose.yml up` → `seed_demo_data.py` →
+   `verify_live_stack.py` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
+   suspicious burst BLOCK).
+5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
+   implementation and its proof.
 
-## The three surfaces (one audit chain)
+## 10-Minute Deep Dive
 
-| Surface | Endpoint | What it does |
-|---|---|---|
-| **Fraud (live)** | `POST /v1/score` | L1 statistical rules (velocity/geo/device) + L2 graph + ensemble → ALLOW/BLOCK/REVIEW |
-| **Return-risk (pre-ship)** | `POST /v1/return/score` | 7 features (Redis user history + txn context) → XGBoost primary, hand-weighted fallback → LOW/MEDIUM/HIGH |
-| **Chargeback (remedial)** | `POST /v1/chargeback/respond` | Evidence reassembled from the tamper-evident audit chain → ACCEPT/REJECT/PARTIAL rebuttal → human-in-the-loop submit to Razorpay |
+1. [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) — 10-minute walkthrough of the core evidence.
+2. [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md) — the ₹17.4L → ₹53.5L business case, cost math.
+3. [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md) — six mistakes + prevented ones,
+   and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md) for the debugging stories.
+4. [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) — prepared answers to the hard questions.
 
-## Why it's credible (the honest list)
+## Why This Wins Track 2
 
-- **Measured, not hardcoded** — ROC-AUC via `roc_auc_score`; ablation proves every feature (both rate features = **−9.9%** PR-AUC).
-- **Non-circular DGP** — labels include hidden confounders the model never sees; the base generator is `git diff`-guarded untouched.
-- **Byte-reproducible** — exact pinned Python 3.11 ML stack; `--full-verify` re-runs determinism (train × 3, twice, byte-identical).
-- **Explainable everywhere** — every score returns a per-feature value/weight/contribution/source; every rebuttal carries an audit trail.
-- **Human-in-the-loop** — chargeback auto-submit requires `chargeback:admin`; drafts are reviewed before anything ships.
-- **Honest caveats documented** — synthetic data, no live pilot yet, model not yet retrained on live-distributed features (see "What I'd Do Next").
-
-## Verify in 60 seconds (hermetic, no Docker)
-
-```bash
-pip install -r requirements.txt          # macOS: brew install libomp
-python scripts/run_all_scenarios.py --full-verify   # → ALL CHECKS PASS (10/10)
-```
-
-Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`,
-then `python scripts/seed_demo_data.py`, then `python scripts/verify_live_stack.py` → **11/11 PASS**.
+- **Business-quantified** — ₹17.4L → ₹53.5L/month, FP/FN costs explicitly modeled (₹200 / ₹3,180).
+- **Stage-maturity framework** — Stage 1 → 2 → 3 (Basic / Enriched / Premium), each a named,
+  documented merchant segment; base generator git-guarded untouched.
+- **Byte-reproducible** — pinned Python 3.11 ML stack; `--full-verify` runs train × 3 twice and
+  asserts byte-identical results.
+- **15+ docs** — evaluator guide, business impact, mistakes ledger, compliance map, defense Q&A.
+- **Meta-honesty** — 34 bugs fixed and tabulated in README Appendix B; the remaining calibration
+  gap is documented, not hidden: [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
+- **Operational depth** — 4 live agents, drift monitor, audit chain, signed webhooks, human-in-the-loop
+  chargeback, and a live verification suite.
 
 ---
 
 _See [`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md) for the requirement-by-requirement map and
-[`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) for prepared answers to the hard questions._
+[`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) for the prepared answers._
