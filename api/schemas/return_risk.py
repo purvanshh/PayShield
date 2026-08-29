@@ -170,6 +170,39 @@ class ReturnExplainResponse(BaseModel):
     note: str = ""
 
 
+class ReturnSimulateRequest(BaseModel):
+    """Feature-slider inputs for the calibration simulator.
+
+    Mirrors the XGBoost feature surface. ``stage`` picks the model: "basic"
+    (7 features, offline-DGP trained - the production scorer) or "premium"
+    (9 features, adds product_rating + delivery_speed_days). The amount / AOV
+    ratio is capped to the model's training envelope [0.15, 4.0].
+    """
+
+    amount: Decimal = Field(..., gt=0)
+    user_aov: Decimal = Field(default=Decimal("74500"), gt=0)
+    category: str = "fashion"
+    payment_method: Literal["UPI", "CARD", "COD", "NETBANKING", "WALLET"] = "UPI"
+    user_return_rate_30d: float = Field(0.15, ge=0.0, le=1.0)
+    user_return_rate_90d: float = Field(0.15, ge=0.0, le=1.0)
+    days_since_last_order: float = Field(12.0, ge=0.0, le=120.0)
+    device_fingerprint_match: float = Field(0.5, ge=0.0, le=1.0)
+    product_rating: float = Field(4.0, ge=1.0, le=5.0)
+    delivery_speed_days: float = Field(3.0, ge=0.0, le=14.0)
+    stage: Literal["basic", "premium"] = "basic"
+
+
+class ReturnSimulateResponse(BaseModel):
+    """Simulated score + tier for a feature vector and model stage."""
+
+    return_risk_score: float = Field(..., ge=0.0, le=1.0)
+    risk_tier: RiskTier = "LOW"
+    stage: str = "basic"
+    engine: str = "xgboost"
+    model_path: str | None = None
+    features: dict[str, float] = Field(default_factory=dict)
+
+
 class ReturnStatusUpdateRequest(BaseModel):
     """Merchant return-system callback that refreshes the user profile."""
 

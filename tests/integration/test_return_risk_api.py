@@ -143,6 +143,62 @@ class TestReturnRiskUpdate:
         assert "total_returns" not in profile
 
 
+class TestReturnRiskSimulate:
+    async def test_requires_auth(self, client):
+        resp = await client.post("/v1/return/simulate", json={})
+        assert resp.status_code == 403
+
+    async def test_basic_stage_returns_seven_features(self, client):
+        body = {
+            "amount": "12000",
+            "category": "electronics",
+            "payment_method": "UPI",
+            "user_return_rate_30d": 0.05,
+            "user_return_rate_90d": 0.08,
+        }
+        resp = await client.post("/v1/return/simulate", json=body, headers={"X-API-Key": DEV_KEY})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert 0 <= data["return_risk_score"] <= 1
+        assert data["risk_tier"] in ("LOW", "MEDIUM", "HIGH")
+        assert data["stage"] == "basic"
+        assert len(data["features"]) == 7
+        assert data["features"]["amount_vs_user_aov_ratio"] <= 4.0
+
+    async def test_premium_stage_uses_nine_features(self, client):
+        body = {
+            "amount": "12000",
+            "category": "electronics",
+            "payment_method": "UPI",
+            "user_return_rate_30d": 0.05,
+            "user_return_rate_90d": 0.08,
+            "stage": "premium",
+            "product_rating": 4.5,
+            "delivery_speed_days": 2,
+        }
+        resp = await client.post("/v1/return/simulate", json=body, headers={"X-API-Key": DEV_KEY})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["stage"] == "premium"
+        assert len(data["features"]) == 9
+        assert "product_rating" in data["features"]
+        assert "delivery_speed_days" in data["features"]
+
+    async def test_high_rates_score_high(self, client):
+        body = {
+            "amount": "5000",
+            "category": "fashion",
+            "payment_method": "COD",
+            "user_return_rate_30d": 0.85,
+            "user_return_rate_90d": 0.85,
+            "days_since_last_order": 2,
+        }
+        resp = await client.post("/v1/return/simulate", json=body, headers={"X-API-Key": DEV_KEY})
+        data = resp.json()
+        assert data["risk_tier"] == "HIGH"
+        assert data["return_risk_score"] >= 0.7
+
+
 class TestReturnRiskProfile:
     async def test_profile_known_user(self, client):
         app.state.resources["redis"] = FakeRedis()

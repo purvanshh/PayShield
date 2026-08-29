@@ -12,6 +12,8 @@ Prometheus instrumentation.
 import logging
 import time
 
+import pandas as pd
+import xgboost as xgb
 from fastapi import APIRouter, BackgroundTasks, Depends
 
 from api.dependencies import get_redis, verify_api_key
@@ -21,11 +23,17 @@ from api.schemas.return_risk import (
     ReturnProfileData,
     ReturnScoreEnvelopeResponse,
     ReturnScoreRequest,
+    ReturnSimulateRequest,
+    ReturnSimulateResponse,
     ReturnStatusUpdateRequest,
     ReturnStatusUpdateResponse,
     WaterfallContribution,
 )
-from return_risk.feature_engine import ReturnRiskFeatureEngine
+from return_risk.feature_engine import (
+    CATEGORY_BASELINES,
+    PAYMENT_METHOD_RISK,
+    ReturnRiskFeatureEngine,
+)
 from return_risk.rules_engine import RulesEngine
 from return_risk.scorer import ReturnRiskScorer
 from store.audit_log import async_audit_logger
@@ -146,6 +154,79 @@ async def explain_return_risk(
         base_score=0.5,
         waterfall=waterfall,
         note=note,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Calibration simulator                                                        #
+# --------------------------------------------------------------------------- #
+
+# The "stage" toggle swaps between the production 7-feature model and the
+# premium 9-feature model (adds product_rating + delivery_speed_days), so the
+# simulator shows how better data changes the score - not a hardcoded offset.
+_SIMULATE_MODEL_PATHS = {
+    "basic": "models/return_risk_xgb_v1.json",
+    "premium": "models/return_risk_xgb_best_premium.json",
+}
+_simulate_model_cache: dict[str, xgb.XGBClassifier] = {}
+
+
+def _simulate_model(stage: str) -> xgb.XGBClassifier:
+    path = _SIMULATE_MODEL_PATHS[stage]
+    if stage not in _simulate_model_cache:
+        model = xgb.XGBClassifier()
+        model.load_model(path)
+        _simulate_model_cache[stage] = model
+    return _simulate_model_cache[stage]
+
+
+def _simulate_tier(score: float) -> str:
+    if score <= 0.30:
+        return "LOW"
+    if score <= 0.70:
+        return "MEDIUM"
+    return "HIGH"
+
+
+@router.post("/return/simulate", response_model=ReturnSimulateResponse)
+async def simulate_return_risk(
+    request: ReturnSimulateRequest,
+    _=Depends(verify_api_key),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """Score an arbitrary feature vector against the basic or premium model.
+
+    Pure computation - no Redis, no side effects. Amount/AOV ratio is capped
+    to the model's training envelope ([0.15, 4.0]); premium stage adds the two
+    observed features. Useful for showing how the score responds to data
+    quality and feature changes (the dashboard /simulator page).
+    """
+    ratio = min(max(float(request.amount) / float(request.user_aov), 0.15), 4.0)
+    features: dict[str, float] = {
+        "user_return_rate_30d": request.user_return_rate_30d,
+        "user_return_rate_90d": request.user_return_rate_90d,
+        "amount_vs_user_aov_ratio": round(ratio, 4),
+        "category_return_baseline": float(
+            CATEGORY_BASELINES.get(request.category, CATEGORY_BASELINES["default"])
+        ),
+        "payment_method_risk": float(
+            PAYMENT_METHOD_RISK.get(request.payment_method, PAYMENT_METHOD_RISK["UPI"])
+        ),
+        "device_fingerprint_match": request.device_fingerprint_match,
+        "days_since_last_order": request.days_since_last_order,
+    }
+    if request.stage == "premium":
+        features["product_rating"] = request.product_rating
+        features["delivery_speed_days"] = request.delivery_speed_days
+
+    model = _simulate_model(request.stage)
+    score = float(model.predict_proba(pd.DataFrame([features]))[0, 1])
+
+    return ReturnSimulateResponse(
+        return_risk_score=round(score, 4),
+        risk_tier=_simulate_tier(score),
+        stage=request.stage,
+        model_path=_SIMULATE_MODEL_PATHS[request.stage],
+        features=features,
     )
 
 
