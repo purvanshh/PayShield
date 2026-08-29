@@ -25,10 +25,12 @@
    `verify_live_stack.py` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
    suspicious burst BLOCK).
 5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
-   implementation and its proof (17/20 verified).
+   implementation and its proof (**20/20 verified**).
 6. On the Return Risk page, expand **Model Waterfall** for the XGBoost per-feature attribution;
    score the seeded `U_RING_00x` profiles with `shipping_address` pincode `560037` to watch the
    **abuse-ring sentinel** catch a coordinated ring the model rates LOW.
+7. Visit **Review Queue** (the latest MEDIUM decisions from the audit chain) and the **Simulator**
+   (feature sliders, Basic vs Premium model) — or hit **Start Demo** for the guided 10-minute tour.
 
 ## 10-Minute Deep Dive
 

@@ -74,6 +74,9 @@ live-data caveat documented).
 | F7 | Feature-waterfall explainability — show *why* a score is what it is | `POST /v1/return/explain` (per-feature gain importance × value, neutral base 0.5) | `tests/integration/test_return_risk_api.py::TestReturnRiskExplain`; dashboard Model Waterfall section |
 | F8 | Abuse-ring sentinel — coordinated-abuse detection, defense-only | `return_risk/feature_engine.py` address-hash tracking + `R-RULE-09` score-floor override (0.85) | `tests/unit/return_risk/test_scorer.py` (ring → HIGH; family co-shipping → no false positive); live demo seeds a 4-user ring |
 | F9 | Temporal integrity — no look-ahead bias in DGP features or split | `scripts/verify_temporal_integrity.py` (chronology + split leakage + latent-sampled first-order features), wired as `--full-verify` check 11 | `--full-verify` → 11/11 PASS |
+| F10 | Human-in-the-loop review queue — MEDIUM decisions surfaced for operators | `GET/POST /v1/meta/review-queue` (audit-chain backed, reviewed flag in Redis) + dashboard `/review-queue` | `tests/integration/test_review_queue.py`; live smoke (mark → reflected) |
+| F11 | Guided demo tour — 10-minute judge walkthrough | `GET /v1/meta/demo/guide` + dashboard `/demo-tour` (auto-navigating stops) | `tests/integration/test_track2_compliance.py::TestDemoGuide` |
+| F12 | Calibration simulator — interactive feature sliders, basic vs premium model | `POST /v1/return/simulate` + dashboard `/simulator` | `tests/integration/test_return_risk_api.py::TestReturnRiskSimulate`; live (basic 7-feature vs premium 9-feature) |
 
 ---
 
@@ -81,7 +84,8 @@ live-data caveat documented).
 
 - **Hermetic ML suite:** `--full-verify` → **11/11 PASS** (base-gen integrity, byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc & dashboard consistency, ablation baseline, temporal integrity).
 - **Live Docker stack:** `verify_live_stack.py` → **11/11 PASS**.
-- **Test suite:** `pytest tests/` → **485 passed, 1 skipped** (47 test modules incl. chaos, security, graph, chargeback, return-risk, abuse-ring, explain).
+- **Compliance map:** **20/20 requirements verified** (`GET /v1/meta/track2-compliance`).
+- **Test suite:** `pytest tests/` → **495 passed, 1 skipped** (47 test modules incl. chaos, security, graph, chargeback, return-risk, abuse-ring, explain, review-queue, simulator).
 
 ## Honest gaps (documented, not hidden)
 

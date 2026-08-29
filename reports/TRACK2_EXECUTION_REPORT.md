@@ -1,6 +1,6 @@
 # PayShield — Track 2 Execution Report
 
-**Date:** 2026-08-29 · **Status:** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ ·
+**Date:** 2026-08-29 · **Status:** Phases 0–6 all ✅ complete ·
 **Branch:** `master`
 
 This report is the living status of the Track 2 execution plan. It records
@@ -15,11 +15,14 @@ session can pick up without re-deriving context.
 |---|---|---|
 | Hermetic ML verification | **11/11 PASS** | `python scripts/run_all_scenarios.py --full-verify` → `ALL CHECKS PASS` (now incl. temporal-integrity check) |
 | Live Docker stack | **11/11 PASS** | `seed_demo_data.py` + `verify_live_stack.py` |
-| Test suite | **485 passed, 1 skipped** | `pytest tests/` (47 modules) |
-| Track 2 compliance map | **17/20 verified, 3 planned** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` |
+| Test suite | **495 passed, 1 skipped** | `pytest tests/` (47 modules) |
+| Track 2 compliance map | **20/20 verified** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` |
 | Business case | **₹17.4L → ₹53.5L/month** | `docs/cost_model/calculator.py --all-maturity` |
 | Explainability | **XGBoost waterfall live** | `POST /v1/return/explain` + dashboard Model Waterfall |
 | Abuse-ring sentinel | **live + seeded demo ring** | score `U_RING_00x` w/ pincode `560037` → ring caught at HIGH 0.85 |
+| Review queue | **live (audit-chain backed)** | `GET/POST /v1/meta/review-queue` + dashboard `/review-queue` |
+| Simulator | **live (basic vs premium)** | `POST /v1/return/simulate` + dashboard `/simulator` |
+| Guided demo | **live 10-minute tour** | `GET /v1/meta/demo/guide` + dashboard `/demo-tour` |
 
 > **Integrity note:** the original plan's premise ("live stack 8/10 — honest
 > customer → MEDIUM, suspicious burst → ALLOW") is **no longer true**. Both
@@ -99,40 +102,54 @@ python scripts/seed_demo_data.py
 python scripts/verify_live_stack.py                   # 11/11 PASS
 
 # Tests
-pytest tests/                                         # 485 passed, 1 skipped
+pytest tests/                                         # 495 passed, 1 skipped
 
-# Compliance endpoint
+# Compliance endpoint (20/20 verified)
 curl -s -X GET http://localhost:8000/v1/meta/track2-compliance \
-  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20 (17 done / 3 planned)
+  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20 (all done)
 
-# Explain waterfall
-curl -s -X POST http://localhost:8000/v1/return/explain \
+# Review queue + mark
+curl -s http://localhost:8000/v1/meta/review-queue -H "X-API-Key: payshield-dev-key-2026"
+curl -s -X POST http://localhost:8000/v1/meta/review-queue/ORD_MED_001/mark \
+  -H "X-API-Key: payshield-dev-key-2026"
+
+# Simulator (basic vs premium)
+curl -s -X POST http://localhost:8000/v1/return/simulate \
   -H "X-API-Key: payshield-dev-key-2026" -H "Content-Type: application/json" \
-  -d '{"order_id":"ORD_SERIAL_001","user_id":"U_SERIAL_001","merchant_id":"M_FASHION_001","amount":5500,"category":"fashion","payment_method":"UPI","cod_flag":true}'
+  -d '{"amount":12000,"category":"electronics","payment_method":"UPI","user_return_rate_30d":0.05,"user_return_rate_90d":0.08}'
+
+# Guided demo guide
+curl -s http://localhost:8000/v1/meta/demo/guide -H "X-API-Key: payshield-dev-key-2026"
+```
 ```
 
 ---
 
-## 4. What's next (remaining phases)
+## 4. Completed work — guided demo, review queue, simulator
 
-### Phase 4 — Guided Demo Mode · ~6h
-- **Backend:** `GET /v1/meta/demo/guide` returning the 10-minute step script.
-- **Frontend:** `/demo-tour` page with a progress bar that auto-navigates to
-  the cost-model, return-risk, chargeback, agents, and compliance pages.
-- **Note:** the live stack already passes 11/11, so the demo is green
-  end-to-end without any skip flags.
-- Commit(s): `feat(api)` + `feat(dashboard)`.
+### Guided Demo Mode ✅
 
-### Phase 5 — Human-Review Queue UI (optional) · ~2h
-- `GET /v1/meta/review-queue` (last 10 MEDIUM orders from the audit chain +
-  reviewed flag in Redis) and `POST /v1/meta/review-queue/{id}/mark`; a
-  `/review-queue` page.
-- Commit(s): `feat(api)` + `feat(dashboard)`.
+| Commit | What |
+|---|---|
+| `519c463` `feat(api): add guided-demo script endpoint` | `GET /v1/meta/demo/guide` returns the 10-minute judge tour — five stops (cost model, return-risk scoring, waterfall explainability, abuse-ring/fraud, Track 2 compliance), each mapped to a real dashboard route with a live description and action. Auth-gated; 3 integration tests |
+| `11edb16` `feat(dashboard): add guided demo tour page` | `/demo-tour` walks the script with a progress bar, per-stop card, Previous/Next/Open controls and a countdown that auto-navigates to the real surface; "Start Demo" button in the sidebar. TS/Vite build passes |
 
-### Phase 6 — Calibration Simulator (optional) · ~4h
-- `POST /v1/return/simulate` (feature sliders → score + tier) and a `/simulator`
-  page with a Stage 1 vs Stage 3 toggle.
-- Commit(s): `feat(api)` + `feat(dashboard)`.
+### Human-Review Queue ✅
+
+| Commit | What |
+|---|---|
+| `ea1e7c1` `feat(api): add human-review queue endpoints` | `GET /v1/meta/review-queue` lists the latest 10 MEDIUM return-risk decisions straight from the tamper-evident audit chain (never fabricated), newest-first, de-duplicated, with a per-order `reviewed` flag in Redis; `POST /v1/meta/review-queue/{order_id}/mark` toggles it. 3 integration tests |
+| `a5c25ff` `feat(dashboard): add human-review queue page` | `/review-queue` table with pending/reviewed badges, a pending-count, and one-click Mark-as-Reviewed. Sidebar link added |
+
+### Calibration Simulator ✅
+
+| Commit | What |
+|---|---|
+| `3cd5d03` `feat(api): add return-risk calibration simulator endpoint` | `POST /v1/return/simulate` scores an arbitrary feature vector (amount/AOV, rates, days-since, device, category, method) against the **basic** (7-feature) or **premium** (9-feature) model — the stage toggle swaps the real models, so it shows how better data changes the score, not a hardcoded offset. Ratio capped to the training envelope. 4 integration tests |
+| `4d1b3b2` `feat(dashboard): add calibration simulator page` | `/simulator` sliders + Basic/Premium toggle with live debounced scoring, score/tier and the feature vector rendered live. Sidebar link added |
+| `5e02733` `feat(api): mark guided demo, review queue and simulator verified in the compliance map` | Compliance map now **20/20 verified**; test asserts no requirement is left planned |
+
+**Live verification (Docker stack):** review queue lists the latest MEDIUM decisions and a mark reflects immediately; simulator returns 7 vs 9 features for basic/premium; demo guide serves 5 stops; `verify_live_stack.py` → 11/11; compliance → 20/20.
 
 ---
 
