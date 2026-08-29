@@ -19,12 +19,16 @@
 
 1. `python scripts/train_xgb_return_risk.py --scenario premium` → **PR-AUC 0.9497** (measured).
 2. `python docs/cost_model/calculator.py --all-maturity` → **₹53.5L/month** premium electronics.
-3. `python scripts/run_all_scenarios.py --full-verify` → **ALL CHECKS PASS (10/10)**.
+3. `python scripts/run_all_scenarios.py --full-verify` → **ALL CHECKS PASS (11/11)**,
+   including a temporal-integrity check (no look-ahead in DGP/split).
 4. Live Docker: `docker compose -f docker/docker-compose.yml up` → `seed_demo_data.py` →
    `verify_live_stack.py` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
    suspicious burst BLOCK).
 5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
-   implementation and its proof.
+   implementation and its proof (17/20 verified).
+6. On the Return Risk page, expand **Model Waterfall** for the XGBoost per-feature attribution;
+   score the seeded `U_RING_00x` profiles with `shipping_address` pincode `560037` to watch the
+   **abuse-ring sentinel** catch a coordinated ring the model rates LOW.
 
 ## 10-Minute Deep Dive
 
@@ -40,7 +44,11 @@
 - **Stage-maturity framework** — Stage 1 → 2 → 3 (Basic / Enriched / Premium), each a named,
   documented merchant segment; base generator git-guarded untouched.
 - **Byte-reproducible** — pinned Python 3.11 ML stack; `--full-verify` runs train × 3 twice and
-  asserts byte-identical results.
+  asserts byte-identical results, plus a temporal-integrity check (no look-ahead).
+- **Explainable everywhere** — every score returns a per-feature value/weight/contribution/source;
+  `POST /v1/return/explain` adds an XGBoost feature waterfall; every rebuttal carries an audit trail.
+- **Abuse-ring sentinel** — shared shipping address + return-velocity spike forces a coordinated
+  ring to HIGH (defense-only), even when the model rates the user LOW.
 - **15+ docs** — evaluator guide, business impact, mistakes ledger, compliance map, defense Q&A.
 - **Meta-honesty** — 34 bugs fixed and tabulated in README Appendix B; the remaining calibration
   gap is documented, not hidden: [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).

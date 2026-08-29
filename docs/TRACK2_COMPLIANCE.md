@@ -71,14 +71,17 @@ live-data caveat documented).
 | F4 | Live Docker stack passes its curated scenarios | `scripts/seed_demo_data.py` + `scripts/verify_live_stack.py` → 11/11 PASS | Live run (honest LOW 0.03, serial HIGH 0.98, burst BLOCK) |
 | F5 | Cost model is derived from measured operating points, never hardcoded | `docs/cost_model/calculator.py` (no-fallback), `--full-verify` check 7 | `tests/unit/test_cost_model.py` (₹17.4L pinned) |
 | F6 | Fixed, wheel-universal ML stack for cross-platform reproducibility | `requirements.txt` pins numpy/pandas/scipy/sklearn/xgboost for Python 3.11 (macOS + Linux) | `--full-verify` on a fresh clone reproduces byte-identical numbers |
+| F7 | Feature-waterfall explainability — show *why* a score is what it is | `POST /v1/return/explain` (per-feature gain importance × value, neutral base 0.5) | `tests/integration/test_return_risk_api.py::TestReturnRiskExplain`; dashboard Model Waterfall section |
+| F8 | Abuse-ring sentinel — coordinated-abuse detection, defense-only | `return_risk/feature_engine.py` address-hash tracking + `R-RULE-09` score-floor override (0.85) | `tests/unit/return_risk/test_scorer.py` (ring → HIGH; family co-shipping → no false positive); live demo seeds a 4-user ring |
+| F9 | Temporal integrity — no look-ahead bias in DGP features or split | `scripts/verify_temporal_integrity.py` (chronology + split leakage + latent-sampled first-order features), wired as `--full-verify` check 11 | `--full-verify` → 11/11 PASS |
 
 ---
 
 ## Verified totals
 
-- **Hermetic ML suite:** `--full-verify` → **10/10 PASS** (base-gen integrity, byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc & dashboard consistency, ablation baseline).
+- **Hermetic ML suite:** `--full-verify` → **11/11 PASS** (base-gen integrity, byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc & dashboard consistency, ablation baseline, temporal integrity).
 - **Live Docker stack:** `verify_live_stack.py` → **11/11 PASS**.
-- **Test suite:** `pytest tests/` → **473 passed, 1 skipped** (47 test modules incl. chaos, security, graph, chargeback, return-risk).
+- **Test suite:** `pytest tests/` → **485 passed, 1 skipped** (47 test modules incl. chaos, security, graph, chargeback, return-risk, abuse-ring, explain).
 
 ## Honest gaps (documented, not hidden)
 

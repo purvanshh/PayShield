@@ -1,6 +1,6 @@
 # PayShield — Track 2 Execution Report
 
-**Date:** 2026-08-29 · **Status:** Phase 0 ✅ complete, Phase 1 ✅ complete ·
+**Date:** 2026-08-29 · **Status:** Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ ·
 **Branch:** `master`
 
 This report is the living status of the Track 2 execution plan. It records
@@ -13,11 +13,13 @@ session can pick up without re-deriving context.
 
 | Area | Status | Evidence |
 |---|---|---|
-| Hermetic ML verification | **10/10 PASS** | `python scripts/run_all_scenarios.py --full-verify` → `ALL CHECKS PASS` |
+| Hermetic ML verification | **11/11 PASS** | `python scripts/run_all_scenarios.py --full-verify` → `ALL CHECKS PASS` (now incl. temporal-integrity check) |
 | Live Docker stack | **11/11 PASS** | `seed_demo_data.py` + `verify_live_stack.py` |
-| Test suite | **477 passed, 1 skipped** | `pytest tests/` (47 modules) |
-| Track 2 compliance map | **14/20 verified, 6 planned** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` |
+| Test suite | **485 passed, 1 skipped** | `pytest tests/` (47 modules) |
+| Track 2 compliance map | **17/20 verified, 3 planned** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` |
 | Business case | **₹17.4L → ₹53.5L/month** | `docs/cost_model/calculator.py --all-maturity` |
+| Explainability | **XGBoost waterfall live** | `POST /v1/return/explain` + dashboard Model Waterfall |
+| Abuse-ring sentinel | **live + seeded demo ring** | score `U_RING_00x` w/ pincode `560037` → ring caught at HIGH 0.85 |
 
 > **Integrity note:** the original plan's premise ("live stack 8/10 — honest
 > customer → MEDIUM, suspicious burst → ALLOW") is **no longer true**. Both
@@ -62,13 +64,34 @@ session can pick up without re-deriving context.
 - `curl /v1/meta/track2-compliance` on the Docker stack → 20 requirements, 14 done / 6 planned, `403` without API key ✅
 - Dashboard `npm run build` (tsc + vite) ✅
 
+### Phase 2 — Feature-Waterfall Explainability ✅
+
+| Commit | What |
+|---|---|
+| `e3b9803` `feat(api): add feature-waterfall explain endpoint` | `POST /v1/return/explain` scores an order (same inputs as `/score`) and returns the XGBoost feature waterfall: per-feature gain importance × normalized value (capped at the model's training envelope), the model score, tier, and neutral `base_score=0.5`, with an honest note that the attribution is approximate (nonlinear model). Read-only — never mutates Redis. Tests: auth, shape/order, read-only guarantee |
+| `98c92a1` `feat(dashboard): render XGBoost feature-waterfall on the return-risk page` | Return Risk page calls `/v1/return/explain` per preset and shows a collapsible **Model Waterfall** (per-feature value / importance / contribution bars + the approximation note). TS/Vite build passes |
+
+### Phase 3 — Abuse-Ring Sentinel & Temporal Integrity ✅
+
+| Commit | What |
+|---|---|
+| `8372fca` `feat(return-risk): add abuse-ring sentinel (shared address + velocity)` | `txn_shared_address_count` via per-address SHA-256 set (no PII in keys); `R-RULE-09` `OVERRIDE_SCORE` raises the score floor to 0.85 (defense-only REQUIRE_PREPAID, never rewrites the model/weights); score/explain routes pass `shipping_address` (pincode-first); seeded 4-user demo ring on `560037`. Tests: ring → HIGH, family co-shipping → no false positive, PII-free key, seeded ring |
+| `2bd59d4` `feat(verify): add temporal-integrity check to the verification suite` | `scripts/verify_temporal_integrity.py` proves no look-ahead on the seeded DGP (seed 99): per-user chronology, split `max(train) ≤ min(val) ≤ min(test)`, first-order features latent-sampled. Wired as `--full-verify` check 11 (suite now 11 checks) |
+| `c49614e` `fix(verify): adjacent-pair zip in temporal-integrity check` | `zip(strict=True)` requires equal lengths — the adjacent-pair check pairs N vs N−1 timestamps, so strict mode always raised. Plain loop; 11/11 confirmed on the canonical py311 stack |
+
+**Phase 3 verification (live, Docker stack):**
+- Ring users `U_RING_001..003` → **LOW 0.1157** (model blind to the pattern), `U_RING_004` on the shared pincode → **HIGH 0.85** with `R-RULE-09` ✅
+- `POST /v1/return/explain` (serial) → score 0.9441 HIGH, 7-item waterfall, top driver `payment_method_risk` ✅
+- `--full-verify` → **11/11 PASS** ✅
+- `verify_live_stack.py` → **11/11 PASS** (unchanged; curated scenarios don't send a shipping address, so the sentinel stays orthogonal) ✅
+
 ---
 
 ## 3. Verification (run before any further commit)
 
 ```bash
 # Hermetic (Python 3.11 + pinned requirements)
-python scripts/run_all_scenarios.py --full-verify     # 10/10 PASS
+python scripts/run_all_scenarios.py --full-verify     # 11/11 PASS
 
 # Live Docker stack
 docker compose -f docker/docker-compose.yml up -d --build api redis
@@ -76,37 +99,21 @@ python scripts/seed_demo_data.py
 python scripts/verify_live_stack.py                   # 11/11 PASS
 
 # Tests
-pytest tests/                                         # 477 passed, 1 skipped
+pytest tests/                                         # 485 passed, 1 skipped
 
 # Compliance endpoint
 curl -s -X GET http://localhost:8000/v1/meta/track2-compliance \
-  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20
+  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20 (17 done / 3 planned)
+
+# Explain waterfall
+curl -s -X POST http://localhost:8000/v1/return/explain \
+  -H "X-API-Key: payshield-dev-key-2026" -H "Content-Type: application/json" \
+  -d '{"order_id":"ORD_SERIAL_001","user_id":"U_SERIAL_001","merchant_id":"M_FASHION_001","amount":5500,"category":"fashion","payment_method":"UPI","cod_flag":true}'
 ```
 
 ---
 
 ## 4. What's next (remaining phases)
-
-### Phase 2 — Feature-Waterfall Explainability (XAI) · ~2h
-- **Backend:** `POST /v1/return/explain` in `api/routes/return_risk.py` —
-  per-feature contribution to the score (model feature importance × feature
-  value), tier, base score. Use the model's `feature_importances_` (SHAP is a
-  stretch goal; deterministic approximation is fine and auditable).
-- **Frontend:** collapsible "Feature Contribution" bars on the return-risk
-  page.
-- **Note:** the API already returns `xgb_features` and `feature_importance`;
-  the endpoint formalises the waterfall.
-- Commit(s): `feat(api)` + `feat(dashboard)`.
-
-### Phase 3 — Abuse-Ring Sentinel & Temporal Integrity · ~3h
-- **Abuse-ring:** track `shared_address_count` in `return_risk/feature_engine.py`
-  (Redis set per address-hash); add an `abuse_ring_suspicion` rule to
-  `configs/return_risk_rules.yaml` (condition + score override); wire into the
-  scorer **without touching the primary model**.
-- **Temporal integrity:** `scripts/verify_temporal_integrity.py` that asserts
-  the DGP's per-order features use only prior orders (no look-ahead); add as a
-  check to `--full-verify` (would become check 11).
-- Commit(s): `feat(return-risk)` + `feat(verify)`.
 
 ### Phase 4 — Guided Demo Mode · ~6h
 - **Backend:** `GET /v1/meta/demo/guide` returning the 10-minute step script.
@@ -114,15 +121,18 @@ curl -s -X GET http://localhost:8000/v1/meta/track2-compliance \
   the cost-model, return-risk, chargeback, agents, and compliance pages.
 - **Note:** the live stack already passes 11/11, so the demo is green
   end-to-end without any skip flags.
+- Commit(s): `feat(api)` + `feat(dashboard)`.
 
 ### Phase 5 — Human-Review Queue UI (optional) · ~2h
 - `GET /v1/meta/review-queue` (last 10 MEDIUM orders from the audit chain +
   reviewed flag in Redis) and `POST /v1/meta/review-queue/{id}/mark`; a
   `/review-queue` page.
+- Commit(s): `feat(api)` + `feat(dashboard)`.
 
 ### Phase 6 — Calibration Simulator (optional) · ~4h
 - `POST /v1/return/simulate` (feature sliders → score + tier) and a `/simulator`
   page with a Stage 1 vs Stage 3 toggle.
+- Commit(s): `feat(api)` + `feat(dashboard)`.
 
 ---
 
