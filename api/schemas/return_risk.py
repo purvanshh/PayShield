@@ -143,6 +143,33 @@ class ReturnScoreEnvelopeResponse(BaseModel):
     latency_ms: float = 0.0
 
 
+class WaterfallContribution(BaseModel):
+    """One feature's approximate contribution to the XGBoost score."""
+
+    feature: str
+    value: float = 0.0
+    importance: float = 0.0
+    contribution: float = 0.0
+
+
+class ReturnExplainResponse(BaseModel):
+    """XGBoost feature-waterfall attribution for a scored order.
+
+    ``contribution`` is an *approximate* attribution (gain importance x
+    normalised feature value) - the model output is nonlinear, so the numbers
+    rank which features drive the score rather than exactly decomposing the
+    probability. ``base_score`` is the neutral 0.5 reference point.
+    """
+
+    order_id: str
+    return_risk_score: float = Field(..., ge=0.0, le=1.0)
+    risk_tier: RiskTier = "LOW"
+    engine: str = "hand_weighted"
+    base_score: float = 0.5
+    waterfall: list[WaterfallContribution] = Field(default_factory=list)
+    note: str = ""
+
+
 class ReturnStatusUpdateRequest(BaseModel):
     """Merchant return-system callback that refreshes the user profile."""
 

@@ -159,3 +159,56 @@ class TestReturnRiskProfile:
         resp = await client.get("/v1/return/profile/U999", headers={"X-API-Key": DEV_KEY})
         assert resp.status_code == 200
         assert resp.json()["is_new_user"] is True
+
+
+class TestReturnRiskExplain:
+    async def test_explain_requires_auth(self, client):
+        resp = await client.post("/v1/return/explain", json={})
+        assert resp.status_code == 403
+
+    async def test_explain_returns_waterfall(self, client):
+        app.state.resources["redis"] = FakeRedis()
+        await _seed_serial_returner(app.state.resources["redis"])
+        body = {
+            "order_id": "ORD_XPL",
+            "user_id": "U003",
+            "merchant_id": "M001",
+            "amount": "6000",
+            "category": "fashion",
+            "payment_method": "UPI",
+            "cod_flag": True,
+        }
+        resp = await client.post("/v1/return/explain", json=body, headers={"X-API-Key": DEV_KEY})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["order_id"] == "ORD_XPL"
+        assert 0 <= data["return_risk_score"] <= 1
+        assert data["risk_tier"] in ("LOW", "MEDIUM", "HIGH")
+        assert data["base_score"] == 0.5
+        assert data["note"]
+        assert len(data["waterfall"]) >= 7  # all model features attributed
+        # contributions must be in [0, importance] after normalisation
+        for item in data["waterfall"]:
+            assert item["feature"]
+            assert 0 <= item["contribution"] <= 1
+            assert item["importance"] >= 0
+        # sorted descending by contribution
+        contribs = [c["contribution"] for c in data["waterfall"]]
+        assert contribs == sorted(contribs, reverse=True)
+
+    async def test_explain_does_not_mutate_redis(self, client):
+        app.state.resources["redis"] = FakeRedis()
+        await _seed_serial_returner(app.state.resources["redis"])
+        body = {
+            "order_id": "ORD_XPL2",
+            "user_id": "U003",
+            "merchant_id": "M001",
+            "amount": "6000",
+            "category": "fashion",
+            "payment_method": "UPI",
+            "cod_flag": True,
+        }
+        before = await app.state.resources["redis"].hgetall("return_risk:user:U003")
+        await client.post("/v1/return/explain", json=body, headers={"X-API-Key": DEV_KEY})
+        after = await app.state.resources["redis"].hgetall("return_risk:user:U003")
+        assert before == after

@@ -17,11 +17,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from api.dependencies import get_redis, verify_api_key
 from api.rbac import require_permission
 from api.schemas.return_risk import (
+    ReturnExplainResponse,
     ReturnProfileData,
     ReturnScoreEnvelopeResponse,
     ReturnScoreRequest,
     ReturnStatusUpdateRequest,
     ReturnStatusUpdateResponse,
+    WaterfallContribution,
 )
 from return_risk.feature_engine import ReturnRiskFeatureEngine
 from return_risk.rules_engine import RulesEngine
@@ -47,12 +49,95 @@ def _get_scorer(redis) -> ReturnRiskScorer:
     )
 
 
+# Waterfall normalisation mirrors the model's training envelope so every
+# contribution is on a comparable [0, 1] scale (rates/baselines/method risk are
+# already there; ratio and days-since are capped at their DGP maxima).
+_WATERFALL_CAP = {
+    "amount_vs_user_aov_ratio": 4.0,
+    "days_since_last_order": 60.0,
+}
+
+
+def _normalize_for_waterfall(feature: str, value: float) -> float:
+    cap = _WATERFALL_CAP.get(feature, 1.0)
+    return min(max(float(value), 0.0) / cap, 1.0)
+
+
+def _build_waterfall(result: dict) -> list[WaterfallContribution]:
+    """Approximate per-feature attribution for the XGBoost engine.
+
+    contribution = gain importance x normalised feature value. The model output
+    is nonlinear, so this ranks the drivers of a score rather than exactly
+    decomposing the probability (see the endpoint's ``note``).
+    """
+    xgb_features = result.get("xgb_features") or {}
+    importance = result.get("feature_importance") or {}
+    return sorted(
+        (
+            WaterfallContribution(
+                feature=feature,
+                value=round(float(value), 4),
+                importance=round(float(importance.get(feature, 0.0)), 4),
+                contribution=round(
+                    float(importance.get(feature, 0.0))
+                    * _normalize_for_waterfall(feature, float(value)),
+                    4,
+                ),
+            )
+            for feature, value in xgb_features.items()
+        ),
+        key=lambda c: c.contribution,
+        reverse=True,
+    )
+
+
+@router.post("/return/explain", response_model=ReturnExplainResponse)
+async def explain_return_risk(
+    request: ReturnScoreRequest,
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(require_permission("return_risk", "read")),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """Score an order and return the XGBoost feature-waterfall attribution.
+
+    Read-only analysis surface: never mutates Redis and never triggers the
+    background profile refresh. Same inputs as ``POST /v1/return/score``.
+    """
+    scorer = _get_scorer(redis)
+    result = await scorer.score(
+        user_id=request.user_id,
+        merchant_id=request.merchant_id,
+        order_id=request.order_id,
+        amount=request.amount,
+        category=request.category,
+        cod_flag=request.cod_flag,
+        payment_method=request.payment_method,
+        timestamp=request.timestamp,
+        device_fingerprint=request.device_fingerprint,
+    )
+
+    waterfall = _build_waterfall(result)
+    note = (
+        "Approximate attribution: model gain importance x normalized feature value. "
+        "The XGBoost output is nonlinear, so these rank the drivers of the score, "
+        "not an exact decomposition of the probability."
+    )
+    return ReturnExplainResponse(
+        order_id=result["order_id"],
+        return_risk_score=result["return_risk_score"],
+        risk_tier=result["risk_tier"],
+        engine=result.get("engine", "hand_weighted"),
+        base_score=0.5,
+        waterfall=waterfall,
+        note=note,
+    )
+
+
 @router.post("/return/score", response_model=ReturnScoreEnvelopeResponse)
 async def score_return_risk(
     request: ReturnScoreRequest,
     background_tasks: BackgroundTasks,
-    redis=Depends(get_redis),
-    _=Depends(require_permission("return_risk", "read")),
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(require_permission("return_risk", "read")),  # noqa: B008 - FastAPI dependency-injection idiom
 ):
     """Score an order for return-risk (checkout / pre-dispatch).
 
@@ -120,8 +205,8 @@ async def score_return_risk(
 @router.post("/return/update", response_model=ReturnStatusUpdateResponse)
 async def update_return_status(
     request: ReturnStatusUpdateRequest,
-    redis=Depends(get_redis),
-    _=Depends(require_permission("return_risk", "write")),
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(require_permission("return_risk", "write")),  # noqa: B008 - FastAPI dependency-injection idiom
 ):
     """Record a return event (merchant return-management callback).
 
@@ -165,8 +250,8 @@ async def update_return_status(
 )
 async def get_user_return_profile(
     user_id: str,
-    redis=Depends(get_redis),
-    _=Depends(require_permission("return_risk", "read")),
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(require_permission("return_risk", "read")),  # noqa: B008 - FastAPI dependency-injection idiom
 ):
     """Return the user's return-risk profile (merchant dashboard)."""
     start = time.perf_counter()
