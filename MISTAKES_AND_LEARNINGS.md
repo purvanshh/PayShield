@@ -2,8 +2,8 @@
 
 This is the honest ledger — the six mistakes that shaped the build, what
 each cost, and the fix that held. Deep dives on the first three live in
-[`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md); the full 24-entry
-register is in the README's Appendix C.
+[`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md); the full 34-entry
+register is in the README's Appendix B.
 
 ---
 

@@ -1,7 +1,7 @@
 # Three Hard Bugs, Told as Stories
 
 The build asked: *what broke, and how you got out.* The full register has
-24 entries (README Appendix C); here are the three that hurt the most —
+34 entries (README Appendix B); here are the three that hurt the most —
 each with the root cause, the debugging trail, and what it permanently
 changed about how I build.
 

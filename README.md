@@ -305,6 +305,11 @@ never falls back to `avg_return_value` (a profile with cheap returns but no
 stored AOV previously produced an out-of-distribution ratio of 8.0 that spiked
 honest customers to MEDIUM/HIGH) — see `return_risk/feature_engine.py`.
 
+### For judges (30-second version)
+
+- **[`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md)** — the one-number story, the three surfaces, and how to verify in 60 seconds.
+- **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof.
+
 ---
 
 ## What I'd Do Next
@@ -401,7 +406,7 @@ Extension endpoints (fraud, chargeback, admin) and the full surface:
 
 ## Appendix B — Bug Resolution and Technical Notes
 
-**29 issues** found & fixed while bringing the stack up end-to-end. Three are
+**34 issues** found & fixed while bringing the stack up end-to-end. Three are
 told as full stories (root cause, debugging trail, lesson) in
 [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md). The complete table:
 

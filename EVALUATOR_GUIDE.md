@@ -39,7 +39,7 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 - Open [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md)
 - See: honest accounting of what broke — a fabricated "AUC > 0.92", a broken
   PSI drift estimator (43.4 → 3.86), a demo that failed in front of a friend —
-  and how each was fixed. The README's Appendix C holds the full 24-entry
+  and how each was fixed. The README's Appendix B holds the full 34-entry
   register; [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md) distills
   the five that changed how the project is built.
 
