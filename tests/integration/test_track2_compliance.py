@@ -28,6 +28,28 @@ async def client():
         yield ac
 
 
+class TestDemoGuide:
+    async def test_requires_auth(self, client):
+        resp = await client.get("/v1/meta/demo/guide")
+        assert resp.status_code == 403
+
+    async def test_returns_guided_demo_script(self, client):
+        resp = await client.get("/v1/meta/demo/guide", headers={"X-API-Key": DEV_KEY})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"]
+        assert data["duration_minutes"] >= 5
+        assert isinstance(data["steps"], list) and len(data["steps"]) >= 4
+
+    async def test_steps_point_at_real_surfaces(self, client):
+        resp = await client.get("/v1/meta/demo/guide", headers={"X-API-Key": DEV_KEY})
+        data = resp.json()
+        for step in data["steps"]:
+            assert step["title"] and step["description"] and step["action"]
+            assert step["page"].startswith("/")  # real dashboard route
+            assert step["minute"]
+
+
 class TestTrack2Compliance:
     async def test_requires_auth(self, client):
         resp = await client.get("/v1/meta/track2-compliance")

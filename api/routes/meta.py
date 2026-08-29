@@ -169,6 +169,69 @@ TRACK2_OVERALL = (
     "queue, calibration simulator."
 )
 
+# Guided-demo script for judges. Pages map to real dashboard routes and each
+# step points at a live, verified surface (not a mock).
+DEMO_GUIDE = {
+    "title": "PayShield — 10-Minute Guided Demo",
+    "duration_minutes": 10,
+    "auto_advance_seconds": 60,
+    "steps": [
+        {
+            "minute": "1-2",
+            "title": "Business Case",
+            "page": "/cost-model",
+            "description": (
+                "A fashion merchant saves ₹17.4L/month and a premium electronics "
+                "merchant ₹53.5L/month at the 0.50 review gate — with a wrong MEDIUM "
+                "flag costing ₹200 and a wrong HIGH block ₹3,180, both explicitly modeled."
+            ),
+            "action": "Review the stage-maturity table (Stage 1 → 3) and the 0.50 gate sweep.",
+        },
+        {
+            "minute": "3-4",
+            "title": "Return-Risk Scoring",
+            "page": "/return-risk",
+            "description": (
+                "Score a serial returner (HIGH ~0.98) and an honest electronics customer "
+                "(LOW ~0.03) — XGBoost primary engine with a transparent hand-weighted "
+                "fallback, tiers drive ship / review / prepaid-only."
+            ),
+            "action": "Run the two demo presets on the Return Risk page.",
+        },
+        {
+            "minute": "5-6",
+            "title": "Explainability",
+            "page": "/return-risk",
+            "description": (
+                "Every score decomposes: per-feature value, weight, contribution and source "
+                "tag — plus the XGBoost feature waterfall from POST /v1/return/explain."
+            ),
+            "action": "Expand the Model Waterfall section on the same page.",
+        },
+        {
+            "minute": "7-8",
+            "title": "Abuse-Ring & Fraud",
+            "page": "/fraud",
+            "description": (
+                "A shared shipping address plus a return-velocity spike trips the abuse-ring "
+                "sentinel (R-RULE-09) to HIGH even when the model rates the user LOW; the fraud "
+                "path fuses L1 velocity/geo rules with L2 graph intelligence."
+            ),
+            "action": "Score the seeded U_RING_00x profiles with shipping pincode 560037.",
+        },
+        {
+            "minute": "9-10",
+            "title": "Track 2 Compliance",
+            "page": "/track2-compliance",
+            "description": (
+                "Every Track 2 requirement mapped to its implementation and its proof — "
+                "17/20 verified, backed by --full-verify (11/11) and the live Docker stack (11/11)."
+            ),
+            "action": "Review the requirement map and the evidence references.",
+        },
+    ],
+}
+
 
 def _load(path: Path):
     if not path.exists():
@@ -187,6 +250,19 @@ async def track2_compliance(
     ("planned") items — nothing is marked complete before it exists.
     """
     return {"requirements": TRACK2_REQUIREMENTS, "overall": TRACK2_OVERALL}
+
+
+@router.get("/v1/meta/demo/guide")
+async def demo_guide(
+    _=Depends(verify_api_key),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """The 10-minute guided-demo script for judges.
+
+    Each step maps to a live dashboard route and points at a verified surface
+    (cost model, return-risk scoring, waterfall explainability, abuse-ring and
+    fraud, Track 2 compliance). The dashboard's /demo-tour page walks it.
+    """
+    return DEMO_GUIDE
 
 
 @router.get("/v1/meta/return-risk/benchmark")
