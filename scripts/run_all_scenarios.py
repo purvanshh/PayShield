@@ -388,6 +388,11 @@ def verify_ablation_baseline() -> None:
     assert abs(baseline - 0.8087) <= 0.001, f"ablation baseline {baseline:.4f} drifted from 0.8087"
 
 
+def verify_temporal_integrity() -> None:
+    """No look-ahead bias in the DGP features or the per-user chronological split."""
+    _run_check_script("scripts/verify_temporal_integrity.py")
+
+
 def full_verify() -> int:
     """Run the complete interview-defense check suite. Print PASS/FAIL for each."""
     print("=" * 80)
@@ -404,7 +409,7 @@ def full_verify() -> int:
         return 1
 
     # Generate all artifacts first (skip re-tune if already present, to keep it fast).
-    print("\n[0/11] Generating artifacts (pipeline)...")
+    print("\n[0/12] Generating artifacts (pipeline)...")
     try:
         run_pipeline(skip_tune=True)
     except subprocess.CalledProcessError as e:
@@ -423,6 +428,7 @@ def full_verify() -> int:
         ("Doc consistency (manifest match)", verify_doc_consistency),
         ("Dashboard compat (legacy + maturity keys)", verify_dashboard_compat),
         ("Ablation baseline = 0.8087 (base gen, seed 99)", verify_ablation_baseline),
+        ("Temporal integrity (no look-ahead in DGP/split)", verify_temporal_integrity),
     ]
 
     all_pass = True
