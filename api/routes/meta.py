@@ -20,9 +20,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.dependencies import verify_api_key
+from api.dependencies import get_redis, verify_api_key
+from store.audit_log import AuditLogReader
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,12 @@ ROOT = Path(__file__).resolve().parents[2]
 _BENCHMARK = ROOT / "models" / "return_risk_benchmark_results.json"
 _COST = ROOT / "models" / "cost_model_results.json"
 _AB = ROOT / "models" / "ab_test_result.json"
+
+# Reviewed-flag store for the human-review queue. The queue itself is the
+# audit chain (source of truth for every MEDIUM return-risk decision); only
+# the lightweight "an operator looked at this" flag lives in Redis.
+REVIEW_QUEUE_REVIEWED_KEY = "review_queue:reviewed"
+REVIEW_QUEUE_LIMIT = 10
 
 # Track 2 compliance map — single source for the dashboard page. Kept in
 # lockstep with docs/TRACK2_COMPLIANCE.md. ``status`` is "done" (implemented +
@@ -263,6 +270,72 @@ async def demo_guide(
     fraud, Track 2 compliance). The dashboard's /demo-tour page walks it.
     """
     return DEMO_GUIDE
+
+
+def _get_audit_reader(app_state) -> AuditLogReader:
+    resources = getattr(app_state, "resources", {})
+    reader = resources.get("audit_reader")
+    return reader or AuditLogReader()
+
+
+async def _reviewed_orders(redis) -> set[str]:
+    members = await redis.smembers(REVIEW_QUEUE_REVIEWED_KEY)
+    return {m.decode() if isinstance(m, bytes) else str(m) for m in (members or set())}
+
+
+@router.get("/v1/meta/review-queue")
+async def review_queue(
+    request: Request,
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(verify_api_key),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """The human-review queue: the latest MEDIUM return-risk decisions.
+
+    Read from the tamper-evident audit chain (never fabricated), newest first,
+    de-duplicated per order, with a per-order ``reviewed`` flag from Redis.
+    """
+    entries = _get_audit_reader(request.app.state).get_entries("RETURN_RISK_SCORED")
+    medium = sorted(
+        (e for e in entries if e.get("decision") == "MEDIUM"),
+        key=lambda e: e.get("timestamp", ""),
+        reverse=True,
+    )
+    reviewed = await _reviewed_orders(redis)
+
+    items: list[dict] = []
+    seen: set[str] = set()
+    for entry in medium:
+        payload = entry.get("payload", {})
+        order_id = payload.get("order_id")
+        if not order_id or order_id in seen:
+            continue
+        seen.add(order_id)
+        items.append(
+            {
+                "order_id": order_id,
+                "user_id": entry.get("actor", ""),
+                "merchant_id": payload.get("merchant_id", ""),
+                "score": payload.get("score"),
+                "tier": payload.get("tier", "MEDIUM"),
+                "timestamp": entry.get("timestamp", ""),
+                "reviewed": order_id in reviewed,
+            }
+        )
+        if len(items) >= REVIEW_QUEUE_LIMIT:
+            break
+
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/v1/meta/review-queue/{order_id}/mark")
+async def mark_reviewed(
+    order_id: str,
+    redis=Depends(get_redis),  # noqa: B008 - FastAPI dependency-injection idiom
+    _=Depends(verify_api_key),  # noqa: B008 - FastAPI dependency-injection idiom
+):
+    """Mark a queued order as reviewed (operator workflow state)."""
+    await redis.sadd(REVIEW_QUEUE_REVIEWED_KEY, order_id)
+    return {"order_id": order_id, "reviewed": True, "status": "SUCCESS"}
 
 
 @router.get("/v1/meta/return-risk/benchmark")
