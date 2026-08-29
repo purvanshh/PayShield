@@ -2,6 +2,23 @@ import { useEffect, useState } from "react";
 import client from "../api/client";
 import type { FeatureContribution, ReturnScoreData } from "../types";
 
+interface WaterfallItem {
+  feature: string;
+  value: number;
+  importance: number;
+  contribution: number;
+}
+
+interface ExplainData {
+  order_id: string;
+  return_risk_score: number;
+  risk_tier: string;
+  engine: string;
+  base_score: number;
+  waterfall: WaterfallItem[];
+  note: string;
+}
+
 const ORDER_PRESETS: Record<string, Record<string, unknown>> = {
   "Serial returner (fashion, COD)": {
     order_id: "ORD_SERIAL_001",
@@ -106,18 +123,27 @@ function ScoreGauge({ score, tier }: { score: number; tier: string }) {
 export function ReturnRiskPage() {
   const [presetKey, setPresetKey] = useState(Object.keys(ORDER_PRESETS)[0]);
   const [result, setResult] = useState<ReturnScoreData | null>(null);
+  const [explain, setExplain] = useState<ExplainData | null>(null);
+  const [waterfallOpen, setWaterfallOpen] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const score = async (key: string) => {
     setLoading(true);
     setError("");
+    setWaterfallOpen(false);
     try {
-      const res = await client.post("/v1/return/score", ORDER_PRESETS[key]);
-      setResult(res.data.data);
+      const payload = ORDER_PRESETS[key];
+      const [scoreRes, explainRes] = await Promise.all([
+        client.post("/v1/return/score", payload),
+        client.post("/v1/return/explain", payload),
+      ]);
+      setResult(scoreRes.data.data);
+      setExplain(explainRes.data);
     } catch {
       setError("Request failed — verify your session, then retry.");
       setResult(null);
+      setExplain(null);
     } finally {
       setLoading(false);
     }
@@ -275,6 +301,58 @@ export function ReturnRiskPage() {
               </div>
             </div>
           </div>
+
+          {/* Model waterfall (XGBoost attribution) */}
+          {explain && (
+            <div className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
+              <button
+                onClick={() => setWaterfallOpen(!waterfallOpen)}
+                className="w-full flex items-center justify-between group"
+              >
+                <div className="text-left">
+                  <h2 className="font-headline-md text-headline-md text-on-surface mb-1">
+                    Model Waterfall — why this score
+                  </h2>
+                  <p className="font-body-md text-body-md text-outline">
+                    XGBoost per-feature attribution · engine {explain.engine} ·
+                    score {Math.round(explain.return_risk_score * 1000) / 1000} ({explain.risk_tier})
+                  </p>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+                  {waterfallOpen ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+
+              {waterfallOpen && (
+                <div className="mt-8 space-y-4">
+                  {explain.waterfall.map((item) => {
+                    const max = Math.max(...explain.waterfall.map((c) => c.contribution), 0.001);
+                    const width = Math.max(4, (item.contribution / max) * 100);
+                    return (
+                      <div key={item.feature}>
+                        <div className="flex justify-between mb-1 font-mono-data text-mono-data">
+                          <span className="text-on-surface">{humanize(item.feature)}</span>
+                          <span className="text-outline">
+                            value {item.value} · importance {item.importance} ·{" "}
+                            <span className="text-primary">{item.contribution.toFixed(4)}</span>
+                          </span>
+                        </div>
+                        <div className="h-2 bg-surface-variant/40 rounded-sm overflow-hidden">
+                          <div
+                            className={`h-full ${item.contribution >= 0.5 * max ? "bg-primary" : "bg-secondary"}`}
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="pt-4 font-body-md text-body-md text-outline border-t border-white/5">
+                    {explain.note}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Recommendations */}
           <div className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
