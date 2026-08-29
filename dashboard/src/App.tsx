@@ -5,6 +5,7 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { ChargebackPage } from "./pages/ChargebackPage";
 import { CostModelPage } from "./pages/CostModelPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DemoTourPage } from "./pages/DemoTourPage";
 import { DriftPage } from "./pages/DriftPage";
 import { ExperimentsPage } from "./pages/ExperimentsPage";
 import { InvestigationDetailPage } from "./pages/InvestigationDetailPage";
@@ -55,6 +56,7 @@ function App() {
             <Route path="/experiments" element={<ExperimentsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/track2-compliance" element={<Track2CompliancePage />} />
+            <Route path="/demo-tour" element={<DemoTourPage />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/legal/:slug" element={<LegalPage />} />
             <Route path="/investigation/:txnId" element={<InvestigationDetailPage />} />

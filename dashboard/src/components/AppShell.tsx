@@ -89,12 +89,18 @@ export function AppShell() {
         </div>
 
         {/* New Analysis */}
-        <div className="px-gutter mb-6">
+        <div className="px-gutter mb-6 flex flex-col gap-3">
           <button
             onClick={() => setAnalysisOpen(true)}
             className="w-full bg-primary text-on-primary font-label-caps text-label-caps py-3 px-4 uppercase hover:bg-primary-container transition-colors duration-300"
           >
             New Analysis
+          </button>
+          <button
+            onClick={() => navigate("/demo-tour")}
+            className="w-full border border-primary text-primary font-label-caps text-label-caps py-3 px-4 uppercase hover:bg-primary/10 transition-colors duration-300"
+          >
+            Start Demo
           </button>
         </div>
 
