@@ -17,6 +17,7 @@ const OPERATIONS = [
   { to: "/experiments", label: "A/B Experiments", icon: "science", end: false },
   { to: "/agents", label: "Agents", icon: "psychology", end: false },
   { to: "/review-queue", label: "Review Queue", icon: "task_alt", end: false },
+  { to: "/simulator", label: "Simulator", icon: "tune", end: false },
   { to: "/track2-compliance", label: "Track 2 Compliance", icon: "fact_check", end: false },
 ];
 

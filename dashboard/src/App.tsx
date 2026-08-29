@@ -13,6 +13,7 @@ import { LegalPage } from "./pages/LegalPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ReturnRiskPage } from "./pages/ReturnRiskPage";
 import { ReviewQueuePage } from "./pages/ReviewQueuePage";
+import { SimulatorPage } from "./pages/SimulatorPage";
 import { SupportPage } from "./pages/SupportPage";
 import { Track2CompliancePage } from "./pages/Track2CompliancePage";
 import { TransactionsPage } from "./pages/TransactionsPage";
@@ -59,6 +60,7 @@ function App() {
             <Route path="/track2-compliance" element={<Track2CompliancePage />} />
             <Route path="/demo-tour" element={<DemoTourPage />} />
             <Route path="/review-queue" element={<ReviewQueuePage />} />
+            <Route path="/simulator" element={<SimulatorPage />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/legal/:slug" element={<LegalPage />} />
             <Route path="/investigation/:txnId" element={<InvestigationDetailPage />} />
