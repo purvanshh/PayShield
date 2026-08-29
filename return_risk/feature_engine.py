@@ -161,7 +161,14 @@ class ReturnRiskFeatureEngine:
             aov = float(aov_raw)
             aov_source = "redis_hash"
         else:
-            aov = float(data.get("avg_return_value", 0.0) or POPULATION_AOV) or POPULATION_AOV
+            # Neutral fallback: ``avg_return_value`` is the average value of
+            # *returned items*, not the user's order value — using it as AOV
+            # produces out-of-distribution amount ratios (e.g. a ₹12k order on a
+            # ₹1.5k avg-return-value profile -> ratio 8.0, past the XGBoost
+            # training ceiling of 4.0) that spike the model's risk output for
+            # honest customers. When the store has no AOV, assume the market
+            # average instead of guessing from return value.
+            aov = POPULATION_AOV
             aov_source = "computed"
 
         reasons_raw = data.get("return_reason_distribution", "{}")

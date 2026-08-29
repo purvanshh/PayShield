@@ -28,3 +28,5 @@ models/amazon_validation.json
 models/real_data_validation.json
 scripts/validate_amazon_report.py
 scripts/validate_real_data.py
+
+next_plan.md

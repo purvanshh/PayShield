@@ -186,6 +186,79 @@ class TestReturnRiskScorer:
         assert result["feature_breakdown"]["user_return_rate_30d"]["source"] == "redis_hash"
         assert result["feature_breakdown"]["txn_amount_risk"]["source"] == "computed"
 
+    async def test_demo_honest_customer_is_low(self):
+        # Mirrors verify_live_stack.py ORD_HONEST_001. Regression guard for the
+        # amount_vs_user_aov_ratio bug: the feature engine used avg_return_value
+        # as avg_order_value, producing ratio=8.0 (past the model's training
+        # ceiling of 4.0) and spiking an honest customer to MEDIUM/HIGH.
+        scorer, redis = _scorer()
+        await redis.hmset(
+            "return_risk:user:U_HONEST_001",
+            {
+                "total_orders": "25",
+                "total_returns": "2",
+                "return_rate_30d": "0.04",
+                "return_rate_90d": "0.08",
+                "avg_return_value": "1500",
+                "serial_returner": "false",
+                "cod_refusals": "0",
+                "cod_orders": "3",
+                "last_activity": datetime(2026, 8, 18).isoformat(),
+            },
+        )
+        await redis.hmset("return_risk:merchant:M_ELECTRONICS_001", {"return_rate_30d": "0.12"})
+        await redis.zadd("return_risk:merchant:M_ELECTRONICS_001:category", {"electronics": 0.12})
+        result = await scorer.score(
+            user_id="U_HONEST_001",
+            merchant_id="M_ELECTRONICS_001",
+            order_id="ORD_HONEST_001",
+            amount=Decimal("12000"),
+            category="electronics",
+            cod_flag=False,
+            payment_method="UPI",
+            timestamp=NOW,
+        )
+        # No stored AOV -> neutral population fallback, ratio stays in-envelope.
+        assert result["xgb_features"]["amount_vs_user_aov_ratio"] <= 4.0
+        assert result["risk_tier"] == "LOW"
+        assert result["return_risk_score"] <= 0.35
+
+    async def test_demo_serial_returner_is_high(self):
+        # Mirrors verify_live_stack.py ORD_SERIAL_001. The demo profile carries
+        # its own avg_order_value so amount_vs_user_aov_ratio stays ~1.0 and the
+        # serial-returner signal keeps the order HIGH.
+        scorer, redis = _scorer()
+        await redis.hmset(
+            "return_risk:user:U_SERIAL_001",
+            {
+                "total_orders": "15",
+                "total_returns": "10",
+                "return_rate_30d": "0.66",
+                "return_rate_90d": "0.66",
+                "avg_order_value": "5000",
+                "avg_return_value": "4500",
+                "serial_returner": "true",
+                "cod_refusals": "3",
+                "cod_orders": "8",
+                "last_activity": datetime(2026, 8, 19).isoformat(),
+            },
+        )
+        await redis.hmset("return_risk:merchant:M_FASHION_001", {"return_rate_30d": "0.30"})
+        await redis.zadd("return_risk:merchant:M_FASHION_001:category", {"fashion": 0.30})
+        result = await scorer.score(
+            user_id="U_SERIAL_001",
+            merchant_id="M_FASHION_001",
+            order_id="ORD_SERIAL_001",
+            amount=Decimal("5500"),
+            category="fashion",
+            cod_flag=True,
+            payment_method="UPI",
+            timestamp=NOW,
+        )
+        assert result["risk_tier"] == "HIGH"
+        assert result["return_risk_score"] >= 0.70
+        assert result["user_profile"]["serial_returner"] is True
+
 
 class TestScorerHelpers:
     def test_weights_sum_to_one(self):

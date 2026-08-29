@@ -299,7 +299,11 @@ reg_lambda=10` → test PR-AUC **0.8089** / ROC-AUC **0.8477**
 
 All ten curated scenarios pass against the running Docker stack — serial
 returner → HIGH, honest → LOW, chargeback responses, signed webhooks, drift.
-Full table in `scripts/verify_live_stack.py`.
+Full table in `scripts/verify_live_stack.py`. The live feature pipeline is kept
+inside the model's training envelope: the scorer's `amount_vs_user_aov_ratio`
+never falls back to `avg_return_value` (a profile with cheap returns but no
+stored AOV previously produced an out-of-distribution ratio of 8.0 that spiked
+honest customers to MEDIUM/HIGH) — see `return_risk/feature_engine.py`.
 
 ---
 
@@ -311,8 +315,10 @@ Full table in `scripts/verify_live_stack.py`.
    hand-weighted scorer reaches 0.93) and ~0.50 on the per-order `returned`
    label — because that generator's `returned` outcome depends only on the
    user's latent rate (see `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`).
-   Closing the gap means recalibrating the model to enriched feature
-   distributions — ideally on real merchant data — not just more data.
+   The demo path is aligned today (verified 10/10 on the Docker stack), but
+   the model is still not *trained* on live-distributed features — recalibrate
+   on real merchant data (or live-shaped training data) to close that gap,
+   not just add more data.
 2. **A/B test with a Razorpay merchant** — the champion/challenger harness is
    built; needs live orders to validate the 0.50 gate on real return
    distributions.

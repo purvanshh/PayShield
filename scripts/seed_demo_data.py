@@ -81,6 +81,7 @@ def _seed_clean_transaction_user(redis, audit_writer):  # noqa: ARG001 - uniform
             "total_returns": "2",
             "return_rate_30d": "0.05",
             "return_rate_90d": "0.10",
+            "avg_order_value": "8000",
             "avg_return_value": "2000",
             "serial_returner": "false",
             "cod_refusals": "0",
@@ -108,6 +109,7 @@ def _seed_suspicious_user(redis, audit_writer):  # noqa: ARG001 - uniform seed s
             "total_returns": "4",
             "return_rate_30d": "0.80",
             "return_rate_90d": "0.80",
+            "avg_order_value": "90000",
             "avg_return_value": "8000",
             "serial_returner": "true",
             "cod_refusals": "3",
@@ -142,6 +144,7 @@ def _seed_serial_returner(redis, audit_writer):  # noqa: ARG001 - uniform seed s
             "total_returns": "10",
             "return_rate_30d": "0.66",
             "return_rate_90d": "0.66",
+            "avg_order_value": "5000",
             "avg_return_value": "4500",
             "serial_returner": "true",
             "cod_refusals": "3",
@@ -170,6 +173,7 @@ def _seed_honest_customer(redis, audit_writer):  # noqa: ARG001 - uniform seed s
             "serial_returner": "false",
             "cod_refusals": "0",
             "cod_orders": "3",
+            "last_activity": (datetime.utcnow() - timedelta(days=3)).isoformat(),
         },
     )
 

@@ -30,20 +30,23 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 
 - Seeded: `U_SERIAL_001` (15 orders / 10 returns = 66%),
   3 returns in the last 7 days, 3/8 COD refusals, fashion merchant 30%.
-- Verified score: **0.8275 · HIGH**
+- Verified score: **0.98 · HIGH** (XGBoost primary engine — the contribution
+  breakdown below is the transparent hand-weighted composite the scorer always
+  reports for merchant explainability)
   - contributions: rate 0.165 + serial 0.20 + merchant 0.045 + category 0.045
     + amount 0.055 + cod-refusal 0.0375 + velocity 0.03 = 0.5775
   - + rule adjustment 0.25 (capped: R-01+R-02+R-03+R-04 = 0.45 → cap 0.25)
   - rules fired: `R-RULE-01, R-RULE-02, R-RULE-03, R-RULE-04, R-RULE-06`
   - recommendations: prepaid-only + manual review + signature on delivery
   - confidence ≈ 0.97 (full history, all features real-data-sourced)
-- Demo line: *"the merchant sees 0.83 with five auditable nudges — and the
+- Demo line: *"the merchant sees 0.98 with five auditable nudges — and the
   exact arithmetic in the feature breakdown."*
 
 ## Scenario 4 · ORD_HONEST_001 — honest customer
 
 - Seeded: `U_HONEST_001` (25 orders / 2 returns = 4%), electronics merchant.
-- Verified score: **0.096 · LOW** (only `R-RULE-08` ACCEPT rule fires)
+- Verified score: **0.03 · LOW** (XGBoost primary engine; only `R-RULE-08`
+  ACCEPT rule fires)
   - note `txn_amount_risk`: 12000/10000 capped at 1.0 → 0.10 contribution;
     the rule stack still keeps the total LOW.
 - Demo line: *"high-value electronics with a clean profile just clears.
