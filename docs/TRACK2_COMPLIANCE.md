@@ -65,7 +65,7 @@ live-data caveat documented).
 
 | # | Requirement | Implementation | Evidence |
 |---|---|---|---|
-| F1 | All headline numbers reproduce from one command | `python scripts/run_all_scenarios.py --full-verify` → 10/10 PASS | `reports/full_verify_output.txt` (committed) |
+| F1 | All headline numbers reproduce from one command | `python scripts/run_all_scenarios.py --full-verify` → 11/11 PASS | `reports/full_verify_output.txt` (committed) |
 | F2 | Byte-identical training (no unseeded RNG, no timestamps) | Determinism check: train × 3 twice, byte-compare result JSONs | `--full-verify` check 2 |
 | F3 | Docs stay in lockstep with measured numbers | `docs/_number_manifest.json` + `scripts/verify_doc_consistency.py` | `--full-verify` check 8 |
 | F4 | Live Docker stack passes its curated scenarios | `scripts/seed_demo_data.py` + `scripts/verify_live_stack.py` → 11/11 PASS | Live run (honest LOW 0.03, serial HIGH 0.98, burst BLOCK) |

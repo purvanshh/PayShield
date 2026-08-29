@@ -2,7 +2,7 @@
 """Seed curated demo data for the Track 2 pitch (Phase 22).
 
 Seeds Redis (return-risk profiles, velocity histories, device index,
-Benford distributions) and the tamper-evident audit chain with six curated
+Benford distributions) and the tamper-evident audit chain with seven curated
 scenarios whose outcomes are known and explainable:
 
 1. TXN_CLEAN_001    clean transaction            -> ALLOW
@@ -11,6 +11,7 @@ scenarios whose outcomes are known and explainable:
 4. ORD_HONEST_001   honest electronics order     -> LOW risk
 5. CB_WINNABLE_001  well-evidenced dispute       -> REJECT
 6. CB_WEAK_001      new-user dispute             -> conservative ACCEPT/PARTIAL
+7. U_RING_00x       abuse ring (shared pincode)  -> R-RULE-09 sentinel at HIGH
 
 Expected outputs are documented in docs/DEMO_DATA.md and were verified
 against this exact seed.

@@ -32,8 +32,12 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 - Open [`scripts/verify_live_stack.py`](scripts/verify_live_stack.py)
 - Run (needs Docker): `docker compose -f docker/docker-compose.yml up` then
   `python scripts/seed_demo_data.py` then `python scripts/verify_live_stack.py`
-- See: the ten curated scenarios (serial returner → HIGH, honest → LOW,
+- See: the eleven curated live checks (serial returner → HIGH, honest → LOW,
   chargeback response, webhook signatures, drift) against real Redis.
+- For the judge-facing narrative, hit **Start Demo** in the dashboard
+  (`http://localhost:3000`) for the guided 10-minute tour, or open
+  [`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md) for the
+  requirement-by-requirement map.
 
 ## Minute 9–10: The Limitations
 - Open [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md)

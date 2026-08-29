@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Live-stack verification for the Track 2 scenarios.
 
-Runs the ten curated scenarios against a running Docker compose stack
+Runs the eleven curated checks against a running Docker compose stack
 (real Redis/Ollama - not in-memory fakes) and reports expected vs
-measured in a table. Exit code is non-zero if any scenario fails.
+measured in a table. Exit code is non-zero if any check fails.
 
 Usage:
     python scripts/verify_live_stack.py

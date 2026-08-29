@@ -1,6 +1,6 @@
 # Track 2 Demo Data — Scenarios & Verified Outputs
 
-`python scripts/seed_demo_data.py` seeds Redis + the audit chain with six
+`python scripts/seed_demo_data.py` seeds Redis + the audit chain with seven
 curated scenarios. The outputs below were **verified in-process against the
 exact seed** (2026-08-22, hermetic run — no live services needed): the
 return-risk numbers come from the real scorer, the chargeback numbers from
@@ -73,16 +73,29 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 - Demo line: *"this is the case we can't win on evidence — the system says
   so instead of pretending. That's the honest-AI beat."*
 
+## Scenario 7 · U_RING_00x — the abuse-ring sentinel
+
+- Seeded: `U_RING_001..004` — 4 users shipping to the same pincode (`560037`),
+  each with a 4-return velocity spike and moderate return rates (the model
+  alone rates them LOW).
+- Verified (live, `shipping_address.pincode = 560037`):
+  `U_RING_001..003` → **LOW 0.1157**, `U_RING_004` → **HIGH 0.85** with
+  `R-RULE-09` — the shared-address + velocity pattern trips the sentinel's
+  score floor even though the model sees a normal user.
+- Demo line: *"the model is blind to the ring; the abuse-ring sentinel is
+  not — coordinated abuse forces HIGH review, defense-only."*
+
 ## Seeded keys (for reference)
 
 ```
 return_risk:user:*            # U_CLEAN_001, U_FRAUD_001, U_SERIAL_001,
-                              # U_HONEST_001 profiles
-return_risk:user:*:returns    # velocity zsets (fraud + serial users)
+                              # U_HONEST_001, U_RING_00x profiles
+return_risk:user:*:returns    # velocity zsets (fraud + serial + ring users)
 return_risk:merchant:*        # M_FASHION_001 (0.30), M_ELECTRONICS_001 (0.12)
 return_risk:merchant:*:category  # category baselines incl. fashion 0.32 baseline
 dfp:*                         # DEV_CLEAN_001, DEV_SHARED_001 device index
 ud:DEV_SHARED_001             # shared-device membership (ring users)
+address:*:users               # SHA-256 address-hash → users (abuse-ring sentinel)
 velocity:user:*               # clean (3 events) + suspicious (12 × ₹95k)
 benford:M_FASHION_001         # normal amount distribution
 store/audit_logs/             # SCORE_DECISION entries for TNX_CLEAN_001,

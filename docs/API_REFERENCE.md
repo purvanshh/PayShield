@@ -35,6 +35,50 @@ Merchant-dashboard view: `total_orders/returns`, `return_rate_30d`,
 `return_rate_lifetime`, `serial_returner`, `avg_return_value`,
 `is_new_user`, `latency_ms`. `return_risk:read`.
 
+## POST /v1/return/explain
+
+Same inputs as `/v1/return/score`. Returns the XGBoost feature-waterfall:
+`base_score` (0.5), `return_risk_score`, `risk_tier`, `engine`, and a
+`waterfall` list (per-feature `value` · `importance` · `contribution`) sorted
+by contribution, with an honest note that the attribution is approximate
+(gain importance × normalized value; the model output is nonlinear).
+Read-only — never mutates Redis. `return_risk:read`.
+
+## POST /v1/return/simulate
+
+Calibration simulator over an arbitrary feature vector. Fields: `amount`,
+`user_aov`, `category`, `payment_method`,
+`user_return_rate_30d/90d`, `days_since_last_order`,
+`device_fingerprint_match`, and (premium only) `product_rating`,
+`delivery_speed_days`; `stage: basic|premium`. `basic` uses the production
+7-feature model, `premium` the 9-feature model — the toggle shows how better
+data changes the score. Amount/AOV ratio is capped to the training envelope
+`[0.15, 4.0]`. Returns `{return_risk_score, risk_tier, stage, model_path,
+features}`. Pure computation — no Redis, no side effects. API key only.
+
+## GET /v1/meta/track2-compliance
+
+The Track 2 requirement → implementation → evidence map (20/20 verified).
+Returns `{requirements: [{name, status: done|planned, implementation,
+evidence}], overall}`. Mirrors `docs/TRACK2_COMPLIANCE.md`. API key only.
+
+## GET /v1/meta/demo/guide
+
+The 10-minute guided-demo script for judges: `{title, duration_minutes,
+auto_advance_seconds, steps: [{minute, title, page, description, action}]}`.
+Each step maps to a real dashboard route. API key only.
+
+## GET /v1/meta/review-queue
+
+The human-review queue: the latest 10 `MEDIUM` return-risk decisions from the
+tamper-evident audit chain, newest first, de-duplicated per order, each with a
+`reviewed` flag from Redis. Returns `{items, count}`. `return_risk:read`.
+
+## POST /v1/meta/review-queue/{order_id}/mark
+
+Marks a queued order as reviewed (operator workflow state stored in Redis).
+Returns `{order_id, reviewed: true, status}`. API key only.
+
 ## POST /v1/chargeback/respond
 
 `dispute_id, payment_id, transaction_id` required; `network` default UPI;

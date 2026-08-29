@@ -297,7 +297,7 @@ reg_lambda=10` → test PR-AUC **0.8089** / ROC-AUC **0.8477**
 
 ### Live verification
 
-All ten curated scenarios pass against the running Docker stack — serial
+All eleven curated live checks pass against the running Docker stack — serial
 returner → HIGH, honest → LOW, chargeback responses, signed webhooks, drift.
 Full table in `scripts/verify_live_stack.py`. The live feature pipeline is kept
 inside the model's training envelope: the scorer's `amount_vs_user_aov_ratio`
@@ -309,7 +309,8 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 ### For judges (30-second version)
 
 - **[`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md)** — the one-number story, the three surfaces, and how to verify in 60 seconds.
-- **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof.
+- **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof (20/20 verified).
+- **Dashboard** — log in at `http://localhost:3000` (`admin` / `admin`): **Start Demo** for the guided 10-minute tour, plus the Track 2 Compliance, Review Queue and Calibration Simulator pages.
 
 ---
 
@@ -321,7 +322,7 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
    hand-weighted scorer reaches 0.93) and ~0.50 on the per-order `returned`
    label — because that generator's `returned` outcome depends only on the
    user's latent rate (see `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`).
-   The demo path is aligned today (verified 10/10 on the Docker stack), but
+   The demo path is aligned today (verified 11/11 on the Docker stack), but
    the model is still not *trained* on live-distributed features — recalibrate
    on real merchant data (or live-shaped training data) to close that gap,
    not just add more data.
