@@ -5,6 +5,7 @@ dist/
 build/
 .venv/
 venv/
+.venv-verify/
 .env
 models/*.pt
 models/calibration/*.pkl

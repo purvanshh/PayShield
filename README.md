@@ -19,16 +19,16 @@ instrumentation. The model architecture, split and evaluation protocol are
 
 | Stage | Merchant segment | Visible features | PR-AUC | ROC-AUC | ₹/month (Electronics) | ₹/month (Fashion) |
 |---|---|---|---|---|---|---|
-| **Stage 1: Basic** | high hidden variance | 7 | **0.8042** | **0.8448** | ₹36.2L | ₹17.0L |
-| **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8881** | **0.9217** | ₹45.0L | ₹21.6L |
-| **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9467** | **0.9593** | **₹53.6L** | **₹26.0L** |
+| **Stage 1: Basic** | high hidden variance | 7 | **0.7991** | **0.8431** | ₹36.8L | ₹17.4L |
+| **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8834** | **0.9198** | ₹44.7L | ₹21.4L |
+| **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9497** | **0.9612** | **₹53.5L** | **₹26.0L** |
 
 > These three scenarios mirror merchant data-maturity stages common in Indian
 > e-commerce. Stage 1 is the conservative baseline; Stage 3 represents a premium
 > merchant with mature instrumentation. ROC-AUC is **measured** (`roc_auc_score`),
 > never hardcoded. All numbers in a row come from one model (the default-XGBoost
 > `return_risk_results_{scenario}.json`); the tuned champion reaches 0.8089 /
-> 0.8875 / 0.9483 PR-AUC (see `reports/scenario_comparison.md`). Reproduce:
+> 0.8875 / 0.9488 PR-AUC (see `reports/scenario_comparison.md`). Reproduce:
 > `python scripts/run_all_scenarios.py`.
 
 **Run it (hermetic):** `python scripts/train_xgb_return_risk.py --scenario premium`
@@ -50,10 +50,10 @@ original submission — is preserved here for continuity:
 
 | Metric | Value | What It Measures |
 |---|---|---|
-| **Stage 1 PR-AUC** | **0.8042** | Default XGBoost on 7 features + hidden DGP noise on the `returned` label |
-| **Stage 1 ROC-AUC** | **0.8448** | Measured via `roc_auc_score` (Mistake 1 fix — never hardcoded) |
-| **Stage 1 cost at 0.50 gate** | **₹17.0L/month** | Monthly savings on 10k fashion orders, review cost ₹200 |
-| **Stage 3 cost at 0.50 gate** | **₹53.6L/month** | Monthly savings on 10k electronics orders at the premium operating point |
+| **Stage 1 PR-AUC** | **0.7991** | Default XGBoost on 7 features + hidden DGP noise on the `returned` label |
+| **Stage 1 ROC-AUC** | **0.8431** | Measured via `roc_auc_score` (Mistake 1 fix — never hardcoded) |
+| **Stage 1 cost at 0.50 gate** | **₹17.4L/month** | Monthly savings on 10k fashion orders, review cost ₹200 |
+| **Stage 3 cost at 0.50 gate** | **₹53.5L/month** | Monthly savings on 10k electronics orders at the premium operating point |
 
 Every stage is trained on a non-circular synthetic DGP: visible features plus
 hidden confounders (packaging, weather, customer mood — and, in Stage 1, product
@@ -66,13 +66,13 @@ parameters and the "Why Three Scenarios" rationale.
 
 | Model | PR-AUC | ROC-AUC | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| **XGBoost (default)** | **0.8042** | **0.8448** | **0.635** | **0.811** | **0.712** |
+| **XGBoost (default)** | **0.7991** | **0.8431** | **0.644** | **0.812** | **0.718** |
 | Hand-weighted (fallback) | 0.7896 | 0.8392 | 0.957 | 0.194 | 0.323 |
 | Naive: serial returner (>40%) | 0.6991 | 0.6895 | 0.631 | 0.615 | 0.623 |
 | Naive: COD + high AOV | 0.5884 | 0.5555 | 0.685 | 0.159 | 0.258 |
 
-XGBoost edges the hand-weighted scorer (**+0.015 PR-AUC**) and clearly beats
-both naive rules (**+0.11 over the best naive baseline**). The tuned champion
+XGBoost edges the hand-weighted scorer (**+0.010 PR-AUC**) and clearly beats
+both naive rules (**+0.10 over the best naive baseline**). The tuned champion
 (`scripts/tune_xgb.py`) reaches PR-AUC 0.8089 / ROC-AUC 0.8477 on the same
 hold-out — see `models/tune_results_basic.json`. Full details in
 ["What We Measured"](#what-we-measured) below.
@@ -80,21 +80,22 @@ hold-out — see `models/tune_results_basic.json`. Full details in
 ### Cost model — the 0.50 review gate
 
 On a 10k-order fashion merchant (₹2.5k AOV, 18% return rate), the **0.50 review
-gate** saves **₹17.0L/month** at precision 0.635 and recall 0.811 — the Stage 1
+gate** saves **₹17.4L/month** at precision 0.644 and recall 0.812 — the Stage 1
 XGBoost operating point, measured on the held-out test set. The config-driven
 gate sweep (computed from the measured operating curve in
 `models/return_risk_results_basic.json`):
 
 | Review gate | Flag rate | Precision | Recall | Net ₹ / month | ROI |
 |---|---|---|---|---|---|
-| 0.30 | 70.0% | 0.524 | 0.925 | ₹15.5L | 30.7% |
-| 0.40 | 59.8% | 0.582 | 0.877 | ₹16.6L | 33.1% |
-| 0.45 | 54.7% | 0.614 | 0.849 | ₹17.2L | 34.2% |
-| **0.50** | **50.5%** | **0.635** | **0.811** | **₹17.0L** | **33.9%** |
-| 0.60 | 43.3% | 0.693 | 0.758 | ₹17.7L | 35.1% |
-| 0.70 | 34.5% | 0.752 | 0.657 | ₹16.8L | 33.4% |
+| 0.30 | 68.8% | 0.530 | 0.922 | ₹15.6L | 31.1% |
+| 0.40 | 58.6% | 0.589 | 0.871 | ₹16.8L | 33.4% |
+| 0.45 | 54.4% | 0.619 | 0.850 | ₹17.4L | 34.5% |
+| **0.50** | **49.9%** | **0.644** | **0.812** | **₹17.4L** | **34.5%** |
+| 0.60 | 42.6% | 0.695 | 0.748 | ₹17.5L | 34.7% |
+| 0.70 | 34.5% | 0.748 | 0.651 | ₹16.6L | 32.9% |
 
-The 0.50 gate is optimal for this vertical. See [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
+The sweep peaks around 0.60 for this vertical; 0.50 is the designed review gate.
+See [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
 for the vertical sensitivity sweep (fashion-high vs. fashion-low vs.
 electronics vs. grocery).
 
@@ -200,6 +201,15 @@ them. The worker is a first-class compose service (`docker-compose.yml` →
 
 ## Run It
 
+**Prerequisites.** Python **3.11** (the Docker base and the canonical verify
+interpreter) and `pip install -r requirements.txt`. On **macOS** xgboost also
+needs the OpenMP runtime — install it once with `brew install libomp`. The ML
+stack (`numpy`/`pandas`/`scipy`/`scikit-learn`/`xgboost`) is **pinned exactly**
+so the `--full-verify` numbers reproduce byte-for-byte on macOS and Linux; the
+verify suite auto-links a Homebrew `libomp` if it is missing and otherwise tells
+you the one command to run. A Python 3.12+ environment will not reproduce the
+committed numbers (numpy 2.5.0/xgboost 3.4.1 have no Linux wheels) — use 3.11.
+
 Hermetic (no services needed):
 
 ```bash
@@ -208,6 +218,14 @@ python scripts/ablation_study.py             # leave-one-feature-out ablation (~
 python scripts/tune_xgb.py                   # 144-combo hyperparameter search (~15s)
 python docs/cost_model/calculator.py         # the numbers in ₹
 python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate breaks
+```
+
+One-shot interview-defense gate (10 checks: base-generator integrity,
+byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc &
+dashboard consistency, ablation baseline):
+
+```bash
+python scripts/run_all_scenarios.py --full-verify     # prints PASS/FAIL per check
 ```
 
 Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`
@@ -232,26 +250,26 @@ Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py
 
 | Model | PR-AUC | ROC-AUC | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| **XGBoost (default)** | **0.8042** | **0.8448** | **0.635** | **0.811** | **0.712** |
+| **XGBoost (default)** | **0.7991** | **0.8431** | **0.644** | **0.812** | **0.718** |
 | Hand-weighted (fallback) | 0.7896 | 0.8392 | 0.957 | 0.194 | 0.323 |
 | Naive: serial returner (>40%) | 0.6991 | 0.6895 | 0.631 | 0.615 | 0.623 |
 | Naive: COD + high AOV | 0.5884 | 0.5555 | 0.685 | 0.159 | 0.258 |
 
 ### Ablation — every feature earns its place (LOFO retraining, seed-99 test set)
 
-| Feature removed | PR-AUC | Drop from baseline (0.8118) |
+| Feature removed | PR-AUC | Drop from baseline (0.8087) |
 |---|---|---|
-| `amount_vs_user_aov_ratio` | 0.7574 | **−6.7%** |
-| `payment_method_risk` | 0.7747 | **−4.6%** |
-| `user_return_rate_30d` | 0.7827 | **−3.6%** |
-| `user_return_rate_90d` | 0.8012 | −1.3% |
-| `device_fingerprint_match` | 0.8012 | −1.3% |
-| `category_return_baseline` | 0.8077 | −0.5% |
-| `days_since_last_order` | 0.8077 | −0.5% |
-| **combined: both rate features** | 0.7265 | **−10.5%** |
+| `amount_vs_user_aov_ratio` | 0.7581 | **−6.3%** |
+| `payment_method_risk` | 0.7800 | **−3.6%** |
+| `user_return_rate_30d` | 0.7842 | **−3.0%** |
+| `user_return_rate_90d` | 0.8013 | −0.9% |
+| `device_fingerprint_match` | 0.8038 | −0.6% |
+| `category_return_baseline` | 0.8079 | −0.1% |
+| `days_since_last_order` | 0.8092 | −0.1% |
+| **combined: both rate features** | 0.7285 | **−9.9%** |
 
 The individual drops are small because the two rate features share the
-user-history signal; removing **both** costs **−10.5%**, the largest block.
+user-history signal; removing **both** costs **−9.9%**, the largest block.
 The drop is genuine feature importance measured against hidden confounders —
 not circular recovery.
 
@@ -261,11 +279,11 @@ From `scripts/train_xgb_return_risk.py --scenario basic`:
 
 ```
                      Not Flagged   Flagged
-Actual No Return          839       369   (TN=839, FP=369)
-Actual Return             150       642   (FN=150, TP=642)
+Actual No Return          853       355   (TN=853, FP=355)
+Actual Return             149       643   (FN=149, TP=643)
 ```
 
-Precision **0.635** · recall **0.811** · F1 **0.712**.
+Precision **0.644** · recall **0.812** · F1 **0.718**.
 
 ### Tuning
 

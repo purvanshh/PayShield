@@ -12,45 +12,45 @@
       "vertical": "Fashion (high return)",
       "base_return_rate": 0.32,
       "optimal_gate": 0.6,
-      "net_050": 2352340.0,
-      "net_optimal": 2441850.0,
-      "roi_050_pct": 26.3007602862254,
-      "roi_optimal_pct": 27.301542933810374,
-      "precision_optimal": 0.5598184818481848,
-      "recall_optimal": 0.7575
+      "net_050": 2397865.0,
+      "net_optimal": 2417500.0,
+      "roi_050_pct": 26.809760733452592,
+      "roi_optimal_pct": 27.02929338103757,
+      "precision_optimal": 0.5614548494983278,
+      "recall_optimal": 0.7475
     },
     {
       "vertical": "Fashion (low return)",
       "base_return_rate": 0.14,
       "optimal_gate": 0.6,
-      "net_050": 321510.0,
-      "net_optimal": 348490.0,
-      "roi_050_pct": 8.216457960644007,
-      "roi_optimal_pct": 8.905954510605675,
-      "precision_optimal": 0.24505183788878418,
-      "recall_optimal": 0.7578571428571429
+      "net_050": 330295.0,
+      "net_optimal": 345300.0,
+      "roi_050_pct": 8.440966010733453,
+      "roi_optimal_pct": 8.824431382570918,
+      "precision_optimal": 0.245697896749522,
+      "recall_optimal": 0.7471428571428571
     },
     {
       "vertical": "Electronics",
       "base_return_rate": 0.08,
       "optimal_gate": 0.7,
-      "net_050": 49110.0,
-      "net_optimal": 67520.0,
-      "roi_050_pct": 2.1963327370304113,
-      "roi_optimal_pct": 3.0196779964221823,
-      "precision_optimal": 0.1523809523809524,
-      "recall_optimal": 0.65625
+      "net_050": 51905.0,
+      "net_optimal": 65325.0,
+      "roi_050_pct": 2.3213327370304118,
+      "roi_optimal_pct": 2.921511627906977,
+      "precision_optimal": 0.15163147792706333,
+      "recall_optimal": 0.65125
     },
     {
       "vertical": "Grocery",
       "base_return_rate": 0.04,
       "optimal_gate": 0.7,
-      "net_050": -18675.0,
-      "net_optimal": -9470.0,
-      "roi_050_pct": -1.6703935599284438,
-      "roi_optimal_pct": -0.8470483005366727,
-      "precision_optimal": 0.07604562737642585,
-      "recall_optimal": 0.6575
+      "net_050": -18875.0,
+      "net_optimal": -9070.0,
+      "roi_050_pct": -1.688282647584973,
+      "roi_optimal_pct": -0.8112701252236136,
+      "precision_optimal": 0.07662835249042145,
+      "recall_optimal": 0.6525
     }
   ]
 }

@@ -417,7 +417,7 @@ def _build_json_report(orders: int, path: Path) -> None:
 # of stale hardcoded constants, so the ₹ figures track the actual model. NO
 # FALLBACK — using stale constants caused Mistake 6 (₹20.9L attribution error).
 # The headline method is unchanged: measured P/R@0.50 applied to each vertical's
-# assumed return rate (the same way the existing ₹17.0L is derived).
+# assumed return rate (the same way the existing ₹17.4L is derived).
 
 MATURITY_STAGES = ("basic", "enriched", "premium")
 

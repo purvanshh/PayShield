@@ -6,11 +6,19 @@ redis>=5.0.0
 torch>=2.2.0
 torch-geometric>=2.5.0
 networkx>=3.2.0
-numpy>=1.26.0
-pandas>=2.2.0
-scipy>=1.12.0
-scikit-learn>=1.4.0
-xgboost>=2.0.0
+# Pinned exactly — the `--full-verify` suite's AUC/ablation checks are only
+# reproducible on this canonical stack. These versions are the newest with
+# binary wheels on BOTH macOS and Linux for Python 3.11 (the Docker base and
+# the documented verify interpreter). Floating pins let a fresh clone resolve
+# newer libs and drift below the tight gates (e.g. premium PR-AUC 0.9497 vs the
+# >=0.94 gate is a 0.0097 margin). Keep these in lockstep with the values in
+# models/return_risk_results_*.json, models/ablation_study.json and
+# docs/_number_manifest.json. Verified stack: Python 3.11.
+numpy==2.2.6
+pandas==3.0.3
+scipy==1.17.1
+scikit-learn==1.9.0
+xgboost==3.2.0
 prometheus-client>=0.19.0
 structlog>=24.1.0
 jinja2>=3.1.0

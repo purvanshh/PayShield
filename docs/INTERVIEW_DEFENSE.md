@@ -7,18 +7,18 @@ truth, checked by `scripts/verify_doc_consistency.py`).
 
 The headline framing is **Progressive Merchant Maturity**: three named scenarios
 (Stage 1: Basic, Stage 2: Enriched, Stage 3: Premium). Stage 1 is the honest
-floor (PR-AUC 0.8042 / ROC-AUC 0.8448, default XGBoost); Stage 3 is a premium
-merchant with mature instrumentation (PR-AUC 0.9467 / ROC-AUC 0.9593). The
-tuned champions reach 0.8089 / 0.8875 / 0.9483 PR-AUC.
+floor (PR-AUC 0.7991 / ROC-AUC 0.8431, default XGBoost); Stage 3 is a premium
+merchant with mature instrumentation (PR-AUC 0.9497 / ROC-AUC 0.9612). The
+tuned champions reach 0.8089 / 0.8875 / 0.9488 PR-AUC.
 
 ---
 
 ## Q1: "Your PR-AUC jumped from 0.81 to 0.95. Did you just make the data easier?"
 
 No — I created **explicit, named scenario variants**, each a different merchant
-segment with a documented data-generating process. Stage 1 (PR-AUC 0.8042) is
+segment with a documented data-generating process. Stage 1 (PR-AUC 0.7991) is
 the honest floor: 7 visible features, high hidden variance (`HIDDEN_SCALE=26`),
-high label noise (0.10). Stage 3 (0.9467) is a best-case merchant with mature
+high label noise (0.10). Stage 3 (0.9497) is a best-case merchant with mature
 instrumentation — verified product ratings and real-time delivery SLAs are
 observed (9 features), hidden variance drops to `HIDDEN_SCALE=10`, label noise
 to 0.05.
@@ -79,9 +79,9 @@ Three reasons, each measurable:
    the model never observes (packaging, weather, customer mood — and in Stage 1,
    product rating + delivery speed too) plus label noise. XGBoost learns from
    noisy, incomplete signal — exactly what real merchant data presents. The
-   honest Stage-1 PR-AUC is 0.8042, *lower* than a circular DGP would produce.
+    honest Stage-1 PR-AUC is 0.7991, *lower* than a circular DGP would produce.
 3. **Triangulated with evidence.** Every feature is validated by a leave-one-
-   feature-out ablation (baseline 0.8118 on the independent seed-99 hold-out),
+   feature-out ablation (baseline 0.8087 on the independent seed-99 hold-out),
    and the model beats two naive merchant rules on the same hold-out.
 
 Real merchant data would change the *calibration* of the base rate and the gate,
@@ -92,10 +92,10 @@ step is built to prove.
 
 The hand-weighted composite is effectively a fixed-weight **linear** model on
 the same features — it reaches PR-AUC 0.7896 on the Stage-1 hold-out. Default
-XGBoost reaches 0.8042 (+0.015). That gap is the nonlinear structure the linear
+XGBoost reaches 0.7991 (+0.010). That gap is the nonlinear structure the linear
 model cannot express: the label depends on interactions (high recent-return-rate
 × COD, high value × unknown device), and the ablation confirms it — removing
-both return-rate features costs −10.5% PR-AUC even with the other five present.
+both return-rate features costs −9.9% PR-AUC even with the other five present.
 Inference cost is irrelevant: 200 shallow trees, <5 ms/order on a laptop.
 
 ---

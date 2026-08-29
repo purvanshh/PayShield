@@ -32,74 +32,74 @@
   ],
   "operating_curve": {
     "0.20": {
-      "flag_rate": 0.814,
-      "precision": 0.4681,
-      "recall": 0.9621
+      "flag_rate": 0.797,
+      "precision": 0.4774,
+      "recall": 0.9609
     },
     "0.25": {
-      "flag_rate": 0.7495,
-      "precision": 0.501,
-      "recall": 0.9482
+      "flag_rate": 0.745,
+      "precision": 0.5007,
+      "recall": 0.9419
     },
     "0.30": {
-      "flag_rate": 0.7,
-      "precision": 0.5236,
-      "recall": 0.9255
+      "flag_rate": 0.6885,
+      "precision": 0.5301,
+      "recall": 0.9217
     },
     "0.35": {
-      "flag_rate": 0.6495,
-      "precision": 0.5504,
-      "recall": 0.9028
+      "flag_rate": 0.6295,
+      "precision": 0.5647,
+      "recall": 0.8977
     },
     "0.40": {
-      "flag_rate": 0.5975,
-      "precision": 0.5816,
-      "recall": 0.8775
+      "flag_rate": 0.5855,
+      "precision": 0.5892,
+      "recall": 0.8712
     },
     "0.45": {
-      "flag_rate": 0.547,
-      "precision": 0.6143,
-      "recall": 0.8485
+      "flag_rate": 0.5435,
+      "precision": 0.6191,
+      "recall": 0.8497
     },
     "0.50": {
-      "flag_rate": 0.5055,
-      "precision": 0.635,
-      "recall": 0.8106
+      "flag_rate": 0.499,
+      "precision": 0.6443,
+      "recall": 0.8119
     },
     "0.60": {
-      "flag_rate": 0.433,
-      "precision": 0.6928,
-      "recall": 0.7576
+      "flag_rate": 0.426,
+      "precision": 0.6948,
+      "recall": 0.7475
     },
     "0.70": {
-      "flag_rate": 0.3455,
-      "precision": 0.7525,
-      "recall": 0.6566
+      "flag_rate": 0.345,
+      "precision": 0.7478,
+      "recall": 0.6515
     }
   },
   "models": [
     {
-      "pr_auc": 0.8042044591367973,
-      "average_precision": 0.8043488212889622,
-      "roc_auc": 0.844792084754833,
-      "precision_at_gate": 0.6350148367952523,
-      "recall_at_gate": 0.8106060606060606,
-      "f1_at_gate": 0.7121464226289518,
+      "pr_auc": 0.7991261661866403,
+      "average_precision": 0.799283113933918,
+      "roc_auc": 0.8431124155461904,
+      "precision_at_gate": 0.6442885771543087,
+      "recall_at_gate": 0.8118686868686869,
+      "f1_at_gate": 0.7184357541899441,
       "confusion_matrix": {
-        "tn": 839,
-        "fp": 369,
-        "fn": 150,
-        "tp": 642
+        "tn": 853,
+        "fp": 355,
+        "fn": 149,
+        "tp": 643
       },
       "name": "XGBoost (default)",
       "feature_importance": {
-        "user_return_rate_30d": 0.21208998560905457,
-        "user_return_rate_90d": 0.1813810020685196,
-        "amount_vs_user_aov_ratio": 0.12244948744773865,
-        "category_return_baseline": 0.06053919345140457,
-        "payment_method_risk": 0.24781058728694916,
-        "device_fingerprint_match": 0.12381097674369812,
-        "days_since_last_order": 0.05191876366734505
+        "user_return_rate_30d": 0.17929159104824066,
+        "user_return_rate_90d": 0.2092098742723465,
+        "amount_vs_user_aov_ratio": 0.11245149374008179,
+        "category_return_baseline": 0.06754469871520996,
+        "payment_method_risk": 0.27754226326942444,
+        "device_fingerprint_match": 0.09818804264068604,
+        "days_since_last_order": 0.05577198415994644
       }
     },
     {

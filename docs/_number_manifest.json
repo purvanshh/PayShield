@@ -1,35 +1,35 @@
 {
-  "_comment": "Single source of truth for headline numbers quoted in docs. All values are the DEFAULT-hyperparameter XGBoost model (models/return_risk_results_{scenario}.json) — the shipped return_risk_xgb_v1.json equivalent — so every number in a scenario row comes from one file (no tuned-vs-default mixing). Tuned champion AUCs live in models/tune_results_{scenario}.json and reports/scenario_comparison.md only.",
+  "_comment": "Single source of truth for headline numbers quoted in docs. All values are the DEFAULT-hyperparameter XGBoost model (models/return_risk_results_{scenario}.json) — the shipped return_risk_xgb_v1.json equivalent — so every number in a scenario row comes from one file (no tuned-vs-default mixing). Tuned champion AUCs live in models/tune_results_{scenario}.json and reports/scenario_comparison.md only. Canonical stack: Python 3.11, numpy 2.2.6, pandas 3.0.3, scipy 1.17.1, scikit-learn 1.9.0, xgboost 3.2.0 (see requirements.txt).",
   "scenarios": {
     "basic": {
-      "pr_auc": 0.8042,
-      "roc_auc": 0.8448,
-      "precision_50": 0.635,
-      "recall_50": 0.811,
-      "f1_50": 0.712,
-      "fashion_savings_lakhs": 17.0,
-      "electronics_savings_lakhs": 36.2
+      "pr_auc": 0.7991,
+      "roc_auc": 0.8431,
+      "precision_50": 0.644,
+      "recall_50": 0.812,
+      "f1_50": 0.718,
+      "fashion_savings_lakhs": 17.4,
+      "electronics_savings_lakhs": 36.8
     },
     "enriched": {
-      "pr_auc": 0.8881,
-      "roc_auc": 0.9217,
-      "precision_50": 0.728,
-      "recall_50": 0.874,
-      "f1_50": 0.794,
-      "fashion_savings_lakhs": 21.6,
-      "electronics_savings_lakhs": 45.0
+      "pr_auc": 0.8834,
+      "roc_auc": 0.9198,
+      "precision_50": 0.732,
+      "recall_50": 0.863,
+      "f1_50": 0.793,
+      "fashion_savings_lakhs": 21.4,
+      "electronics_savings_lakhs": 44.7
     },
     "premium": {
-      "pr_auc": 0.9467,
-      "roc_auc": 0.9593,
-      "precision_50": 0.826,
-      "recall_50": 0.914,
-      "f1_50": 0.868,
+      "pr_auc": 0.9497,
+      "roc_auc": 0.9612,
+      "precision_50": 0.825,
+      "recall_50": 0.913,
+      "f1_50": 0.867,
       "fashion_savings_lakhs": 26.0,
-      "electronics_savings_lakhs": 53.6
+      "electronics_savings_lakhs": 53.5
     }
   },
-  "ablation_baseline": 0.8118,
-  "tuned_champion_pr_auc": { "basic": 0.8089, "enriched": 0.8875, "premium": 0.9483 },
-  "tuned_champion_roc_auc": { "basic": 0.8477, "enriched": 0.9211, "premium": 0.9602 }
+  "ablation_baseline": 0.8087,
+  "tuned_champion_pr_auc": { "basic": 0.8089, "enriched": 0.8875, "premium": 0.9488 },
+  "tuned_champion_roc_auc": { "basic": 0.8477, "enriched": 0.9211, "premium": 0.9606 }
 }

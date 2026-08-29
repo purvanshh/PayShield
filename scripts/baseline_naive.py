@@ -4,7 +4,7 @@
 Three heuristics any merchant could implement without ML. PayShield is
 required to beat them convincingly to prove the 7-feature model adds value
 beyond obvious rules. The PayShield reference is the **Stage 1 XGBoost
-model** (PR-AUC 0.8042 on the `returned` label, 2,000-order held-out test
+model** (PR-AUC 0.7991 on the `returned` label, 2,000-order held-out test
 set from ``scripts/train_xgb_return_risk.py``); the naive heuristics are
 computed here on the Track-2 generator split. The headline baseline
 comparison (same generator, same split) lives in
@@ -168,14 +168,14 @@ def main():
 def _load_payshield_reference():
     """Stage 1 XGBoost (default) reference, measured on the held-out test set.
 
-    PR-AUC 0.8042 on the `returned` label; precision/recall/F1 at gate 0.50.
+    PR-AUC 0.7991 on the `returned` label; precision/recall/F1 at gate 0.50.
     See scripts/train_xgb_return_risk.py and models/return_risk_results_basic.json.
     """
     return {
-        "pr_auc": 0.8042,
-        "precision_at_0.50": 0.635,
-        "recall_at_0.50": 0.811,
-        "f1_at_0.50": 0.712,
+        "pr_auc": 0.7991,
+        "precision_at_0.50": 0.644,
+        "recall_at_0.50": 0.812,
+        "f1_at_0.50": 0.718,
     }
 
 

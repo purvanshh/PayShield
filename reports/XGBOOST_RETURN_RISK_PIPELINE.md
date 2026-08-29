@@ -15,10 +15,10 @@ hand-weighted composite as an automatic fallback. The data-generating process
 noise — so XGBoost learns from noisy, incomplete signal, exactly like real
 merchant data. Absolute PR-AUC is therefore lower but **more honest**.
 
-**Headline:** Stage 1 XGBoost **PR-AUC 0.8042** (default) / **0.8089** (tuned)
+**Headline:** Stage 1 XGBoost **PR-AUC 0.7991** (default) / **0.8089** (tuned)
 on raw features, `returned` label — beats the hand-weighted scorer (0.7896)
 and clearly beats both naive rules (0.6991, 0.5884). The three-scenario
-maturity framing extends this to Stage 2 (0.8881) and Stage 3 (0.9467). The
+maturity framing extends this to Stage 2 (0.8834) and Stage 3 (0.9497). The
 Redis-enriched feature pipeline exists but the model has **not** been
 recalibrated to real merchant data — that is future work, not a headline
 (see Mistake 6/7 in `MISTAKES_AND_LEARNINGS.md`).
@@ -47,7 +47,7 @@ recalibrated to real merchant data — that is future work, not a headline
 
 | Model | PR-AUC | Precision@0.50 | Recall@0.50 | F1@0.50 |
 |---|---|---|---|---|
-| **XGBoost (default)** | **0.8042** | 0.635 | 0.811 | 0.712 |
+| **XGBoost (default)** | **0.7991** | 0.644 | 0.812 | 0.718 |
 | Hand-weighted (current) | 0.7896 | 0.957 | 0.194 | 0.323 |
 | Naive: serial returner (>40%) | 0.6991 | 0.631 | 0.615 | 0.623 |
 | Naive: COD + high AOV | 0.5884 | 0.685 | 0.159 | 0.258 |
@@ -60,19 +60,19 @@ Artifacts: `models/return_risk_xgb_v1.json`, `models/xgb_evaluation.json`.
   Every feature shows a **positive drop against hidden confounders**, i.e.
   genuine unique contribution, not circular recovery:
 
-| Feature removed | PR-AUC | Drop from baseline (0.8118) |
+| Feature removed | PR-AUC | Drop from baseline (0.8087) |
 |---|---|---|
-| `amount_vs_user_aov_ratio` | 0.7574 | **−6.7%** |
-| `payment_method_risk` | 0.7747 | **−4.6%** |
-| `user_return_rate_30d` | 0.7827 | **−3.6%** |
-| `user_return_rate_90d` | 0.8012 | −1.3% |
-| `device_fingerprint_match` | 0.8012 | −1.3% |
-| `category_return_baseline` | 0.8077 | −0.5% |
-| `days_since_last_order` | 0.8077 | −0.5% |
-| **combined: both rate features** | 0.7265 | **−10.5%** |
+| `amount_vs_user_aov_ratio` | 0.7581 | **−6.3%** |
+| `payment_method_risk` | 0.7800 | **−3.6%** |
+| `user_return_rate_30d` | 0.7842 | **−3.0%** |
+| `user_return_rate_90d` | 0.8013 | −0.9% |
+| `device_fingerprint_match` | 0.8038 | −0.6% |
+| `category_return_baseline` | 0.8079 | −0.1% |
+| `days_since_last_order` | 0.8092 | −0.1% |
+| **combined: both rate features** | 0.7285 | **−9.9%** |
 
 The individual drops are small because the two return-rate features share the
-user-history signal; removing **both** at once costs **−10.5%**, the single
+user-history signal; removing **both** at once costs **−9.9%**, the single
 largest block of signal. Artifact: `models/ablation_study.json`.
 
 ### Phase 3 — Hyperparameter tuning ✅
@@ -81,7 +81,7 @@ largest block of signal. Artifact: `models/ablation_study.json`.
   `scale_pos_weight` × `min_child_weight` × `reg_lambda` × `reg_alpha` × `gamma`),
   selected on validation PR-AUC.
 - Best (Stage 1): `max_depth=4, n_estimators=300, learning_rate=0.05,
-  scale_pos_weight=1.5` → **test PR-AUC 0.8089** (up from default 0.8042).
+  scale_pos_weight=1.5` → **test PR-AUC 0.8089** (up from default 0.7991).
 
 Artifacts: `models/return_risk_xgb_best_{scenario}.json`, `models/tune_results_{scenario}.json`.
 
@@ -104,8 +104,8 @@ Artifacts: `models/return_risk_xgb_best_{scenario}.json`, `models/tune_results_{
   `engine: "hand_weighted"` (model absent).
 
 ### Phase 5 — Documentation (video skipped) ✅
-- **`README.md`**: three-scenario maturity headline table (Stage 1 floor 0.8042
-  → Stage 3 0.9467), honest DGP disclosure, model/ablation/tuning tables,
+- **`README.md`**: three-scenario maturity headline table (Stage 1 floor 0.7991
+  → Stage 3 0.9497), honest DGP disclosure, model/ablation/tuning tables,
   updated architecture diagram (XGBoost primary), the measured cost-model gate
   sweep, and a "What I'd Do Next" section (retrain on real merchant data).
 - **`models/README.md`**: documents all artifacts including per-scenario results.
@@ -117,7 +117,7 @@ Artifacts: `models/return_risk_xgb_best_{scenario}.json`, `models/tune_results_{
 
 ## 2.5 The 0.9311 attribution — resolved by removal
 
-An earlier headline compared offline XGBoost (Stage 1 PR-AUC 0.8042, `returned`
+An earlier headline compared offline XGBoost (Stage 1 PR-AUC 0.7991, `returned`
 label) with a "live Redis-backed" system (0.9311). Investigation showed these
 were **not
 comparable**: 0.9311 was the *hand-weighted* scorer on the *`high_risk`
@@ -127,16 +127,16 @@ the same `returned` label the enriched path scores ~0.52, because that
 generator's `returned` outcome depends only on the user's latent rate).
 
 **Resolution:** removed 0.9311 from all headline surfaces. The defensible
-Stage 1 number is **PR-AUC 0.8042 → ₹17.0L at the 0.50 gate** (P 0.635,
-R 0.811, measured confusion matrix). The three-scenario maturity framing
-extends this to Stage 3 (0.9467 → ₹53.6L electronics). The enriched pipeline
+Stage 1 number is **PR-AUC 0.7991 → ₹17.4L at the 0.50 gate** (P 0.644,
+R 0.812, measured confusion matrix). The three-scenario maturity framing
+extends this to Stage 3 (0.9497 → ₹53.5L electronics). The enriched pipeline
 is documented as future work (needs model recalibration), and the
 generator-design limitation is documented in
 `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md` and Mistakes 6/7 of
 `MISTAKES_AND_LEARNINGS.md`.
 
 **Cost model (Stage 1 operating point):** on a 10k-order fashion merchant, the
-0.50 review gate saves **₹17.0L/month** (ROI 33.9%).
+0.50 review gate saves **₹17.4L/month** (ROI 34.5%).
 
 ---
 

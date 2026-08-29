@@ -33,10 +33,10 @@ DOC_PATHS = [
 # (e.g. "we used to claim 0.9311").
 STALE_NUMBERS = {
     0.8067: "old tuned PR-AUC (current: 0.8089)",
-    0.677: "old precision@0.50 (current basic: 0.635)",
-    0.774: "old recall@0.50 (current basic: 0.811)",
-    17.5: "old fashion savings ₹L (current basic: 17.0)",
-    36.9: "old electronics savings ₹L (current basic: 36.2)",
+    0.677: "old precision@0.50 (current basic: 0.644)",
+    0.774: "old recall@0.50 (current basic: 0.812)",
+    17.5: "old fashion savings ₹L (current basic: 17.4)",
+    36.9: "old electronics savings ₹L (current basic: 36.8)",
 }
 
 # Stale numbers that ARE allowed because they appear in honest historical
@@ -112,7 +112,7 @@ def verify_doc_consistency() -> None:
                                         f"(expected {expected})"
                                     )
                     elif metric in ("fashion_savings_lakhs", "electronics_savings_lakhs"):
-                        # Savings must appear in the headline table (e.g. ₹17.0L or 17.0).
+                        # Savings must appear in the headline table (e.g. ₹17.4L or 17.4).
                         if str(expected) not in text:
                             failures.append(
                                 f"{doc_path}: missing {scenario}.{metric} "

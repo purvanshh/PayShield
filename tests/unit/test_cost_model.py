@@ -33,16 +33,16 @@ def test_base_scenario_reproduces_measured_headline():
     result = evaluate_scenario(10_000, CostAssumptions(), op)
     assert op.action == "review"
     assert result["total_returns"] == 1800
-    # Measured default basic model: P 0.635, R 0.811 -> caught 1459, false_flags 533.
-    assert result["caught"] == 1459
-    assert result["false_blocks"] == 533
-    assert result["true_caught"] == 926
-    assert result["prevented"] == 648
-    assert result["remaining_returns"] == 1152
+    # Measured default basic model (canonical stack): P 0.644, R 0.812 -> caught 1461, false_flags 520.
+    assert result["caught"] == 1461
+    assert result["false_blocks"] == 520
+    assert result["true_caught"] == 941
+    assert result["prevented"] == 659
+    assert result["remaining_returns"] == 1141
     assert result["baseline_cost"] == 5_031_000
-    assert result["payshield_cost"] == 3_326_440
-    assert result["monthly_savings"] == 1_704_560  # ₹17.0L
-    assert round(result["roi_pct"], 1) == 33.9
+    assert result["payshield_cost"] == 3_293_095
+    assert result["monthly_savings"] == 1_737_905  # ₹17.4L
+    assert round(result["roi_pct"], 1) == 34.5
     # review gate penalises a wrong flag with operator time, not the order
     assert result["flag_penalty_per_order"] == 200.0
 

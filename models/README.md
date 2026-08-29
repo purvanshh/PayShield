@@ -18,9 +18,9 @@ artifacts (see the README's Platform Extensions note).
 | `production/payshield_gnn_v1.pt` | GNN v1.1.0 checkpoint (served by `ml/inference.py`) | archived GNN benchmark pipeline |
 | `registry/` | Versioned model artifacts — v1.1.0 (GNN), v1.0.0 (statistical filter), v0.1.0 (GNN legacy) | archived GNN registry tooling |
 | `return_risk_xgb_best.json` | **Tuned XGBoost return-risk model** (Stage 1: PR-AUC 0.8089 on raw features with a non-circular hidden-confounder DGP) — primary engine loaded by `return_risk/scorer.py` | `scripts/tune_xgb.py` |
-| `return_risk_xgb_v1.json` | XGBoost return-risk model with default hyperparameters (PR-AUC 0.8042, fallback if `best` is absent) | `scripts/train_xgb_return_risk.py` |
+| `return_risk_xgb_v1.json` | XGBoost return-risk model with default hyperparameters (PR-AUC 0.7991, fallback if `best` is absent) | `scripts/train_xgb_return_risk.py` |
 | `xgb_evaluation.json` | Phase 1 comparison — XGBoost vs hand-weighted vs naive baselines (PR-AUC/ROC-AUC/precision/recall/F1/confusion matrix) | `scripts/train_xgb_return_risk.py` |
-| `ablation_study.json` | Leave-one-feature-out ablation (PR-AUC drop per feature, baseline 0.8118) | `scripts/ablation_study.py` |
+| `ablation_study.json` | Leave-one-feature-out ablation (PR-AUC drop per feature, baseline 0.8087) | `scripts/ablation_study.py` |
 | `xgb_tuning_results.json` | Legacy 144-combo grid-search results (superseded by `tune_results_{scenario}.json`) | `scripts/tune_xgb.py` |
 | `return_risk_results_{basic,enriched,premium}.json` | Per-scenario measured metrics + operating curve (default XGBoost) | `scripts/train_xgb_return_risk.py --scenario {s}` |
 | `tune_results_{basic,enriched,premium}.json` | Per-scenario HalvingGridSearchCV results + best params + test metrics | `scripts/tune_xgb.py --scenario {s}` |

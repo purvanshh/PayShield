@@ -2,9 +2,9 @@
 
 ## Headline Metric
 
-**PayShield saves a fashion merchant ₹17.0 lakh per month on 10,000 orders**
+**PayShield saves a fashion merchant ₹17.4 lakh per month on 10,000 orders**
 (Stage 1: Basic floor) by preventing high-risk returns before they ship — and a
-**premium electronics merchant ₹53.6 lakh per month** at Stage 3.
+**premium electronics merchant ₹53.5 lakh per month** at Stage 3.
 
 > Reproduce it: `python docs/cost_model/calculator.py --all-maturity` (hermetic).
 
@@ -20,19 +20,19 @@ low label noise).
 
 | Stage | PR-AUC | ROC-AUC | ₹/month (Fashion) | ₹/month (Electronics) | ROI (Electronics) |
 |---|---|---|---|---|---|
-| **Stage 1: Basic** | 0.8042 | 0.8448 | ₹17.0L | ₹36.2L | 35.4% |
-| **Stage 2: Enriched** | 0.8881 | 0.9217 | ₹21.6L | ₹45.0L | 44.0% |
-| **Stage 3: Premium** | 0.9467 | 0.9593 | ₹26.0L | **₹53.6L** | 52.5% |
+| **Stage 1: Basic** | 0.7991 | 0.8431 | ₹17.4L | ₹36.8L | 36.0% |
+| **Stage 2: Enriched** | 0.8834 | 0.9198 | ₹21.4L | ₹44.7L | 43.7% |
+| **Stage 3: Premium** | 0.9497 | 0.9612 | ₹26.0L | **₹53.5L** | 52.4% |
 
 > AUCs are the default-XGBoost model (one file per row, no tuned-vs-default
-> mixing); the tuned champions reach 0.8089 / 0.8875 / 0.9483 PR-AUC
+> mixing); the tuned champions reach 0.8089 / 0.8875 / 0.9488 PR-AUC
 > (`reports/scenario_comparison.md`).
 
 The ₹ figures rise because the **measured** precision/recall at the 0.50 review
 gate improve with data maturity — not because the base rate or AOV changed. The
 saving scales with data quality: the same scorer, applied to a merchant that
 observes more return drivers and measures them more cleanly, prevents more
-returns at higher precision. The Stage 1 ₹17.0L fashion figure remains the
+returns at higher precision. The Stage 1 ₹17.4L fashion figure remains the
 conservative floor a panelist can take to any merchant.
 
 ## The Math (10,000 fashion orders/month, ₹2.5k AOV, 18% return rate, Stage 1)
@@ -40,13 +40,13 @@ conservative floor a panelist can take to any merchant.
 | Scenario | Monthly Cost | Savings vs. Baseline |
 |----------|-------------|----------------------|
 | Baseline (no scorer) | ₹50.31L | — |
-| With PayShield MEDIUM+ gate (0.50) | ₹33.26L | **₹17.0L saved** |
-| Annual savings | — | **₹2.05 cr** |
-| Net savings per 1,000 orders | — | **₹1.70L** |
+| With PayShield MEDIUM+ gate (0.50) | ₹32.93L | **₹17.4L saved** |
+| Annual savings | — | **₹2.09 cr** |
+| Net savings per 1,000 orders | — | **₹1.74L** |
 
-Flags 1,459 of 1,800 expected returns; prevents ~648 returns/month (diversion
-effectiveness 70%); ROI **+33.9%**. Operating point: precision **0.635**,
-recall **0.811** — the Stage 1 XGBoost model measured on the held-out test set
+Flags 1,461 of 1,800 expected returns; prevents ~659 returns/month (diversion
+effectiveness 70%); ROI **+34.5%**. Operating point: precision **0.644**,
+recall **0.812** — the Stage 1 XGBoost model measured on the held-out test set
 (`models/return_risk_results_basic.json`).
 
 ## Cost Asymmetry (Why This Works)
@@ -65,9 +65,9 @@ accuracy contest.
 
 | Vertical | Return Rate | Optimal Gate | Monthly Savings | ROI |
 |----------|-------------|--------------|-----------------|-----|
-| Fashion (high return) | 18% | 0.50 | **₹17.0L** | +33.9% |
-| Electronics (low volume, high AOV) | 12% | 0.50 | **₹36.2L** | +35.4% |
-| Grocery (very low, small AOV) | 4% | 0.50 | **₹1.1L** | +27.4% |
+| Fashion (high return) | 18% | 0.50 | **₹17.4L** | +34.5% |
+| Electronics (low volume, high AOV) | 12% | 0.50 | **₹36.8L** | +36.0% |
+| Grocery (very low, small AOV) | 4% | 0.50 | **₹2.4L** | +33.2% |
 
 The gate is config-driven per merchant vertical (`configs/return_risk_rules.yaml`
 → `operating_point.medium_review_threshold`). The vertical-sensitivity sweep in
@@ -75,7 +75,7 @@ The gate is config-driven per merchant vertical (`configs/return_risk_rules.yaml
 return rate falls — 0.50 is right for high-return verticals.
 
 > **Honest scope:** the cost model uses the **Stage 1 XGBoost** operating point
-> (P 0.635, R 0.811 @ 0.50, measured in `models/return_risk_results_basic.json`).
+> (P 0.644, R 0.812 @ 0.50, measured in `models/return_risk_results_basic.json`).
 > The Stage 2/3 maturity scenarios show how savings scale with data quality; the
 > Redis-enriched feature pipeline exists in the codebase but the XGBoost model
 > has **not** been recalibrated to real merchant data — that is the first

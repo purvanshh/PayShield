@@ -1,57 +1,57 @@
 {
   "method": "leave-one-feature-out retraining",
-  "baseline_pr_auc": 0.8118135471297905,
+  "baseline_pr_auc": 0.8087449317855893,
   "combined_rate_features": {
     "features": [
       "user_return_rate_30d",
       "user_return_rate_90d"
     ],
-    "pr_auc_ablated": 0.7264076766739982,
-    "drop": 0.08540587045579229,
-    "pct_drop": 10.520380050043416
+    "pr_auc_ablated": 0.7285319760384454,
+    "drop": 0.08021295574714382,
+    "pct_drop": 9.91820196882662
   },
   "ablations": [
     {
       "feature": "amount_vs_user_aov_ratio",
-      "pr_auc_ablated": 0.7575904702897658,
-      "drop": 0.0542230768400247,
-      "pct_drop": 6.679252524392237
+      "pr_auc_ablated": 0.758134154606838,
+      "drop": 0.05061077717875129,
+      "pct_drop": 6.257940568110909
     },
     {
       "feature": "payment_method_risk",
-      "pr_auc_ablated": 0.7745098172906298,
-      "drop": 0.03730372983916064,
-      "pct_drop": 4.5951105362863105
+      "pr_auc_ablated": 0.7799936315036915,
+      "drop": 0.028751300281897763,
+      "pct_drop": 3.5550516796957408
     },
     {
       "feature": "user_return_rate_30d",
-      "pr_auc_ablated": 0.7824425380623422,
-      "drop": 0.029371009067448273,
-      "pct_drop": 3.6179501033569865
+      "pr_auc_ablated": 0.7842137279690625,
+      "drop": 0.024531203816526737,
+      "pct_drop": 3.033243591692805
     },
     {
       "feature": "user_return_rate_90d",
-      "pr_auc_ablated": 0.8014847166070077,
-      "drop": 0.010328830522782773,
-      "pct_drop": 1.2723156147493344
+      "pr_auc_ablated": 0.8012833475072185,
+      "drop": 0.0074615842783707365,
+      "pct_drop": 0.9226128022708793
     },
     {
       "feature": "device_fingerprint_match",
-      "pr_auc_ablated": 0.8014933341499274,
-      "drop": 0.010320212979863075,
-      "pct_drop": 1.2712540972432316
+      "pr_auc_ablated": 0.8038390366484487,
+      "drop": 0.00490589513714057,
+      "pct_drop": 0.606605982223478
     },
     {
       "feature": "category_return_baseline",
-      "pr_auc_ablated": 0.8077918153205487,
-      "drop": 0.004021731809241813,
-      "pct_drop": 0.4954009234584539
+      "pr_auc_ablated": 0.8078920333952747,
+      "drop": 0.0008528983903145493,
+      "pct_drop": 0.10545950358309829
     },
     {
       "feature": "days_since_last_order",
-      "pr_auc_ablated": 0.8081374184811974,
-      "drop": 0.0036761286485931244,
-      "pct_drop": 0.45282918246317405
+      "pr_auc_ablated": 0.8092091934698343,
+      "drop": -0.00046426168424507086,
+      "pct_drop": -0.05740520478070257
     }
   ]
 }

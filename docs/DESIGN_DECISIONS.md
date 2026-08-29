@@ -146,13 +146,13 @@ are reproducible and documented.
 | `LABEL_NOISE_STD` | 0.10 | 0.08 | 0.05 |
 | Train seed | 42 | 42 | 123 |
 | Hold-out seed | 99 (independent, ablation) | 99 | 99 |
-| PR-AUC (default XGBoost) | 0.8042 | 0.8881 | 0.9467 |
-| ROC-AUC (default XGBoost) | 0.8448 | 0.9217 | 0.9593 |
-| PR-AUC (tuned champion) | 0.8089 | 0.8875 | 0.9483 |
+| PR-AUC (default XGBoost) | 0.7991 | 0.8834 | 0.9497 |
+| ROC-AUC (default XGBoost) | 0.8431 | 0.9198 | 0.9612 |
+| PR-AUC (tuned champion) | 0.8089 | 0.8875 | 0.9488 |
 
 **Why these numbers are honest:**
 1. The base generator (`return_risk_generator.py`) is **untouched** — Stage 1's
-   floor stays the auditable 0.8042 (default) / 0.8089 (tuned).
+   floor stays the auditable 0.7991 (default) / 0.8089 (tuned).
 2. The two newly-visible features in Stage 2/3 are **centred** (subtract their
    mean) so they add ranking variance without shifting the base rate (~0.42 in
    every stage) — the PR-AUC lift comes from less hidden variance + lower noise +

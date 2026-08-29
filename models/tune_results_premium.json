@@ -11,13 +11,13 @@
     "n_estimators": 300,
     "reg_alpha": 0.1,
     "reg_lambda": 1,
-    "scale_pos_weight": 2.0,
+    "scale_pos_weight": 2.5,
     "subsample": 0.8
   },
-  "best_val_pr_auc": 0.9135231176779347,
-  "test_pr_auc": 0.9483006265816698,
-  "test_average_precision": 0.9483321234231733,
-  "test_roc_auc": 0.9601631806827472,
+  "best_val_pr_auc": 0.9100916335514363,
+  "test_pr_auc": 0.9488038725574786,
+  "test_average_precision": 0.9488357727012481,
+  "test_roc_auc": 0.960568932223631,
   "lightgbm_challenger": null,
-  "wall_time_s": 285.8
+  "wall_time_s": 280.0
 }

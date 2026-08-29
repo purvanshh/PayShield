@@ -22,9 +22,9 @@ identical model architecture — only the data source changes:
 
 | Stage | PR-AUC | ROC-AUC | ₹/month (Electronics) |
 |---|---|---|---|
-| Stage 1: Basic (floor) | 0.8042 | 0.8448 | ₹36.2L |
-| Stage 2: Enriched | 0.8881 | 0.9217 | ₹45.0L |
-| Stage 3: Premium | 0.9467 | 0.9593 | ₹53.6L |
+| Stage 1: Basic (floor) | 0.7991 | 0.8431 | ₹36.8L |
+| Stage 2: Enriched | 0.8834 | 0.9198 | ₹44.7L |
+| Stage 3: Premium | 0.9497 | 0.9612 | ₹53.5L |
 
 Stage 1 is the honest floor (7 features, high hidden variance). Stage 3 is a
 premium merchant with mature instrumentation (9 features, low noise). The
@@ -44,11 +44,11 @@ PR-AUC is lower than a circular benchmark would produce.
 
 ## What does the cost model say?
 
-A 10k-order fashion merchant saves **₹17.0 lakh/month** at the 0.50 review gate
-(Stage 1 XGBoost operating point: precision 0.635, recall 0.811). A wrong MEDIUM
+A 10k-order fashion merchant saves **₹17.4 lakh/month** at the 0.50 review gate
+(Stage 1 XGBoost operating point: precision 0.644, recall 0.812). A wrong MEDIUM
 flag costs ₹200 of operator time (order still ships); a wrong HIGH block costs
 ₹3,180. The measured gate sweep shows 0.50 is optimal for high-return
-verticals. The three-scenario maturity table shows savings scaling to ₹53.6L
+verticals. The three-scenario maturity table shows savings scaling to ₹53.5L
 for a premium electronics merchant. See [`docs/COST_MODEL.md`](../COST_MODEL.md)
 including where the gate breaks (vertical sensitivity).
 
