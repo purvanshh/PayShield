@@ -54,6 +54,7 @@ def seed_demo_data(redis=None, seed_velocity_lists: bool = True, audit_writer=No
         ("serial returner", _seed_serial_returner),
         ("honest customer", _seed_honest_customer),
         ("merchant baselines", _seed_merchants),
+        ("abuse ring", _seed_abuse_ring),
         ("chargeback audit chain", _seed_chargeback_audit_log),
     ]
     for label, fn in steps:
@@ -190,6 +191,38 @@ def _seed_merchants(redis, audit_writer):  # noqa: ARG001 - uniform seed step si
     for digit in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
         redis.hset("benford:M_FASHION_001", digit, str({1: 30, 2: 18, 3: 13, 4: 10, 5: 8, 6: 7, 7: 6, 8: 5, 9: 4}[int(digit)]))
     redis.hset("benford:M_FASHION_001", "total", "101")
+
+
+def _seed_abuse_ring(redis, audit_writer):  # noqa: ARG001 - uniform seed step signature
+    """Seed a 4-user abuse ring sharing one shipping pincode (R-RULE-09).
+
+    Each ring user has a return-velocity spike (4 returns in the last 7 days)
+    and moderate rates, so the model alone rates them LOW/MEDIUM - the
+    shared-address + velocity pattern is what the sentinel catches. Score the
+    4th user with shipping_address='560037' to see it fire.
+    """
+    import time as _time
+
+    now = _time.time()
+    for i in range(1, 5):
+        uid = f"U_RING_00{i}"
+        redis.hmset(
+            f"return_risk:user:{uid}",
+            {
+                "total_orders": "6",
+                "total_returns": "5",
+                "return_rate_30d": "0.25",
+                "return_rate_90d": "0.25",
+                "avg_return_value": "3000",
+                "cod_refusals": "1",
+                "cod_orders": "4",
+                "last_activity": (datetime.utcnow() - timedelta(days=2)).isoformat(),
+            },
+        )
+        redis.zadd(
+            f"return_risk:user:{uid}:returns",
+            {f"ORD_RING_{uid}_{j}": now - (j + 1) * 86400 for j in range(4)},
+        )
 
 
 def _seed_velocity_histories(redis, *_):

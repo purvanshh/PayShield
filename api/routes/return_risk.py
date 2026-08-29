@@ -49,6 +49,22 @@ def _get_scorer(redis) -> ReturnRiskScorer:
     )
 
 
+def _address_key(request: ReturnScoreRequest) -> str:
+    """Normalise the shipping address for the abuse-ring sentinel.
+
+    Pincode is the strongest location signal; fall back to city + state when a
+    merchant does not collect it. Empty when no address was provided (feature
+    engine then emits a neutral ``txn_shared_address_count`` of 0).
+    """
+    addr = request.shipping_address
+    if addr is None:
+        return ""
+    if addr.pincode:
+        return f"{addr.pincode}"
+    parts = [p for p in (addr.city, addr.state) if p]
+    return ", ".join(parts)
+
+
 # Waterfall normalisation mirrors the model's training envelope so every
 # contribution is on a comparable [0, 1] scale (rates/baselines/method risk are
 # already there; ratio and days-since are capped at their DGP maxima).
@@ -113,6 +129,7 @@ async def explain_return_risk(
         payment_method=request.payment_method,
         timestamp=request.timestamp,
         device_fingerprint=request.device_fingerprint,
+        shipping_address=_address_key(request),
     )
 
     waterfall = _build_waterfall(result)
@@ -160,6 +177,7 @@ async def score_return_risk(
         payment_method=request.payment_method,
         timestamp=request.timestamp,
         device_fingerprint=request.device_fingerprint,
+        shipping_address=_address_key(request),
     )
 
     background_tasks.add_task(

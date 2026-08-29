@@ -30,10 +30,10 @@ def _flags(rule_id: str, value: bool) -> dict[str, dict]:
 
 
 class TestRulesEngine:
-    def test_loads_eight_rules(self):
+    def test_loads_nine_rules(self):
         engine = RulesEngine()
         ids = [r.rule_id for r in engine.rules]
-        assert ids == [f"R-RULE-0{i}" for i in range(1, 9)]
+        assert ids == [f"R-RULE-0{i}" for i in range(1, 10)]
         assert all(r.enabled for r in engine.rules)
         assert engine.risk_tiers["HIGH"]["action"] == "REQUIRE_PREPAID"
 

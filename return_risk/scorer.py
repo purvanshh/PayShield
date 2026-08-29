@@ -110,6 +110,11 @@ RULE_BOOST = {
 }
 BOOST_CAP = 0.25
 
+# Abuse-ring sentinel: a shared shipping address + return-velocity spike forces
+# the order to a HIGH floor regardless of the model output (defense-only:
+# REQUIRE_PREPAID, never an autonomous block).
+ABUSE_RING_SCORE_FLOOR = 0.85
+
 
 class ReturnRiskScorer:
     """Combines features, rules and weights into a return-risk assessment."""
@@ -181,6 +186,7 @@ class ReturnRiskScorer:
         payment_method: str = "UPI",  # noqa: ARG002 - API contract parity
         timestamp: datetime | None = None,
         device_fingerprint: str = "",
+        shipping_address: str = "",
     ) -> dict[str, Any]:
         """Score an order for return-risk.
 
@@ -207,6 +213,7 @@ class ReturnRiskScorer:
             timestamp=timestamp,
             payment_method=payment_method,
             device_fingerprint=device_fingerprint,
+            shipping_address=shipping_address,
         )
 
         rules_triggered = self.rules_engine.evaluate(features)
@@ -220,6 +227,14 @@ class ReturnRiskScorer:
             score = model_score
             engine = "xgboost"
             feature_importance = self.xgb_feature_importance
+
+        # Abuse-ring sentinel (R-RULE-09): a shared shipping address combined
+        # with an active return-velocity spike is a coordinated-abuse signal.
+        # The rule raises the score floor so the order is forced into HIGH
+        # review - it never rewrites the model or the weights, only the final
+        # verdict. No-op when the rule is not enabled in config.
+        if any(r.get("action") == "OVERRIDE_SCORE" for r in rules_triggered):
+            score = max(score, ABUSE_RING_SCORE_FLOOR)
 
         risk_tier = self._determine_tier(score)
         recommendations = self._generate_recommendations(risk_tier, rules_triggered, features)

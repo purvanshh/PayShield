@@ -19,6 +19,7 @@ from __future__ import annotations  # PEP 563: forward-referenced FeatureRegistr
 # ruff: noqa: ARG002 -- interface parity: extraction profile mirrors the
 # plan's signature so every caller pipes (user, merchant, txn) consistently.
 import asyncio
+import hashlib
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -78,12 +79,14 @@ class ReturnRiskFeatureEngine:
         timestamp: datetime | None = None,
         payment_method: str = "UPI",
         device_fingerprint: str = "",
+        shipping_address: str = "",
     ) -> dict[str, Any]:
         """Extract user, merchant and transaction features.
 
         Returns ``{feature_name: {"value", "source"}}`` plus ``_meta`` with
-        extraction metadata. ``payment_method`` / ``device_fingerprint`` are
-        optional context used by the ML engine features.
+        extraction metadata. ``payment_method`` / ``device_fingerprint`` /
+        ``shipping_address`` are optional context used by the ML engine
+        features (``shipping_address`` feeds the abuse-ring sentinel).
         """
         timestamp = timestamp or datetime.utcnow()
 
@@ -91,6 +94,8 @@ class ReturnRiskFeatureEngine:
             self._extract_user_features(user_id, timestamp),
             self._extract_merchant_features(merchant_id, category, timestamp),
         )
+
+        shared_address_count = await self._record_address_user(shipping_address, user_id)
 
         txn_features = self._compute_transaction_features(
             category=category,
@@ -101,6 +106,7 @@ class ReturnRiskFeatureEngine:
             user_features=user_features,
             payment_method=payment_method,
             device_fingerprint=device_fingerprint,
+            shared_address_count=shared_address_count,
         )
 
         return {
@@ -278,6 +284,29 @@ class ReturnRiskFeatureEngine:
         """Per-category return prior (registry overrides the built-in table)."""
         return float(self.category_prior.get(category, self.category_prior["default"]))
 
+    async def _record_address_user(self, shipping_address: str, user_id: str) -> int:
+        """Track which users ship to a normalised address; return the count.
+
+        Abuse-ring sentinel: N users shipping to the same address combined with a
+        return-velocity spike (see ``R-RULE-09``) is a coordinated-abuse signal.
+        The set key is a SHA-256 hash of the normalised address, so no PII ever
+        sits in the Redis key. Degrades to 0 (no signal) on any store error.
+        """
+        if not shipping_address or not user_id:
+            return 0
+        try:
+            norm = " ".join(shipping_address.strip().lower().split())
+            if not norm:
+                return 0
+            key = f"address:{hashlib.sha256(norm.encode()).hexdigest()[:24]}:users"
+            await self._safe_redis(self.redis.sadd(key, user_id), default=0)
+            members = await self._safe_redis(self.redis.smembers(key), default=set())
+            if isinstance(members, (set, list, tuple, frozenset)):
+                return len(members)
+            return 0
+        except Exception:  # nosec B112 - store failure degrades to no signal
+            return 0
+
     def _compute_transaction_features(
         self,
         category: str,
@@ -288,6 +317,7 @@ class ReturnRiskFeatureEngine:
         user_features: dict[str, Any] | None = None,
         payment_method: str = "UPI",
         device_fingerprint: str = "",
+        shared_address_count: int = 0,
     ) -> dict[str, Any]:
         user_features = user_features or {}
         # category baseline prefers the merchant's own per-category rate
@@ -345,6 +375,10 @@ class ReturnRiskFeatureEngine:
                 "source": "placeholder" if not device_fingerprint else "no_device_store",
             },
             "txn_days_since_last_order": {"value": round(days_since, 2), "source": "computed"},
+            "txn_shared_address_count": {
+                "value": shared_address_count,
+                "source": "computed" if shared_address_count > 0 else "default",
+            },
         }
 
     async def _count_returns_in_window(self, user_id: str, days: int) -> int:

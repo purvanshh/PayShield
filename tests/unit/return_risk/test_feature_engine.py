@@ -167,3 +167,22 @@ class TestFeatureEngine:
         registry = FeatureRegistry()
         assert registry.composite_weights["user_return_rate_30d"] == 0.25
         assert len(registry.by_kind("merchant")) >= 3
+
+    async def test_shared_address_count_and_pii_free_key(self):
+        features = await self.engine.extract_features(
+            user_id="U_RING_A", merchant_id="M_A", category="fashion",
+            amount=Decimal("1000"), cod_flag=False, timestamp=NOW,
+            shipping_address="560001",
+        )
+        assert features["txn_shared_address_count"]["value"] == 1
+        # The Redis set key must be a hash of the address - never the raw PII.
+        keys = list(self.redis._store.sets.keys())
+        assert any("address:" in k for k in keys)
+        assert not any("560001" in k for k in keys)
+
+    async def test_no_address_means_no_ring_signal(self):
+        features = await self.engine.extract_features(
+            user_id="U_NO_ADDR", merchant_id="M_A", category="fashion",
+            amount=Decimal("1000"), cod_flag=False, timestamp=NOW,
+        )
+        assert features["txn_shared_address_count"]["value"] == 0

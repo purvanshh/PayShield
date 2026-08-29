@@ -74,6 +74,14 @@ rules:
     severity: 1
     enabled: true
 
+  - rule_id: "R-RULE-09"
+    name: "Abuse-Ring Suspicion"
+    description: "Order ships to an address shared by 4+ users while the user shows an active return-velocity spike - coordinated abuse"
+    condition: "int(txn_shared_address_count) > 3 and int(user_return_velocity_7d) > 3"
+    action: "OVERRIDE_SCORE"
+    severity: 5
+    enabled: true
+
 risk_tiers:
   LOW:
     max_score: 0.30

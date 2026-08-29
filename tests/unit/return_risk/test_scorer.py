@@ -259,6 +259,99 @@ class TestReturnRiskScorer:
         assert result["return_risk_score"] >= 0.70
         assert result["user_profile"]["serial_returner"] is True
 
+    async def test_abuse_ring_sentinel_overrides_score_to_high(self):
+        # A ring of 4 users sharing one shipping pincode, each with a 4-return
+        # velocity spike. The model sees a *moderate* user (LOW on its own) but
+        # the shared-address + velocity pattern is coordinated abuse - the
+        # sentinel (R-RULE-09) forces the order to HIGH (defense-only).
+        scorer, redis = _scorer()
+        import time
+
+        for uid in ("U_RING_A", "U_RING_B", "U_RING_C", "U_RING_D"):
+            await redis.hmset(
+                f"return_risk:user:{uid}",
+                {
+                    "total_orders": "6",
+                    "total_returns": "5",
+                    "return_rate_30d": "0.25",
+                    "return_rate_90d": "0.25",
+                    "avg_return_value": "3000",
+                    "cod_refusals": "1",
+                    "cod_orders": "4",
+                },
+            )
+            await redis.zadd(
+                f"return_risk:user:{uid}:returns",
+                {f"ORD_{uid}_{i}": time.time() - (i + 1) * 86400 for i in range(4)},
+            )
+        await redis.hmset("return_risk:merchant:M_RING", {"return_rate_30d": "0.30"})
+        await redis.zadd("return_risk:merchant:M_RING:category", {"fashion": 0.30})
+
+        def _kw(uid, oid, addr):
+            return {
+                "user_id": uid,
+                "merchant_id": "M_RING",
+                "order_id": oid,
+                "amount": Decimal("5000"),
+                "category": "fashion",
+                "cod_flag": False,
+                "payment_method": "UPI",
+                "timestamp": NOW,
+                "shipping_address": addr,
+            }
+
+        # Baseline: D alone on a different address -> shared count == 1, LOW.
+        alone = await scorer.score(**_kw("U_RING_D", "ORD_RING_D", "560002"))
+        assert alone["risk_tier"] == "LOW"
+        assert not any(
+            r["rule_id"] == "R-RULE-09" and r["triggered"] for r in alone["rules_triggered"]
+        )
+
+        # Populate the ring: A, B, C ship to the shared pincode first.
+        for uid in ("U_RING_A", "U_RING_B", "U_RING_C"):
+            await scorer.score(**_kw(uid, f"ORD_{uid}", "560001"))
+
+        # D now ships to the shared address -> count == 4 -> sentinel fires.
+        ringed = await scorer.score(**_kw("U_RING_D", "ORD_RING_D", "560001"))
+        assert any(
+            r["rule_id"] == "R-RULE-09" and r["triggered"] for r in ringed["rules_triggered"]
+        )
+        assert ringed["risk_tier"] == "HIGH"
+        assert ringed["return_risk_score"] >= 0.85
+
+    async def test_shared_address_without_velocity_does_not_trigger(self):
+        # Shared address alone is not enough: the sentinel needs the velocity
+        # spike too, so ordinary co-shipping (family) never false-positives.
+        scorer, redis = _scorer()
+        for uid in ("U_SHIP_A", "U_SHIP_B", "U_SHIP_C", "U_SHIP_D"):
+            await redis.hmset(
+                f"return_risk:user:{uid}",
+                {
+                    "total_orders": "4",
+                    "total_returns": "1",
+                    "return_rate_30d": "0.20",
+                    "return_rate_90d": "0.20",
+                    "cod_refusals": "0",
+                    "cod_orders": "1",
+                },
+            )
+        await redis.hmset("return_risk:merchant:M_RING", {"return_rate_30d": "0.30"})
+        await redis.zadd("return_risk:merchant:M_RING:category", {"fashion": 0.30})
+        for uid in ("U_SHIP_A", "U_SHIP_B", "U_SHIP_C"):
+            await scorer.score(
+                user_id=uid, merchant_id="M_RING", order_id=f"ORD_{uid}",
+                amount=Decimal("3000"), category="fashion", cod_flag=False,
+                payment_method="UPI", timestamp=NOW, shipping_address="560099",
+            )
+        result = await scorer.score(
+            user_id="U_SHIP_D", merchant_id="M_RING", order_id="ORD_U_SHIP_D",
+            amount=Decimal("3000"), category="fashion", cod_flag=False,
+            payment_method="UPI", timestamp=NOW, shipping_address="560099",
+        )
+        assert not any(
+            r["rule_id"] == "R-RULE-09" and r["triggered"] for r in result["rules_triggered"]
+        )
+
 
 class TestScorerHelpers:
     def test_weights_sum_to_one(self):

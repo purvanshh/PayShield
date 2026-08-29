@@ -1,7 +1,9 @@
 """Demo data seeder tests (Phase 22)."""
 
+import asyncio
 import json
 import time
+from decimal import Decimal
 
 from scripts.seed_demo_data import seed_demo_data
 from store.audit_log import AuditLogReader
@@ -24,7 +26,6 @@ class TestDemoDataSeeder:
 
     def test_seeds_velocity_zsets(self):
         seed_demo_data(redis=self.redis, audit_writer=None)
-        now = time.time()
         out = self.redis.zrangebyscore(
             "return_risk:user:U_SERIAL_001:returns", 0, float("inf")
         )
@@ -94,3 +95,37 @@ class TestDemoDataSeeder:
         benford = self.redis.hgetall("benford:M_FASHION_001")
         assert int(benford["total"]) == 101
         assert int(benford["1"]) == 30
+
+    def test_seeded_abuse_ring_triggers_sentinel(self):
+        from return_risk.feature_engine import ReturnRiskFeatureEngine
+        from return_risk.rules_engine import RulesEngine
+        from return_risk.scorer import ReturnRiskScorer
+
+        seed_demo_data(redis=self.redis, audit_writer=None)
+        scorer = ReturnRiskScorer(
+            feature_engine=ReturnRiskFeatureEngine(self.redis),
+            rules_engine=RulesEngine(),
+        )
+
+        async def score_ring(uid):
+            return await scorer.score(
+                user_id=uid,
+                merchant_id="M_FASHION_001",
+                order_id=f"ORD_{uid}",
+                amount=Decimal("5000"),
+                category="fashion",
+                cod_flag=False,
+                payment_method="UPI",
+                shipping_address="560037",
+            )
+
+        # Populate the shared-address set (A, B, C ship to 560037 first).
+        for uid in ("U_RING_001", "U_RING_002", "U_RING_003"):
+            asyncio.run(score_ring(uid))
+        # 4th user on the shared address -> count == 4 -> R-RULE-09 fires.
+        result = asyncio.run(score_ring("U_RING_004"))
+        assert any(
+            r["rule_id"] == "R-RULE-09" and r["triggered"] for r in result["rules_triggered"]
+        )
+        assert result["risk_tier"] == "HIGH"
+        assert result["return_risk_score"] >= 0.85
