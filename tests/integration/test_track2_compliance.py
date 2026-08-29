@@ -82,7 +82,7 @@ class TestTrack2Compliance:
         )
         data = resp.json()
         statuses = {item["name"]: item["status"] for item in data["requirements"]}
-        # Core surfaces that must already be implemented and verified.
+        # All surfaces must now be implemented and verified.
         for core in (
             "Return-Risk Scorer (pre-ship tier)",
             "Fraud-Spike Detector (velocity / geo / device)",
@@ -92,12 +92,9 @@ class TestTrack2Compliance:
             "Feature-Waterfall Explainability (XAI)",
             "Abuse-Ring Sentinel (shared address-hash velocity)",
             "Temporal-Integrity Check (no look-ahead bias)",
-        ):
-            assert statuses.get(core) == "done", f"{core!r} must be marked done"
-        # Planned items must not be misrepresented as done.
-        for planned in (
             "Guided Demo Mode (10-minute tour)",
             "Human-Review Queue UI",
             "Calibration Simulator (drift sliders)",
         ):
-            assert statuses.get(planned) == "planned", f"{planned!r} must be planned"
+            assert statuses.get(core) == "done", f"{core!r} must be marked done"
+        assert not any(item["status"] == "planned" for item in data["requirements"])

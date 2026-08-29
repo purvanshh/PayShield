@@ -148,32 +148,31 @@ TRACK2_REQUIREMENTS = [
     },
     {
         "name": "Guided Demo Mode (10-minute tour)",
-        "status": "planned",
-        "implementation": "dashboard DemoTour page · /v1/meta/demo/guide",
-        "evidence": "execution plan Phase 4",
+        "status": "done",
+        "implementation": "GET /v1/meta/demo/guide + dashboard /demo-tour (auto-navigating stops)",
+        "evidence": "tests/integration/test_track2_compliance.py::TestDemoGuide",
     },
     {
         "name": "Human-Review Queue UI",
-        "status": "planned",
-        "implementation": "dashboard /review-queue · /v1/meta/review-queue",
-        "evidence": "execution plan Phase 5 (optional)",
+        "status": "done",
+        "implementation": "GET/POST /v1/meta/review-queue (audit-chain backed) + dashboard /review-queue",
+        "evidence": "tests/integration/test_review_queue.py",
     },
     {
         "name": "Calibration Simulator (drift sliders)",
-        "status": "planned",
-        "implementation": "POST /v1/return/simulate · dashboard /simulator",
-        "evidence": "execution plan Phase 6 (optional)",
+        "status": "done",
+        "implementation": "POST /v1/return/simulate (basic vs premium model) + dashboard /simulator",
+        "evidence": "tests/integration/test_return_risk_api.py::TestReturnRiskSimulate",
     },
 ]
 
 TRACK2_OVERALL = (
-    "Core Track 2 surfaces implemented and verified — return-risk scoring, "
+    "All 20 Track 2 surfaces implemented and verified — return-risk scoring, "
     "fraud-spike detection, graph intelligence, chargeback response, Razorpay "
     "webhooks, honest FP/FN cost metrics, defense-only posture, audit chain, "
     "drift monitoring, reproducible evidence (10/10 hermetic, 11/11 live), "
-    "feature-waterfall explainability, abuse-ring sentinel, and a temporal-"
-    "integrity check. Three planned enhancements remain: guided demo, review "
-    "queue, calibration simulator."
+    "feature-waterfall explainability, abuse-ring sentinel, temporal-integrity "
+    "check, guided demo tour, human-review queue, and the calibration simulator."
 )
 
 # Guided-demo script for judges. Pages map to real dashboard routes and each
