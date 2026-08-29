@@ -117,7 +117,7 @@ TRACK2_REQUIREMENTS = [
         "evidence": "tests/unit/test_drift.py · test_drift_report.py",
     },
     {
-        "name": "Reproducible Evidence (10/10 hermetic)",
+        "name": "Reproducible Evidence (11/11 hermetic)",
         "status": "done",
         "implementation": "scripts/run_all_scenarios.py --full-verify",
         "evidence": "reports/full_verify_output.txt",
@@ -170,7 +170,7 @@ TRACK2_OVERALL = (
     "All 20 Track 2 surfaces implemented and verified — return-risk scoring, "
     "fraud-spike detection, graph intelligence, chargeback response, Razorpay "
     "webhooks, honest FP/FN cost metrics, defense-only posture, audit chain, "
-    "drift monitoring, reproducible evidence (10/10 hermetic, 11/11 live), "
+    "drift monitoring, reproducible evidence (11/11 hermetic, 11/11 live), "
     "feature-waterfall explainability, abuse-ring sentinel, temporal-integrity "
     "check, guided demo tour, human-review queue, and the calibration simulator."
 )
@@ -231,7 +231,7 @@ DEMO_GUIDE = {
             "page": "/track2-compliance",
             "description": (
                 "Every Track 2 requirement mapped to its implementation and its proof — "
-                "17/20 verified, backed by --full-verify (11/11) and the live Docker stack (11/11)."
+                "20/20 verified, backed by --full-verify (11/11) and the live Docker stack (11/11)."
             ),
             "action": "Review the requirement map and the evidence references.",
         },
