@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "Where can I see the drift / agent health?",
-    a: "Both are in the sidebar under Operations: Drift Monitor streams PSI across the feature surface, and Agents shows the four live orchestration agents.",
+    a: "Drift Monitor streams PSI across the feature surface; the four orchestration agents run in the background (heartbeats via GET /admin/agents/health) and do not affect the evaluated model metrics.",
   },
 ];
 

@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { useAuthStore } from "./store/authStore";
-import { AgentsPage } from "./pages/AgentsPage";
+// import { AgentsPage } from "./pages/AgentsPage"; // page removed from the dashboard (Option C: agents run in background)
 import { ChargebackPage } from "./pages/ChargebackPage";
 import { CostModelPage } from "./pages/CostModelPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -59,7 +59,7 @@ function App() {
             <Route path="/cost-model" element={<CostModelPage />} />
             <Route path="/drift" element={<DriftPage />} />
             <Route path="/experiments" element={<ExperimentsPage />} />
-            <Route path="/agents" element={<AgentsPage />} />
+            {/* <Route path="/agents" element={<AgentsPage />} /> page removed — worker runs in background */}
             <Route path="/track2-compliance" element={<Track2CompliancePage />} />
             <Route path="/demo-tour" element={<DemoTourPage />} />
             <Route path="/review-queue" element={<ReviewQueuePage />} />

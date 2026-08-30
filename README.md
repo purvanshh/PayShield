@@ -211,12 +211,11 @@ starts **api + redis + dashboard + agent worker**:
 
 - **API** — `http://localhost:8000` (FastAPI, return-risk hero surface)
 - **Dashboard** — `http://localhost:3000` (SPA: Return Risk, Cost Model, Drift,
-  A/B Experiments, Review Queue, Simulator, Track 2 Compliance, Agents, plus a
-  guided demo tour; login `admin` / `admin`)
+  A/B Experiments, Review Queue, Simulator, Track 2 Compliance, plus a guided
+  demo tour; login `admin` / `admin`)
 - **Agent worker** — runs the four live agents (transaction, profile,
   reflection, human-review) against real scored orders from the audit chain,
-  renewing Redis heartbeats every 20s. See the dashboard **Agents** page or
-  `GET /admin/agents/health`.
+  renewing Redis heartbeats every 20s. See `GET /admin/agents/health`.
 
 Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
 (11 curated checks against real Redis — see ["Live verification"](#live-verification)).
@@ -301,8 +300,8 @@ is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
 owns the lifecycle:
 
 - a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
-  (TTL 60s) so the dashboard **Agents** page and `GET /admin/agents/health`
-  report live `RUNNING` status (<30s staleness rule)
+  (TTL 60s) so `GET /admin/agents/health`
+  reports live `RUNNING` status (<30s staleness rule)
 - a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
   into the transaction + profile agents every 15s
 - a **reflection loop** triggers the reflection agent over the last 24h every
