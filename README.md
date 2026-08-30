@@ -278,7 +278,8 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 ### For judges (30-second version)
 
 - **[`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md)** — the one-number story, the three surfaces, and how to verify in 60 seconds.
-- **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof (20/20 verified).
+- **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof (16/16 return-risk requirements verified).
+- **[`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md)** — every Track 2 requirement checked ✅ with its `file:line` proof.
 - **Dashboard** — log in at `http://localhost:3000` (`admin` / `admin`): **Start Demo** for the guided 10-minute tour, plus the Track 2 Compliance, Review Queue and Calibration Simulator pages.
 
 ---
@@ -387,6 +388,7 @@ designed to support future certification, not to claim it — see
 | **Interview defense** | [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) |
 | **Why synthetic (sources + sensitivity)** | [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md) |
 | **Real-data roadmap (3 phases)** | [`docs/REAL_DATA_ROADMAP.md`](docs/REAL_DATA_ROADMAP.md) |
+| **Submission checklist (requirement → proof)** | [`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) |
 
 ---
 
