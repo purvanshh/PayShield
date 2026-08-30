@@ -62,24 +62,9 @@ TRACK2_REQUIREMENTS = [
         "implementation": "return_risk/rules_engine.py · configs/return_risk_rules.yaml",
         "evidence": "tests/unit/return_risk/test_rules_engine.py",
     },
-    {
-        "name": "Fraud-Spike Detector (velocity / geo / device)",
-        "status": "done",
-        "implementation": "engine/statistical_filter.py over Redis velocity:*",
-        "evidence": "tests/unit/test_statistical_filter.py · verify_live_stack.py (burst→BLOCK)",
-    },
-    {
-        "name": "Graph / Network Intelligence (L2)",
-        "status": "done",
-        "implementation": "engine/graph_loader.py · engine/graph_feature_engine.py · engine/ensemble.py",
-        "evidence": "tests/integration/test_graph_integration.py · tests/unit/test_ensemble.py",
-    },
-    {
-        "name": "Chargeback Evidence Responder",
-        "status": "done",
-        "implementation": "chargeback/evidence_collector.py · chargeback/rebuttal_builder.py",
-        "evidence": "tests/unit/chargeback/test_rebuttal_builder.py · test_evidence_collector.py",
-    },
+    # Fraud (engine/statistical_filter.py, engine/graph_loader.py, ...) and
+    # chargeback (chargeback/*) are out-of-scope extensions for Track 2 — they
+    # remain in the codebase but are not Track 2 requirements.
     {
         "name": "Signed Razorpay Webhooks (HMAC, 400 on bad signature)",
         "status": "done",
@@ -103,12 +88,6 @@ TRACK2_REQUIREMENTS = [
         "status": "done",
         "implementation": "store/audit_log.py (hash-chained JSONL)",
         "evidence": "tests/unit/chargeback/test_audit_log_reader.py · test_security_hardening.py",
-    },
-    {
-        "name": "Human-in-the-Loop Chargeback Submit (chargeback:admin)",
-        "status": "done",
-        "implementation": "api/routes/chargeback.py · configs/rbac.yaml",
-        "evidence": "tests/integration/test_chargeback_api.py (RBAC)",
     },
     {
         "name": "Drift Monitoring (PSI 43.4 → 3.86)",
@@ -167,12 +146,13 @@ TRACK2_REQUIREMENTS = [
 ]
 
 TRACK2_OVERALL = (
-    "All 20 Track 2 surfaces implemented and verified — return-risk scoring, "
-    "fraud-spike detection, graph intelligence, chargeback response, Razorpay "
+    "All 16 Track 2 return-risk surfaces implemented and verified — pre-ship "
+    "scoring, Redis feature engine, config-driven rules, signed Razorpay "
     "webhooks, honest FP/FN cost metrics, defense-only posture, audit chain, "
     "drift monitoring, reproducible evidence (11/11 hermetic, 11/11 live), "
     "feature-waterfall explainability, abuse-ring sentinel, temporal-integrity "
-    "check, guided demo tour, human-review queue, and the calibration simulator."
+    "check, guided demo tour, human-review queue, and the calibration "
+    "simulator. Fraud and chargeback extensions are out of scope for this track."
 )
 
 # Guided-demo script for judges. Pages map to real dashboard routes and each
@@ -216,12 +196,12 @@ DEMO_GUIDE = {
         },
         {
             "minute": "7-8",
-            "title": "Abuse-Ring & Fraud",
-            "page": "/fraud",
+            "title": "Abuse-Ring Sentinel",
+            "page": "/return-risk",
             "description": (
                 "A shared shipping address plus a return-velocity spike trips the abuse-ring "
-                "sentinel (R-RULE-09) to HIGH even when the model rates the user LOW; the fraud "
-                "path fuses L1 velocity/geo rules with L2 graph intelligence."
+                "sentinel (R-RULE-09) to HIGH even when the model rates the user LOW — "
+                "coordinated-abuse detection on the return-risk surface."
             ),
             "action": "Score the seeded U_RING_00x profiles with shipping pincode 560037.",
         },

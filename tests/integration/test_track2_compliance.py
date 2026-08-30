@@ -63,7 +63,7 @@ class TestTrack2Compliance:
         data = resp.json()
         assert data["overall"]
         assert isinstance(data["requirements"], list)
-        assert len(data["requirements"]) >= 14
+        assert len(data["requirements"]) == 16  # return-risk only
 
     async def test_every_item_is_well_formed(self, client):
         resp = await client.get(
@@ -82,11 +82,11 @@ class TestTrack2Compliance:
         )
         data = resp.json()
         statuses = {item["name"]: item["status"] for item in data["requirements"]}
-        # All surfaces must now be implemented and verified.
+        # All return-risk surfaces must be implemented and verified.
         for core in (
             "Return-Risk Scorer (pre-ship tier)",
-            "Fraud-Spike Detector (velocity / geo / device)",
-            "Chargeback Evidence Responder",
+            "Redis Feature Engine (user history, not placeholders)",
+            "Config-Driven Rules Engine",
             "Signed Razorpay Webhooks (HMAC, 400 on bad signature)",
             "Live-Stack Verification (11/11)",
             "Feature-Waterfall Explainability (XAI)",
@@ -97,4 +97,12 @@ class TestTrack2Compliance:
             "Calibration Simulator (drift sliders)",
         ):
             assert statuses.get(core) == "done", f"{core!r} must be marked done"
+        # Fraud / chargeback are out-of-scope extensions, not Track 2 items.
+        for out_of_scope in (
+            "Fraud-Spike Detector (velocity / geo / device)",
+            "Graph / Network Intelligence (L2)",
+            "Chargeback Evidence Responder",
+            "Human-in-the-Loop Chargeback Submit (chargeback:admin)",
+        ):
+            assert out_of_scope not in statuses, f"{out_of_scope!r} must not be listed"
         assert not any(item["status"] == "planned" for item in data["requirements"])
