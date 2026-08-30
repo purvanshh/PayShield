@@ -186,3 +186,43 @@ class TestFeatureEngine:
             amount=Decimal("1000"), cod_flag=False, timestamp=NOW,
         )
         assert features["txn_shared_address_count"]["value"] == 0
+
+    async def test_extreme_aov_ratio_is_clamped_to_envelope(self):
+        # A ₹1.2L order on a ₹15k-AOV user -> raw ratio 8.0. The model was
+        # trained with the ratio clamped to [0.15, 4.0], so the live scorer
+        # must clamp too (regression: silently-OOD at inference).
+        await self.redis.hmset(
+            "return_risk:user:U_RICH_AOV",
+            {
+                "total_orders": "10",
+                "total_returns": "2",
+                "return_rate_30d": "0.1",
+                "return_rate_90d": "0.1",
+                "avg_order_value": "15000",
+                "avg_return_value": "5000",
+            },
+        )
+        features = await self.engine.extract_features(
+            user_id="U_RICH_AOV", merchant_id="M_A", category="fashion",
+            amount=Decimal("120000"), cod_flag=False, timestamp=NOW,
+        )
+        assert features["txn_amount_vs_user_aov_ratio"]["value"] == 4.0
+
+    async def test_tiny_aov_ratio_is_clamped_to_floor(self):
+        # A ₹100 order on a ₹1L-AOV user -> raw 0.001, clamped to the floor 0.15.
+        await self.redis.hmset(
+            "return_risk:user:U_LOW_AOV",
+            {
+                "total_orders": "5",
+                "total_returns": "1",
+                "return_rate_30d": "0.1",
+                "return_rate_90d": "0.1",
+                "avg_order_value": "100000",
+                "avg_return_value": "1000",
+            },
+        )
+        features = await self.engine.extract_features(
+            user_id="U_LOW_AOV", merchant_id="M_A", category="fashion",
+            amount=Decimal("100"), cod_flag=False, timestamp=NOW,
+        )
+        assert features["txn_amount_vs_user_aov_ratio"]["value"] == 0.15

@@ -352,6 +352,41 @@ class TestReturnRiskScorer:
             r["rule_id"] == "R-RULE-09" and r["triggered"] for r in result["rules_triggered"]
         )
 
+    async def test_extreme_aov_order_scores_sane(self):
+        # A ₹1.2L order on a ₹15k-AOV user: the raw amount_vs_user_aov_ratio of
+        # 8.0 must be clamped to 4.0 (the model's training ceiling) so the
+        # XGBoost input stays in-distribution and the score is a valid [0,1]
+        # probability - never NaN and never a spurious tier from an OOD 8.0.
+        scorer, redis = _scorer()
+        await redis.hmset(
+            "return_risk:user:U_EXTREME",
+            {
+                "total_orders": "10",
+                "total_returns": "3",
+                "return_rate_30d": "0.20",
+                "return_rate_90d": "0.20",
+                "avg_order_value": "15000",
+                "avg_return_value": "5000",
+                "cod_refusals": "0",
+                "cod_orders": "2",
+            },
+        )
+        await redis.hmset("return_risk:merchant:M_EXT", {"return_rate_30d": "0.30"})
+        await redis.zadd("return_risk:merchant:M_EXT:category", {"fashion": 0.30})
+        result = await scorer.score(
+            user_id="U_EXTREME",
+            merchant_id="M_EXT",
+            order_id="ORD_EXTREME",
+            amount=Decimal("120000"),
+            category="fashion",
+            cod_flag=False,
+            payment_method="UPI",
+            timestamp=NOW,
+        )
+        assert result["xgb_features"]["amount_vs_user_aov_ratio"] == 4.0
+        assert 0 <= result["return_risk_score"] <= 1
+        assert result["return_risk_score"] == result["return_risk_score"]  # not NaN
+
 
 class TestScorerHelpers:
     def test_weights_sum_to_one(self):

@@ -46,6 +46,14 @@ AMOUNT_SATURATION_INR = 50_000.0  # log-amount normalisation saturates at ₹50k
 POPULATION_AOV = 74_500.0  # Amazon India 2025 AOV fallback for amount-vs-AOV ratio
 DEFAULT_DAYS_SINCE_LAST_ORDER = 60  # new-user default for days-since-last-order
 
+# amount_vs_user_aov_ratio training envelope — mirrors the DGP's clamp
+# (data/synthetic/return_risk_generator._clamp(exp(N(0,0.5)), 0.15, 4.0)) and
+# the simulator's clamp. Keeping the live scorer inside the same envelope
+# means extreme orders (e.g. a ₹1.2L order on a ₹15k-AOV user -> raw 8.0) never
+# push the XGBoost input out of distribution.
+AMOUNT_VS_AOV_RATIO_MIN = 0.15
+AMOUNT_VS_AOV_RATIO_MAX = 4.0
+
 # Payment-method return-risk, matching data/synthetic/return_risk_generator.
 PAYMENT_METHOD_RISK = {
     "UPI": 0.20,
@@ -334,9 +342,12 @@ class ReturnRiskFeatureEngine:
         time_risk = 0.3 if hour >= 23 or hour <= 5 else 0.0
 
         # ---- ML-engine features (consumed by the XGBoost scorer) ----
-        # amount_vs_user_aov_ratio: order value relative to the user's AOV.
+        # amount_vs_user_aov_ratio: order value relative to the user's AOV,
+        # clamped to the model's training envelope so the live scorer is never
+        # out-of-distribution on extreme orders.
         user_aov = float(user_features.get("user_avg_order_value", {}).get("value", POPULATION_AOV)) or POPULATION_AOV
         amount_vs_aov = float(amount) / user_aov if user_aov else 0.0
+        amount_vs_aov = min(AMOUNT_VS_AOV_RATIO_MAX, max(AMOUNT_VS_AOV_RATIO_MIN, amount_vs_aov))
 
         # payment_method_risk: COD (no money at checkout) is highest risk.
         effective_method = "COD" if cod_flag else (payment_method or "UPI").upper()
