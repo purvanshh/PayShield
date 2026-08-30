@@ -23,6 +23,15 @@ instrumentation. The model architecture, split and evaluation protocol are
 | **Stage 2: Enriched** | rating + delivery observed | 9 | **0.8834** | **0.9198** | ₹44.7L | ₹21.4L |
 | **Stage 3: Premium** | mature instrumentation, low noise | 9 | **0.9497** | **0.9612** | **₹53.5L** | **₹26.0L** |
 
+> **Why synthetic?** We evaluated public return-risk datasets (UK 2021, etc.)
+> and found severe distribution mismatch with Indian e-commerce — COD
+> prevalence, different logistics infrastructure, and divergent return reasons.
+> Rather than train on mismatched real data, we built a calibrated simulator
+> with hidden confounders the model never observes, validated against published
+> Indian industry distributions. See [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md)
+> for sources and sensitivity analysis, and [`docs/REAL_DATA_ROADMAP.md`](docs/REAL_DATA_ROADMAP.md)
+> for the path to real orders.
+
 > These three scenarios mirror merchant data-maturity stages common in Indian
 > e-commerce. Stage 1 is the conservative baseline; Stage 3 represents a premium
 > merchant with mature instrumentation. ROC-AUC is **measured** (`roc_auc_score`),
@@ -389,6 +398,8 @@ designed to support future certification, not to claim it — see
 | **Full API reference** | [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) |
 | **Full architecture** | [`docs/TRACK2_ARCHITECTURE.md`](docs/TRACK2_ARCHITECTURE.md) |
 | **Interview defense** | [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) |
+| **Why synthetic (sources + sensitivity)** | [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md) |
+| **Real-data roadmap (3 phases)** | [`docs/REAL_DATA_ROADMAP.md`](docs/REAL_DATA_ROADMAP.md) |
 
 ---
 

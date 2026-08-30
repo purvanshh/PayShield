@@ -36,9 +36,11 @@
 
 1. [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) — 10-minute walkthrough of the core evidence.
 2. [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md) — the ₹17.4L → ₹53.5L business case, cost math.
-3. [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md) — six mistakes + prevented ones,
+3. [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md) — *why synthetic*: rejected public datasets, calibration sources, sensitivity knobs.
+4. [`docs/REAL_DATA_ROADMAP.md`](docs/REAL_DATA_ROADMAP.md) — the honest path to real orders (pilot → recalibration).
+5. [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md) — six mistakes + prevented ones,
    and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md) for the debugging stories.
-4. [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) — prepared answers to the hard questions.
+6. [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) — prepared answers to the hard questions.
 
 ## Why This Wins Track 2
 
