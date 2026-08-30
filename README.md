@@ -8,9 +8,11 @@ order before it ships — LOW / MEDIUM / HIGH → ship / review / prepaid-only.
 
 **Reproduce everything:** `python scripts/run_all_scenarios.py --full-verify`
 
-**For evaluators:** Start with [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) —
-10-minute walkthrough. Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
-Honest ledger: [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
+**For evaluators:** [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) — 10-minute walkthrough.
+**For judges:** [`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md) — 30-second summary, or
+[`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) — every requirement mapped to proof.
+Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md). Honest ledger:
+[`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
 **The numbers — Progressive Merchant Maturity:**
 
