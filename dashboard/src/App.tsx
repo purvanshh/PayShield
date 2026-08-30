@@ -49,9 +49,12 @@ function App() {
         <Route element={<ProtectedArea />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<Navigate to="/return-risk" replace />} />
-            <Route path="/fraud" element={<DashboardPage />} />
+            {/* Track 2 is return-risk. Fraud/chargeback routes are kept in
+                code but commented out of the primary surface (still reachable
+                by URL via the catch-all redirect to /return-risk). */}
+            {/* <Route path="/fraud" element={<DashboardPage />} /> */}
+            {/* <Route path="/chargeback" element={<ChargebackPage />} /> */}
             <Route path="/return-risk" element={<ReturnRiskPage />} />
-            <Route path="/chargeback" element={<ChargebackPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/cost-model" element={<CostModelPage />} />
             <Route path="/drift" element={<DriftPage />} />

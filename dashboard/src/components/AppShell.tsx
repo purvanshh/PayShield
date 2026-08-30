@@ -5,10 +5,12 @@ import { ReturnRiskFormModal } from "./ReturnRiskFormModal";
 import { NotificationsButton } from "./Notifications";
 import { useAuthStore } from "../store/authStore";
 
+// Track 2 is return-risk. Fraud and chargeback are out-of-scope extensions:
+// their routes stay reachable by URL but are hidden from the primary nav.
 const SECTION_LINKS = [
   { to: "/return-risk", label: "Return Risk", end: false },
-  { to: "/fraud", label: "Fraud", end: false },
-  { to: "/chargeback", label: "Chargeback", end: false },
+  // { to: "/fraud", label: "Fraud", end: false },
+  // { to: "/chargeback", label: "Chargeback", end: false },
 ];
 
 const OPERATIONS = [

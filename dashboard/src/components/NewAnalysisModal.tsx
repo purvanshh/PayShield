@@ -7,13 +7,14 @@ interface NewAnalysisModalProps {
 }
 
 const WORKFLOWS = [
-  {
-    key: "fraud",
-    title: "Fraud Transaction",
-    description: "Score a live transaction across velocity, geo and device vectors.",
-    icon: "gpp_maybe",
-    to: "/fraud",
-  },
+  // Fraud and chargeback are out-of-scope extensions (Track 2 = return-risk).
+  // {
+  //   key: "fraud",
+  //   title: "Fraud Transaction",
+  //   description: "Score a live transaction across velocity, geo and device vectors.",
+  //   icon: "gpp_maybe",
+  //   to: "/fraud",
+  // },
   {
     key: "return-risk",
     title: "Return Risk Order",
@@ -21,13 +22,13 @@ const WORKFLOWS = [
     icon: "receipt_long",
     to: "/return-risk",
   },
-  {
-    key: "chargeback",
-    title: "Chargeback Dispute",
-    description: "Compile evidence and build a merchant rebuttal.",
-    icon: "shield",
-    to: "/chargeback",
-  },
+  // {
+  //   key: "chargeback",
+  //   title: "Chargeback Dispute",
+  //   description: "Compile evidence and build a merchant rebuttal.",
+  //   icon: "shield",
+  //   to: "/chargeback",
+  // },
 ];
 
 export function NewAnalysisModal({ open, onClose, onStartReturnRisk }: NewAnalysisModalProps) {
