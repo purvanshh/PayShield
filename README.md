@@ -1,9 +1,12 @@
 # PayShield: Return-Risk Scorer for Indian E-Commerce
 
-**One-sentence:** PayShield scores every order *before it ships*, catches
-high-risk returns at high precision, and saves a fashion merchant **₹17.0
-lakh/month** on 10,000 orders (Stage 1) — up to **₹53.6 lakh/month** for a
-premium electronics merchant (Stage 3).
+**The number:** saves a fashion merchant **₹17.4L/month** at the Stage 1 review
+gate — up to **₹53.5L/month** for premium electronics (Stage 3).
+
+**The model:** a 7-feature **XGBoost return-risk scorer** that scores every
+order before it ships — LOW / MEDIUM / HIGH → ship / review / prepaid-only.
+
+**Reproduce everything:** `python scripts/run_all_scenarios.py --full-verify`
 
 **For evaluators:** Start with [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) —
 10-minute walkthrough. Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
@@ -25,12 +28,10 @@ instrumentation. The model architecture, split and evaluation protocol are
 
 > **Why synthetic?** We evaluated public return-risk datasets (UK 2021, etc.)
 > and found severe distribution mismatch with Indian e-commerce — COD
-> prevalence, different logistics infrastructure, and divergent return reasons.
-> Rather than train on mismatched real data, we built a calibrated simulator
-> with hidden confounders the model never observes, validated against published
-> Indian industry distributions. See [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md)
-> for sources and sensitivity analysis, and [`docs/REAL_DATA_ROADMAP.md`](docs/REAL_DATA_ROADMAP.md)
-> for the path to real orders.
+> prevalence, different logistics, divergent return reasons. Rather than train
+> on mismatched real data, we built a calibrated simulator with hidden
+> confounders, validated against published Indian industry distributions. See
+> [`docs/SIMULATOR_VALIDATION.md`](docs/SIMULATOR_VALIDATION.md).
 
 > These three scenarios mirror merchant data-maturity stages common in Indian
 > e-commerce. Stage 1 is the conservative baseline; Stage 3 represents a premium
@@ -206,19 +207,9 @@ dashboard consistency, ablation baseline, temporal integrity):
 python scripts/run_all_scenarios.py --full-verify     # prints PASS/FAIL per check
 ```
 
-Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`
-starts **api + redis + dashboard + agent worker**:
-
-- **API** — `http://localhost:8000` (FastAPI, return-risk hero surface)
-- **Dashboard** — `http://localhost:3000` (SPA: Return Risk, Cost Model, Drift,
-  A/B Experiments, Review Queue, Simulator, Track 2 Compliance, plus a guided
-  demo tour; login `admin` / `admin`)
-- **Agent worker** — runs the four live agents (transaction, profile,
-  reflection, human-review) against real scored orders from the audit chain,
-  renewing Redis heartbeats every 20s. See `GET /admin/agents/health`.
-
-Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
-(11 curated checks against real Redis — see ["Live verification"](#live-verification)).
+Live stack (needs Docker) and the 11-check live verification — see
+["Live verification"](#live-verification) and the
+[`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md).
 
 ---
 
@@ -292,42 +283,6 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 
 ---
 
-## Agent Orchestration (operational scaffolding)
-
-The stack runs an **agent worker** (`python -m agents.worker`) that keeps four
-live agents operating on real scored orders — not mock scaffolding. Each agent
-is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
-owns the lifecycle:
-
-- a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
-  (TTL 60s) so `GET /admin/agents/health`
-  reports live `RUNNING` status (<30s staleness rule)
-- a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
-  into the transaction + profile agents every 15s
-- a **reflection loop** triggers the reflection agent over the last 24h every
-  5 minutes
-
-| Agent | Type | What it does |
-|---|---|---|
-| `transaction_agent` | TRANSACTION | Analyzes each scored order — order velocity, COD exposure, amount-vs-category risk, live merchant return rate from Redis — emits `TXN_ANALYSIS_RESULT` with evidence |
-| `profile_agent` | PROFILE | Builds per-user return-risk profiles (order count, avg amount, COD share, avg score) and broadcasts `PROFILE_ANOMALY` when a user's recent behavior drifts from their own history |
-| `reflection_agent` | REFLECTION | Reflects over the return-risk audit chain (tier skew, score drift, merchant concentration, new-user bias) using the deterministic risk-suite analysis; routes recommendations to human-review |
-| `human_review_agent` | HUMAN_REVIEW | Handles analyst feedback + escalations; feeds accuracy signals back to reflection |
-
-The agent framework (`agents/base.py`, `agents/message.py`, `agents/state.py`)
-was restored from the pre-scope history and **rewired to the return-risk
-surface** — the original fraud/LLM agents were deleted in the repo scoping
-commit, leaving the UI and health endpoint as scaffolding with nothing behind
-them. The worker is a first-class compose service (`docker-compose.yml` →
-`worker`).
-
-> **Agents are operational scaffolding on the audit chain; they do not affect
-> the evaluated model metrics.** Every headline number in this README is
-> measured from the model and cost pipeline above — the agents analyze scored
-> orders and report heartbeats, they never change a score.
-
----
-
 ## What I'd Do Next
 
 1. **Retrain XGBoost on the enriched feature pipeline.** The current model is
@@ -360,6 +315,39 @@ them. The worker is a first-class compose service (`docker-compose.yml` →
 3. **`device_fingerprint_match` is a neutral 0.5 at inference** — the
    return-risk module keeps no device store, so the model leans on the other
    six features at inference time.
+
+---
+
+## Agent Orchestration (operational scaffolding)
+
+> **Agents monitor the audit chain; they do not affect evaluated model metrics.**
+
+The stack runs an **agent worker** (`python -m agents.worker`) that keeps four
+live agents operating on real scored orders — not mock scaffolding. Each agent
+is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
+owns the lifecycle:
+
+- a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
+  (TTL 60s) so `GET /admin/agents/health`
+  reports live `RUNNING` status (<30s staleness rule)
+- a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
+  into the transaction + profile agents every 15s
+- a **reflection loop** triggers the reflection agent over the last 24h every
+  5 minutes
+
+| Agent | Type | What it does |
+|---|---|---|
+| `transaction_agent` | TRANSACTION | Analyzes each scored order — order velocity, COD exposure, amount-vs-category risk, live merchant return rate from Redis — emits `TXN_ANALYSIS_RESULT` with evidence |
+| `profile_agent` | PROFILE | Builds per-user return-risk profiles (order count, avg amount, COD share, avg score) and broadcasts `PROFILE_ANOMALY` when a user's recent behavior drifts from their own history |
+| `reflection_agent` | REFLECTION | Reflects over the return-risk audit chain (tier skew, score drift, merchant concentration, new-user bias) using the deterministic risk-suite analysis; routes recommendations to human-review |
+| `human_review_agent` | HUMAN_REVIEW | Handles analyst feedback + escalations; feeds accuracy signals back to reflection |
+
+The agent framework (`agents/base.py`, `agents/message.py`, `agents/state.py`)
+was restored from the pre-scope history and **rewired to the return-risk
+surface** — the original fraud/LLM agents were deleted in the repo scoping
+commit, leaving the UI and health endpoint as scaffolding with nothing behind
+them. The worker is a first-class compose service (`docker-compose.yml` →
+`worker`).
 
 ---
 
