@@ -16,7 +16,7 @@ session can pick up without re-deriving context.
 | Hermetic ML verification | **11/11 PASS** | `python scripts/run_all_scenarios.py --full-verify` → `ALL CHECKS PASS` (now incl. temporal-integrity check) |
 | Live Docker stack | **11/11 PASS** | `seed_demo_data.py` + `verify_live_stack.py` |
 | Test suite | **495 passed, 1 skipped** | `pytest tests/` (47 modules) |
-| Track 2 compliance map | **20/20 verified** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` |
+| Track 2 compliance map | **16/16 return-risk requirements verified** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` (fraud/chargeback are out of scope) |
 | Business case | **₹17.4L → ₹53.5L/month** | `docs/cost_model/calculator.py --all-maturity` |
 | Explainability | **XGBoost waterfall live** | `POST /v1/return/explain` + dashboard Model Waterfall |
 | Abuse-ring sentinel | **live + seeded demo ring** | score `U_RING_00x` w/ pincode `560037` → ring caught at HIGH 0.85 |
@@ -104,7 +104,7 @@ python scripts/verify_live_stack.py                   # 11/11 PASS
 # Tests
 pytest tests/                                         # 495 passed, 1 skipped
 
-# Compliance endpoint (20/20 verified)
+# Compliance endpoint (16/16 return-risk verified)
 curl -s -X GET http://localhost:8000/v1/meta/track2-compliance \
   -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20 (all done)
 
@@ -149,7 +149,7 @@ curl -s http://localhost:8000/v1/meta/demo/guide -H "X-API-Key: payshield-dev-ke
 | `4d1b3b2` `feat(dashboard): add calibration simulator page` | `/simulator` sliders + Basic/Premium toggle with live debounced scoring, score/tier and the feature vector rendered live. Sidebar link added |
 | `5e02733` `feat(api): mark guided demo, review queue and simulator verified in the compliance map` | Compliance map now **20/20 verified**; test asserts no requirement is left planned |
 
-**Live verification (Docker stack):** review queue lists the latest MEDIUM decisions and a mark reflects immediately; simulator returns 7 vs 9 features for basic/premium; demo guide serves 5 stops; `verify_live_stack.py` → 11/11; compliance → 20/20.
+**Live verification (Docker stack):** review queue lists the latest MEDIUM decisions and a mark reflects immediately; simulator returns 7 vs 9 features for basic/premium; demo guide serves 5 stops; `verify_live_stack.py` → 11/11; compliance → 16/16.
 
 ---
 

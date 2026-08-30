@@ -1,9 +1,9 @@
 # Evaluator Guide — 10-Minute Walkthrough
 
-**Start here.** PayShield is a return-risk scorer for Indian e-commerce (with
-chargeback and fraud extensions on the same audit chain). This guide gets you
-to the core evidence in 10 minutes. All reproduction commands are hermetic
-(no Docker required) unless noted.
+**Start here.** PayShield is a return-risk scorer for Indian e-commerce (the
+fraud and chargeback extensions in the repo are out of scope for this track).
+This guide gets you to the core evidence in 10 minutes. All reproduction
+commands are hermetic (no Docker required) unless noted.
 
 ## Minute 1–2: The Business Case
 - Open [`docs/COST_MODEL.md`](docs/COST_MODEL.md)
@@ -33,7 +33,7 @@ to the core evidence in 10 minutes. All reproduction commands are hermetic
 - Run (needs Docker): `docker compose -f docker/docker-compose.yml up` then
   `python scripts/seed_demo_data.py` then `python scripts/verify_live_stack.py`
 - See: the eleven curated live checks (serial returner → HIGH, honest → LOW,
-  chargeback response, webhook signatures, drift) against real Redis.
+  webhook signatures, drift) against real Redis.
 - For the judge-facing narrative, hit **Start Demo** in the dashboard
   (`http://localhost:3000`) for the guided 10-minute tour, or open
   [`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md) for the

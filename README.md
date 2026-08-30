@@ -168,37 +168,6 @@ priors, honestly labelled) while a full-history profile reaches ~97%.
 
 ---
 
-## Agent Orchestration
-
-The stack runs an **agent worker** (`python -m agents.worker`) that keeps four
-live agents operating on real scored orders — not mock scaffolding. Each agent
-is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
-owns the lifecycle:
-
-- a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
-  (TTL 60s) so the dashboard **Agents** page and `GET /admin/agents/health`
-  report live `RUNNING` status (<30s staleness rule)
-- a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
-  into the transaction + profile agents every 15s
-- a **reflection loop** triggers the reflection agent over the last 24h every
-  5 minutes
-
-| Agent | Type | What it does |
-|---|---|---|
-| `transaction_agent` | TRANSACTION | Analyzes each scored order — order velocity, COD exposure, amount-vs-category risk, live merchant return rate from Redis — emits `TXN_ANALYSIS_RESULT` with evidence |
-| `profile_agent` | PROFILE | Builds per-user return-risk profiles (order count, avg amount, COD share, avg score) and broadcasts `PROFILE_ANOMALY` when a user's recent behavior drifts from their own history |
-| `reflection_agent` | REFLECTION | Reflects over the return-risk + chargeback audit chain (tier skew, score drift, merchant concentration, new-user bias) using the deterministic risk-suite analysis; routes recommendations to human-review |
-| `human_review_agent` | HUMAN_REVIEW | Handles analyst feedback + escalations; feeds accuracy signals back to reflection |
-
-The agent framework (`agents/base.py`, `agents/message.py`, `agents/state.py`)
-was restored from the pre-scope history and **rewired to the return-risk
-surface** — the original fraud/LLM agents were deleted in the repo scoping
-commit, leaving the UI and health endpoint as scaffolding with nothing behind
-them. The worker is a first-class compose service (`docker-compose.yml` →
-`worker`).
-
----
-
 ## Run It
 
 **Prerequisites.** Python **3.11** (the Docker base and the canonical verify
@@ -220,9 +189,9 @@ python docs/cost_model/calculator.py         # the numbers in ₹
 python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate breaks
 ```
 
-One-shot interview-defense gate (10 checks: base-generator integrity,
+One-shot interview-defense gate (11 checks: base-generator integrity,
 byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc &
-dashboard consistency, ablation baseline):
+dashboard consistency, ablation baseline, temporal integrity):
 
 ```bash
 python scripts/run_all_scenarios.py --full-verify     # prints PASS/FAIL per check
@@ -232,15 +201,16 @@ Live stack (needs Docker): `docker compose -f docker/docker-compose.yml up`
 starts **api + redis + dashboard + agent worker**:
 
 - **API** — `http://localhost:8000` (FastAPI, return-risk hero surface)
-- **Dashboard** — `http://localhost:3000` (SPA: Return Risk, Fraud, Chargeback,
-  Cost Model, Drift, A/B Experiments, Agents; login `admin` / `admin`)
+- **Dashboard** — `http://localhost:3000` (SPA: Return Risk, Cost Model, Drift,
+  A/B Experiments, Review Queue, Simulator, Track 2 Compliance, Agents, plus a
+  guided demo tour; login `admin` / `admin`)
 - **Agent worker** — runs the four live agents (transaction, profile,
   reflection, human-review) against real scored orders from the audit chain,
   renewing Redis heartbeats every 20s. See the dashboard **Agents** page or
   `GET /admin/agents/health`.
 
 Then `python scripts/seed_demo_data.py` and `python scripts/verify_live_stack.py`
-(10 scenarios against real Redis — see ["Live verification"](#live-verification)).
+(11 curated checks against real Redis — see ["Live verification"](#live-verification)).
 
 ---
 
@@ -311,6 +281,42 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 - **[`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md)** — the one-number story, the three surfaces, and how to verify in 60 seconds.
 - **[`docs/TRACK2_COMPLIANCE.md`](docs/TRACK2_COMPLIANCE.md)** — every Track 2 requirement mapped to its implementation and its proof (20/20 verified).
 - **Dashboard** — log in at `http://localhost:3000` (`admin` / `admin`): **Start Demo** for the guided 10-minute tour, plus the Track 2 Compliance, Review Queue and Calibration Simulator pages.
+
+---
+
+## Agent Orchestration (operational scaffolding)
+
+The stack runs an **agent worker** (`python -m agents.worker`) that keeps four
+live agents operating on real scored orders — not mock scaffolding. Each agent
+is a message-passing `BaseAgent` registered on a `MessageRouter`; the worker
+owns the lifecycle:
+
+- a **heartbeat loop** renews `agent:heartbeat:{agent_id}` in Redis every 20s
+  (TTL 60s) so the dashboard **Agents** page and `GET /admin/agents/health`
+  report live `RUNNING` status (<30s staleness rule)
+- a **feed loop** drains new `RETURN_RISK_SCORED` entries from the audit chain
+  into the transaction + profile agents every 15s
+- a **reflection loop** triggers the reflection agent over the last 24h every
+  5 minutes
+
+| Agent | Type | What it does |
+|---|---|---|
+| `transaction_agent` | TRANSACTION | Analyzes each scored order — order velocity, COD exposure, amount-vs-category risk, live merchant return rate from Redis — emits `TXN_ANALYSIS_RESULT` with evidence |
+| `profile_agent` | PROFILE | Builds per-user return-risk profiles (order count, avg amount, COD share, avg score) and broadcasts `PROFILE_ANOMALY` when a user's recent behavior drifts from their own history |
+| `reflection_agent` | REFLECTION | Reflects over the return-risk audit chain (tier skew, score drift, merchant concentration, new-user bias) using the deterministic risk-suite analysis; routes recommendations to human-review |
+| `human_review_agent` | HUMAN_REVIEW | Handles analyst feedback + escalations; feeds accuracy signals back to reflection |
+
+The agent framework (`agents/base.py`, `agents/message.py`, `agents/state.py`)
+was restored from the pre-scope history and **rewired to the return-risk
+surface** — the original fraud/LLM agents were deleted in the repo scoping
+commit, leaving the UI and health endpoint as scaffolding with nothing behind
+them. The worker is a first-class compose service (`docker-compose.yml` →
+`worker`).
+
+> **Agents are operational scaffolding on the audit chain; they do not affect
+> the evaluated model metrics.** Every headline number in this README is
+> measured from the model and cost pipeline above — the agents analyze scored
+> orders and report heartbeats, they never change a score.
 
 ---
 
@@ -401,7 +407,7 @@ designed to support future certification, not to claim it — see
 | `GET` | `/admin/drift/return-risk` | API Key + RBAC | PSI drift report on the return-risk feature surface |
 | `GET` | `/admin/agents/health` | API Key + RBAC | Live agent heartbeats (transaction/profile/reflection/human-review) |
 
-Extension endpoints (fraud, chargeback, admin) and the full surface:
+Full API surface (return-risk, meta, extension endpoints):
 [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md).
 
 ---

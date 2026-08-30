@@ -7,8 +7,8 @@
 ## 30-Second Summary
 
 - **What it is:** a pre-shipping **return-risk scorer** for Indian e-commerce on Razorpay's
-  infrastructure — plus fraud-spike detection and a chargeback evidence responder on the same
-  audit chain.
+  infrastructure. Fraud and chargeback extensions exist in the repo but are **out of scope**
+  for this track — this is a focused return-risk story.
 - **Impact:** **₹17.4L/month** (Stage 1 fashion) → **₹53.5L/month** (Stage 3 premium electronics)
   at the 0.50 review gate — measured, reproducible.
 - **Defense-only:** `MEDIUM → FLAG_FOR_REVIEW`, `HIGH → REQUIRE_PREPAID` — no autonomous blocks.
@@ -25,7 +25,7 @@
    `verify_live_stack.py` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
    suspicious burst BLOCK).
 5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
-   implementation and its proof (**20/20 verified**).
+   implementation and its proof (**16/16 verified**).
 6. On the Return Risk page, expand **Model Waterfall** for the XGBoost per-feature attribution;
    score the seeded `U_RING_00x` profiles with `shipping_address` pincode `560037` to watch the
    **abuse-ring sentinel** catch a coordinated ring the model rates LOW.
@@ -48,14 +48,14 @@
 - **Byte-reproducible** — pinned Python 3.11 ML stack; `--full-verify` runs train × 3 twice and
   asserts byte-identical results, plus a temporal-integrity check (no look-ahead).
 - **Explainable everywhere** — every score returns a per-feature value/weight/contribution/source;
-  `POST /v1/return/explain` adds an XGBoost feature waterfall; every rebuttal carries an audit trail.
+  `POST /v1/return/explain` adds an XGBoost feature waterfall; the audit chain records every decision.
 - **Abuse-ring sentinel** — shared shipping address + return-velocity spike forces a coordinated
   ring to HIGH (defense-only), even when the model rates the user LOW.
 - **15+ docs** — evaluator guide, business impact, mistakes ledger, compliance map, defense Q&A.
 - **Meta-honesty** — 34 bugs fixed and tabulated in README Appendix B; the remaining calibration
   gap is documented, not hidden: [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
-- **Operational depth** — 4 live agents, drift monitor, audit chain, signed webhooks, human-in-the-loop
-  chargeback, and a live verification suite.
+- **Operational depth** — 4 live agents (operational scaffolding, not part of the metrics), drift
+  monitor, audit chain, signed webhooks, human-review queue, simulator, guided demo.
 
 ---
 
