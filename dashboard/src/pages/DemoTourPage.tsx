@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 
@@ -25,7 +25,6 @@ export function DemoTourPage() {
   const [index, setIndex] = useState(0);
   const [countdown, setCountdown] = useState(DEFAULT_ADVANCE);
   const [error, setError] = useState("");
-  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -41,21 +40,22 @@ export function DemoTourPage() {
     fetch();
   }, []);
 
-  // Auto-advance: when the countdown for a step reaches zero, open that step's
-  // page so the judge lands on the real surface. Countdown resets per step.
+  // Auto-advance: one timeout navigates to the step's page; a separate
+  // interval only drives the visible countdown. Navigation is never called
+  // from inside a state updater (pure function), so it fires exactly once per
+  // step even under React StrictMode's double-invoked updaters.
   useEffect(() => {
     if (!guide) return;
-    timerRef.current = window.setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          navigate(guide.steps[index].page);
-          return guide.auto_advance_seconds ?? DEFAULT_ADVANCE;
-        }
-        return c - 1;
-      });
-    }, 1000);
+    const seconds = guide.auto_advance_seconds ?? DEFAULT_ADVANCE;
+    setCountdown(seconds);
+    const navTimer = window.setTimeout(
+      () => navigate(guide.steps[index].page),
+      seconds * 1000,
+    );
+    const tick = window.setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
     return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
+      window.clearTimeout(navTimer);
+      window.clearInterval(tick);
     };
   }, [guide, index, navigate]);
 
