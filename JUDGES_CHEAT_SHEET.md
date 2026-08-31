@@ -17,12 +17,12 @@
 
 ## 5-Minute Demo
 
-1. `python scripts/train_xgb_return_risk.py --scenario premium` → **PR-AUC 0.9497** (measured).
-2. `python docs/cost_model/calculator.py --all-maturity` → **₹53.5L/month** premium electronics.
-3. `python scripts/run_all_scenarios.py --full-verify` → **ALL CHECKS PASS (11/11)**,
+1. `make setup-verify` (once) then `.venv-verify/bin/python scripts/train_xgb_return_risk.py --scenario premium` → **PR-AUC 0.9497** (measured).
+2. `make cost` → **₹53.5L/month** premium electronics.
+3. `make verify` → **ALL CHECKS PASS (11/11)**,
    including a temporal-integrity check (no look-ahead in DGP/split).
-4. Live Docker: `docker compose -f docker/docker-compose.yml up` → `seed_demo_data.py` →
-   `verify_live_stack.py` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
+4. Live Docker: `make up` → `make seed` →
+   `make verify-live` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
    suspicious burst BLOCK).
 5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
    implementation and its proof (**16/16 verified**).

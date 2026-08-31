@@ -4,7 +4,7 @@
 
 - [ ] Clone repository and install dependencies (`pip install -r requirements.txt -r requirements-dev.txt`)
 - [ ] Complete [Getting Started Guide](../guides/getting-started.md)
-- [ ] Run the hermetic evidence scripts: `python scripts/train_xgb_return_risk.py`
+- [ ] Run the hermetic evidence scripts: `make setup-verify` then `make train-xgb`
 - [ ] Run the test suite: `make test` (498 tests, no services needed)
 - [ ] (Optional) Start the live stack: `docker compose -f docker/docker-compose.yml up -d`
 
@@ -25,8 +25,8 @@
 
 ## Day 4: Verification
 
-- [ ] Run `python scripts/benchmark_return_risk.py` and `python docs/cost_model/calculator.py`
-- [ ] Run `python scripts/verify_live_stack.py` against the Docker stack
+- [ ] Run `.venv-verify/bin/python scripts/benchmark_return_risk.py` and `.venv-verify/bin/python docs/cost_model/calculator.py`
+- [ ] Run `make verify-live` against the Docker stack
 - [ ] Review the honest ledger: [`MISTAKES_AND_LEARNINGS.md`](../../MISTAKES_AND_LEARNINGS.md)
 
 ## Key Resources

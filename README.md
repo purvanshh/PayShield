@@ -6,7 +6,7 @@ gate — up to **₹53.5L/month** for premium electronics (Stage 3).
 **The model:** a 7-feature **XGBoost return-risk scorer** that scores every
 order before it ships — LOW / MEDIUM / HIGH → ship / review / prepaid-only.
 
-**Reproduce everything:** `python scripts/run_all_scenarios.py --full-verify`
+**Reproduce everything:** `make verify`
 
 **For evaluators:** [`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md) — 10-minute walkthrough.
 **For judges:** [`JUDGES_CHEAT_SHEET.md`](JUDGES_CHEAT_SHEET.md) — 30-second summary, or
@@ -41,9 +41,9 @@ instrumentation. The model architecture, split and evaluation protocol are
 > never hardcoded. All numbers in a row come from one model (the default-XGBoost
 > `return_risk_results_{scenario}.json`); the tuned champion reaches 0.8089 /
 > 0.8875 / 0.9488 PR-AUC (see `reports/scenario_comparison.md`). Reproduce:
-> `python scripts/run_all_scenarios.py`.
+> `make verify` (or `.venv-verify/bin/python scripts/run_all_scenarios.py`).
 
-**Run it (hermetic):** `python scripts/train_xgb_return_risk.py --scenario premium`
+**Run it (hermetic):** `.venv-verify/bin/python scripts/train_xgb_return_risk.py --scenario premium`
 
 **Honest prototype note:** a student PoC on Razorpay's infrastructure — not
 production software.
@@ -182,36 +182,22 @@ priors, honestly labelled) while a full-history profile reaches ~97%.
 
 ## Run It
 
-**Prerequisites.** Python **3.11** (the Docker base and the canonical verify
-interpreter) and `pip install -r requirements.txt`. On **macOS** xgboost also
-needs the OpenMP runtime — install it once with `brew install libomp`. The ML
-stack (`numpy`/`pandas`/`scipy`/`scikit-learn`/`xgboost`) is **pinned exactly**
-so the `--full-verify` numbers reproduce byte-for-byte on macOS and Linux; the
-verify suite auto-links a Homebrew `libomp` if it is missing and otherwise tells
-you the one command to run. A Python 3.12+ environment will not reproduce the
-committed numbers (numpy 2.5.0/xgboost 3.4.1 have no Linux wheels) — use 3.11.
+> **Short version:** every task is one `make` command. The canonical interpreter
+> is the `.venv-verify` venv (Python **3.11** — a 3.12+/bare `python` will NOT
+> reproduce the committed numbers). `make setup-verify` creates it for you.
 
-Hermetic (no services needed):
+| Task | Command |
+|---|---|
+| **Setup (once)** — create `.venv-verify` + install pinned deps | `make setup-verify` |
+| **Verify everything** — the 11/11 interview gate | `make verify` |
+| Train the model | `make train-xgb` |
+| Ablation / tuning / cost ₹ | `make ablation-xgb` · `make tune-xgb` · `make cost` |
+| Run the test suite | `make test` |
+| Live stack (Docker) | `make up` → `make seed` → `make verify-live` |
 
-```bash
-python scripts/train_xgb_return_risk.py      # train + baseline comparison (~20s)
-python scripts/ablation_study.py             # leave-one-feature-out ablation (~60s)
-python scripts/tune_xgb.py                   # 144-combo hyperparameter search (~15s)
-python docs/cost_model/calculator.py         # the numbers in ₹
-python docs/cost_model/calculator.py --vertical-sensitivity   # where the gate breaks
-```
+On **macOS** xgboost needs the OpenMP runtime once: `brew install libomp` (the
+verify suite auto-links it if present and otherwise tells you the one command).
 
-One-shot interview-defense gate (11 checks: base-generator integrity,
-byte-identical determinism, AUC gates, ₹ gates, no-hardcoded-fallbacks, doc &
-dashboard consistency, ablation baseline, temporal integrity):
-
-```bash
-python scripts/run_all_scenarios.py --full-verify     # prints PASS/FAIL per check
-```
-
-Live stack (needs Docker) and the 11-check live verification — see
-["Live verification"](#live-verification) and the
-[`EVALUATOR_GUIDE.md`](EVALUATOR_GUIDE.md).
 
 ---
 

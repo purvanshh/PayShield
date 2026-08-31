@@ -4,9 +4,8 @@ Every requirement is ✅ implemented and verified. Each line carries the proof:
 a `file:line` anchor, an endpoint, or a test/verify command. The 60-second
 reproduction is at the bottom.
 
-> Reproduce everything: `python scripts/run_all_scenarios.py --full-verify` → **11/11 PASS**.
-> Live stack: `docker compose -f docker/docker-compose.yml up` → `seed_demo_data.py` →
-> `verify_live_stack.py` → **11/11 PASS**.
+> Reproduce everything: `make setup-verify` then `make verify` → **11/11 PASS**.
+> Live stack: `make up` → `make seed` → `make verify-live` → **11/11 PASS**.
 
 ## The model (measured, never hardcoded)
 
@@ -69,4 +68,4 @@ reproduction is at the bottom.
 
 ---
 
-_Proof of the whole claim in one command: `python scripts/run_all_scenarios.py --full-verify` → ALL CHECKS PASS._
+_Proof of the whole claim in one command: `make verify` → ALL CHECKS PASS._

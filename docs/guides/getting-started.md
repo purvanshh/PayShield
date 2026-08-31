@@ -36,23 +36,26 @@ Key variables (see `.env.example` for the full list):
 
 ### Hermetic (no services — the evaluation path)
 
-The return-risk evidence is fully reproducible with zero services:
+The return-risk evidence is fully reproducible with zero services. Use the
+canonical Python 3.11 venv (`.venv-verify`) — create it once with
+`make setup-verify` — or just run `make verify` for the full 11/11 gate:
 
 ```bash
-python scripts/train_xgb_return_risk.py      # train + baseline comparison (~20s)
-python scripts/ablation_study.py             # leave-one-feature-out ablation (~60s)
-python scripts/tune_xgb.py                   # 144-combo hyperparameter search (~15s)
-python scripts/benchmark_return_risk.py      # Redis-backed scorer benchmark
-python docs/cost_model/calculator.py         # the numbers in ₹
-python docs/cost_model/calculator.py --vertical-sensitivity
+make setup-verify                # creates .venv-verify + installs pinned deps
+.venv-verify/bin/python scripts/train_xgb_return_risk.py      # train (~20s)
+.venv-verify/bin/python scripts/ablation_study.py             # ablation (~60s)
+.venv-verify/bin/python scripts/tune_xgb.py                   # tune (~15s)
+.venv-verify/bin/python scripts/benchmark_return_risk.py      # Redis-backed benchmark
+.venv-verify/bin/python docs/cost_model/calculator.py         # the numbers in ₹
+.venv-verify/bin/python docs/cost_model/calculator.py --vertical-sensitivity
 ```
 
 ### Live stack (Docker)
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build   # api + redis
-python scripts/seed_demo_data.py                            # seed the curated scenarios
-python scripts/verify_live_stack.py                         # 11 curated checks vs real Redis
+docker compose -f docker/docker-compose.yml up -d --build   # api + redis + dashboard
+make seed                                                   # seed the curated scenarios
+make verify-live                                            # 11 curated checks vs real Redis
 ```
 
 Health: `curl http://localhost:8000/health`.

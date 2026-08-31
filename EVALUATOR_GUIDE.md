@@ -15,7 +15,7 @@ commands are hermetic (no Docker required) unless noted.
 
 ## Minute 3–4: The Model
 - Open [`scripts/train_xgb_return_risk.py`](scripts/train_xgb_return_risk.py)
-- Run: `python scripts/train_xgb_return_risk.py --scenario premium` (~20s, hermetic)
+- Run: `.venv-verify/bin/python scripts/train_xgb_return_risk.py --scenario premium` (~20s, hermetic)
 - See: **XGBoost PR-AUC 0.9497** (Stage 3) vs. the best naive baseline 0.6991
   (**+0.25 lift**) and vs. the hand-weighted scorer 0.8818. Stage 1 reaches
   0.7991 (the honest floor). The model learns from a deliberately
@@ -23,7 +23,7 @@ commands are hermetic (no Docker required) unless noted.
 
 ## Minute 5–6: The Evidence
 - Open [`scripts/ablation_study.py`](scripts/ablation_study.py)
-- Run: `python scripts/ablation_study.py` (~60s, hermetic)
+- Run: `.venv-verify/bin/python scripts/ablation_study.py` (~60s, hermetic)
 - See: leave-one-feature-out retraining — **every feature shows a positive,
   unique PR-AUC drop** against hidden confounders; removing **both** return-rate
   features at once costs **−9.9%**, the largest signal block.
@@ -31,7 +31,7 @@ commands are hermetic (no Docker required) unless noted.
 ## Minute 7–8: The System
 - Open [`scripts/verify_live_stack.py`](scripts/verify_live_stack.py)
 - Run (needs Docker): `docker compose -f docker/docker-compose.yml up` then
-  `python scripts/seed_demo_data.py` then `python scripts/verify_live_stack.py`
+  `make seed` then `make verify-live`
 - See: the eleven curated live checks (serial returner → HIGH, honest → LOW,
   webhook signatures, drift) against real Redis.
 - For the judge-facing narrative, hit **Start Demo** in the dashboard
@@ -74,8 +74,11 @@ caveats, both documented:
    pipeline is "What I'd Do Next" #1.
 
 ## Quick Start (Hermetic, One Command)
+
 ```bash
-python scripts/train_xgb_return_risk.py   # train + baseline comparison
-python scripts/ablation_study.py          # feature evidence
-python scripts/tune_xgb.py                # 144-combo hyperparameter search
+make setup-verify      # once: create .venv-verify + install pinned deps
+make verify            # the whole evidence suite (11/11)
+make train-xgb         # train + baseline comparison
+make ablation-xgb      # feature evidence
+make tune-xgb          # 144-combo hyperparameter search
 ```
