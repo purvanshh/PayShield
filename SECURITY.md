@@ -5,7 +5,7 @@
 If you discover a security vulnerability in PayShield, please:
 
 1. **Do not** open a public GitHub issue
-2. Email: security@payshield.io
+2. Email: purvansh.23bcs10169@sst.scaler.com
 3. Include: description, steps to reproduce, affected versions, potential impact
 
 We aim to:

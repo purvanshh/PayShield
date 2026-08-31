@@ -51,7 +51,7 @@ const CONTENT: Record<string, { title: string; updated: string; sections: Array<
     sections: [
       [
         "Responsible disclosure",
-        "Found a vulnerability? Report it privately at security@payshield.in with a clear reproduction. We acknowledge within 48 hours and aim for a fix within 14 days.",
+        "Found a vulnerability? Report it privately at purvansh.23bcs10169@sst.scaler.com with a clear reproduction. We acknowledge within 48 hours and aim for a fix within 14 days.",
       ],
       [
         "Controls",

@@ -36,7 +36,7 @@ const CHANNELS = [
   {
     icon: "mail",
     title: "Institutional Support",
-    body: "support@payshield.in — monitored during business hours",
+    body: "purvansh.23bcs10169@sst.scaler.com — monitored during business hours",
   },
   {
     icon: "bug_report",
