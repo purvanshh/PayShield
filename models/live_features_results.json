@@ -1,0 +1,108 @@
+{
+  "name": "live-features",
+  "gate": 0.5,
+  "seed": 42,
+  "n_orders": 10000,
+  "features": [
+    "user_return_rate_30d",
+    "user_return_rate_90d",
+    "amount_vs_user_aov_ratio",
+    "category_return_baseline",
+    "payment_method_risk",
+    "device_fingerprint_match",
+    "days_since_last_order"
+  ],
+  "base_rate": 0.4937,
+  "test_pr_auc": 0.813864668567044,
+  "test_roc_auc": 0.7965259116369137,
+  "decision_gate": 0.7991,
+  "decision": "Option B \u2014 ship live-features model + full re-anchor",
+  "operating_curve": {
+    "0.20": {
+      "flag_rate": 0.8771,
+      "precision": 0.5571,
+      "recall": 0.9639
+    },
+    "0.25": {
+      "flag_rate": 0.8145,
+      "precision": 0.5882,
+      "recall": 0.9449
+    },
+    "0.30": {
+      "flag_rate": 0.761,
+      "precision": 0.6099,
+      "recall": 0.9154
+    },
+    "0.35": {
+      "flag_rate": 0.7123,
+      "precision": 0.6231,
+      "recall": 0.8755
+    },
+    "0.40": {
+      "flag_rate": 0.6627,
+      "precision": 0.6444,
+      "recall": 0.8422
+    },
+    "0.45": {
+      "flag_rate": 0.6092,
+      "precision": 0.6693,
+      "recall": 0.8042
+    },
+    "0.50": {
+      "flag_rate": 0.5663,
+      "precision": 0.6936,
+      "recall": 0.7747
+    },
+    "0.60": {
+      "flag_rate": 0.4776,
+      "precision": 0.7417,
+      "recall": 0.6987
+    },
+    "0.70": {
+      "flag_rate": 0.3851,
+      "precision": 0.7897,
+      "recall": 0.5998
+    }
+  },
+  "models": [
+    {
+      "pr_auc": 0.813864668567044,
+      "average_precision": 0.8139868216139388,
+      "roc_auc": 0.7965259116369137,
+      "precision_at_gate": 0.6936170212765957,
+      "recall_at_gate": 0.7747148288973384,
+      "f1_at_gate": 0.7319263583295914,
+      "confusion_matrix": {
+        "tn": 663,
+        "fp": 360,
+        "fn": 237,
+        "tp": 815
+      },
+      "name": "XGBoost (live features)",
+      "feature_importance": {
+        "user_return_rate_30d": 0.221868634223938,
+        "user_return_rate_90d": 0.18069474399089813,
+        "amount_vs_user_aov_ratio": 0.18443246185779572,
+        "category_return_baseline": 0.07669319957494736,
+        "payment_method_risk": 0.2809871733188629,
+        "device_fingerprint_match": 0.0,
+        "days_since_last_order": 0.05532378330826759
+      }
+    },
+    {
+      "pr_auc": 0.8285734226201713,
+      "average_precision": 0.8286859761422871,
+      "roc_auc": 0.8151019888570483,
+      "precision_at_gate": 0.9518072289156626,
+      "recall_at_gate": 0.2252851711026616,
+      "f1_at_gate": 0.36433512682551883,
+      "confusion_matrix": {
+        "tn": 1011,
+        "fp": 12,
+        "fn": 815,
+        "tp": 237
+      },
+      "name": "Hand-weighted (current)"
+    }
+  ]
+}

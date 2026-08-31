@@ -43,8 +43,12 @@ XGB_FEATURES = [
     "days_since_last_order",
 ]
 
-# Preferred tuned model first, then the default-hyperparameter model.
+# Production model first, then the offline-DGP models as fallback. The live
+# model is trained on the exact feature vector the live API computes
+# (scripts/train_live_features.py, test PR-AUC 0.8139) - it closes the
+# calibration gap so the live scorer runs a model calibrated to live features.
 DEFAULT_XGB_MODEL_PATHS = [
+    "models/return_risk_xgb_live.json",
     "models/return_risk_xgb_best.json",
     "models/return_risk_xgb_v1.json",
 ]
