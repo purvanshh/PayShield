@@ -1,4 +1,7 @@
-.PHONY: up down build test lint format typecheck pre-commit clean
+.PHONY: up down build test lint format typecheck pre-commit clean setup-verify verify seed verify-live cost
+
+# Canonical Python 3.11 verify interpreter (see README → Run It)
+PY := .venv-verify/bin/python
 
 # Docker
 up:
@@ -43,14 +46,30 @@ pre-commit-install:
 	pre-commit install
 
 # XGBoost return-risk model pipeline (Phase 1-3)
+setup-verify:
+	test -x .venv-verify/bin/python || python3.11 -m venv .venv-verify
+	.venv-verify/bin/pip install -q -r requirements.txt
+
+verify: setup-verify
+	.venv-verify/bin/python scripts/run_all_scenarios.py --full-verify
+
 train-xgb:
-	python scripts/train_xgb_return_risk.py
+	$(PY) scripts/train_xgb_return_risk.py
 
 ablation-xgb:
-	python scripts/ablation_study.py
+	$(PY) scripts/ablation_study.py
 
 tune-xgb:
-	python scripts/tune_xgb.py
+	$(PY) scripts/tune_xgb.py
+
+cost:
+	$(PY) docs/cost_model/calculator.py --all-maturity
+
+seed:
+	$(PY) scripts/seed_demo_data.py
+
+verify-live: up seed
+	$(PY) scripts/verify_live_stack.py
 
 # Environment
 install:

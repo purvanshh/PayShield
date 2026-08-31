@@ -67,12 +67,12 @@ def _heal_libomp() -> bool:
     installs libomp *keg-only* (under ``Cellar``) without those links, so a
     fresh clone on macOS crashes with ``Library not loaded: libomp.dylib``.
     Link only if the real dylib exists under Cellar; never overwrite existing
-    links. Returns True if the links now resolve.
+    links. Returns True when a loadable ``libomp.dylib`` is present at either
+    standard location (pre-existing OR just linked).
     """
     import glob
     import os
 
-    linked = False
     for base in ("/opt/homebrew", "/usr/local"):
         cellars = glob.glob(
             os.path.join(base, "Cellar", "libomp", "*", "lib", "libomp.dylib")
@@ -84,30 +84,54 @@ def _heal_libomp() -> bool:
             os.path.join(base, "opt", "libomp", "lib", "libomp.dylib"),
             os.path.join(base, "lib", "libomp.dylib"),
         ):
+            if os.path.isfile(dst):
+                continue  # already linked and resolvable
             try:
-                if os.path.lexists(dst):
-                    continue
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 os.symlink(src, dst)
                 print(f"  Linked {dst} -> {src}")
-                linked = True
             except OSError:
                 continue
-    return linked
+    # True if a libomp.dylib resolves to a real file at either standard path.
+    for base in ("/opt/homebrew", "/usr/local"):
+        for dst in (
+            os.path.join(base, "opt", "libomp", "lib", "libomp.dylib"),
+            os.path.join(base, "lib", "libomp.dylib"),
+        ):
+            if os.path.isfile(dst):
+                return True
+    return False
 
 
 def ensure_ml_runtime() -> None:
-    """Make sure xgboost's native library can actually load before any check runs.
+    """Make sure xgboost can actually load before any check runs.
 
     Every ML-dependent check (determinism, AUC gates, ablation) shells out to
-    scripts that ``import xgboost``. If the native lib is missing on macOS
-    (no OpenMP runtime), those checks fail with a cryptic dylib error — so we
-    detect it up front, auto-link the Homebrew runtime when present, and
-    otherwise fail with the exact fix command instead of a traceback.
+    scripts that ``import xgboost``. Two distinct failure modes, diagnosed
+    distinctly:
+
+    - xgboost is **not installed** in this interpreter → point at the canonical
+      Python 3.11 verify venv (``.venv-verify`` / ``make verify``).
+    - xgboost is installed but its **native lib can't load** (missing OpenMP on
+      macOS) → auto-link the Homebrew runtime when present, otherwise fail with
+      the exact ``brew install libomp`` command instead of a traceback.
     """
     try:
         import xgboost  # noqa: F401
         return
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "xgboost is not installed in this Python interpreter "
+            f"({sys.executable}).\n"
+            "This repo's verify suite runs on the canonical Python 3.11 venv "
+            "(`.venv-verify`). Either:\n"
+            "  make setup-verify      # creates .venv-verify + installs the pinned stack\n"
+            "  make verify            # runs the suite\n"
+            "or manually:\n"
+            "  python3.11 -m venv .venv-verify && "
+            ".venv-verify/bin/pip install -r requirements.txt\n"
+            "  .venv-verify/bin/python scripts/run_all_scenarios.py --full-verify"
+        ) from e
     except Exception as e:
         if not (sys.platform == "darwin" and _heal_libomp()):
             raise RuntimeError(
