@@ -4,12 +4,13 @@ Every requirement is ✅ implemented and verified. Each line carries the proof:
 a `file:line` anchor, an endpoint, or a test/verify command. The 60-second
 reproduction is at the bottom.
 
-> Reproduce everything: `make setup-verify` then `make verify` → **11/11 PASS**.
+> Reproduce everything: `make setup-verify` then `make verify` → **12/12 PASS**.
 > Live stack: `make up` → `make seed` → `make verify-live` → **11/11 PASS**.
 
 ## The model (measured, never hardcoded)
 
 - ✅ **7-feature XGBoost primary engine** — Stage 1 default PR-AUC 0.7991 / ROC-AUC 0.8431; Stage 3 premium 0.9497 / 0.9612. Proof: `scripts/train_xgb_return_risk.py`, `reports/full_verify_output.txt` (checks 3–5).
+- ✅ **Live scorer runs a model trained on the live feature pipeline** — `models/return_risk_xgb_live.json` (test PR-AUC 0.8139), trained by `scripts/train_live_features.py` on the exact features the API computes. Proof: `return_risk/scorer.py` (`DEFAULT_XGB_MODEL_PATHS`), `--full-verify` check 12.
 - ✅ **ROC-AUC measured, not hardcoded** (`roc_auc_score`). Proof: `scripts/train_xgb_return_risk.py`.
 - ✅ **Feature surface matches the DGP schema exactly** — `return_risk/scorer.py:36-44` (`XGB_FEATURES`) and `:264-282` (`_xgb_predict` maps live engine output → the 7 model features).
 - ✅ **Live scorer never goes out-of-distribution** — `amount_vs_user_aov_ratio` is clamped to the training envelope `[0.15, 4.0]`. Proof: `return_risk/feature_engine.py:55` + `:350`; regression tests `tests/unit/return_risk/test_feature_engine.py` (`test_extreme_aov_ratio_is_clamped_to_envelope`) and `test_scorer.py` (`test_extreme_aov_order_scores_sane`).
@@ -54,9 +55,10 @@ reproduction is at the bottom.
 ## Reproducibility & integrity (the moat)
 
 - ✅ **Fully pinned Python 3.11 stack** — every dependency exact. Proof: `requirements.txt`.
-- ✅ **Byte-identical training** — train × 3 twice, byte-compare. Proof: `--full-verify` check 2.
+- ✅ **Byte-identical training** — DGP train × 3 twice (check 2) and the live-features model re-trains byte-identically (check 12). Proof: `--full-verify`.
 - ✅ **Base generator git-guarded untouched** — Proof: `--full-verify` check 1.
 - ✅ **Temporal integrity / no look-ahead** — per-user chronology + split leakage + latent-sampled first-order features. Proof: `scripts/verify_temporal_integrity.py:80`, `--full-verify` check 11.
+- ✅ **Live model PR-AUC gate** — `--full-verify` check 12 asserts the live-features held-out test PR-AUC ≥ 0.79 and byte-identical re-train.
 - ✅ **Docs in lockstep with measured numbers** — manifest-checked. Proof: `--full-verify` check 8.
 - ✅ **Compliance map live in the API** — 16/16 return-risk requirements, none claimed before they exist. Proof: `api/routes/meta.py:46` (`TRACK2_REQUIREMENTS`), `GET /v1/meta/track2-compliance`.
 

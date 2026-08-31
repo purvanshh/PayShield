@@ -30,7 +30,7 @@ the real collector+builder, the L1 numbers from the real statistical filter.
 
 - Seeded: `U_SERIAL_001` (15 orders / 10 returns = 66%),
   3 returns in the last 7 days, 3/8 COD refusals, fashion merchant 30%.
-- Verified score: **0.98 · HIGH** (XGBoost primary engine — the contribution
+- Verified score: **0.97 · HIGH** (live-features model — the contribution
   breakdown below is the transparent hand-weighted composite the scorer always
   reports for merchant explainability)
   - contributions: rate 0.165 + serial 0.20 + merchant 0.045 + category 0.045
@@ -39,13 +39,13 @@ the real collector+builder, the L1 numbers from the real statistical filter.
   - rules fired: `R-RULE-01, R-RULE-02, R-RULE-03, R-RULE-04, R-RULE-06`
   - recommendations: prepaid-only + manual review + signature on delivery
   - confidence ≈ 0.97 (full history, all features real-data-sourced)
-- Demo line: *"the merchant sees 0.98 with five auditable nudges — and the
+- Demo line: *"the merchant sees 0.97 with five auditable nudges — and the
   exact arithmetic in the feature breakdown."*
 
 ## Scenario 4 · ORD_HONEST_001 — honest customer
 
 - Seeded: `U_HONEST_001` (25 orders / 2 returns = 4%), electronics merchant.
-- Verified score: **0.03 · LOW** (XGBoost primary engine; only `R-RULE-08`
+- Verified score: **0.06 · LOW** (live-features model; only `R-RULE-08`
   ACCEPT rule fires)
   - note `txn_amount_risk`: 12000/10000 capped at 1.0 → 0.10 contribution;
     the rule stack still keeps the total LOW.
@@ -79,7 +79,7 @@ the real collector+builder, the L1 numbers from the real statistical filter.
   each with a 4-return velocity spike and moderate return rates (the model
   alone rates them LOW).
 - Verified (live, `shipping_address.pincode = 560037`):
-  `U_RING_001..003` → **LOW 0.1157**, `U_RING_004` → **HIGH 0.85** with
+  `U_RING_001..003` → **LOW 0.0975**, `U_RING_004` → **HIGH 0.85** with
   `R-RULE-09` — the shared-address + velocity pattern trips the sentinel's
   score floor even though the model sees a normal user.
 - Demo line: *"the model is blind to the ring; the abuse-ring sentinel is

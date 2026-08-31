@@ -6,12 +6,16 @@ The production XGBoost model is **trained on the offline DGP** (7 synthetic
 features) while the live API **scores Redis-enriched features**. This
 model-pipeline mismatch caused **two live-verification failures**. Both were
 fixed by aligning the *live feature pipeline* to the model's training envelope
-(not by hardcoding demo overrides, and not by retraining the model). The
-**remaining** gap — the model is still not *trained* on live-distributed
-features — is documented below and tracked as the first "What I'd Do Next".
+(commit `4207ff6`), and the deeper distribution gap is now **closed**: the
+production scorer ships a model **trained on the exact feature vector the live
+API computes** (`scripts/train_live_features.py`, test PR-AUC 0.8139). The
+remaining honest step is **real merchant labels** (the pilot in
+`docs/REAL_DATA_ROADMAP.md`).
 
-**Current status:** `scripts/verify_live_stack.py` passes **11/11** on the
-rebuilt Docker stack. There are no known live failures today.
+**Current status:** the live scorer runs `models/return_risk_xgb_live.json`
+(engine: xgboost, `model_path` in every response); `verify_live_stack.py`
+passes **11/11**; the live-features training is a `--full-verify` check
+(deterministic re-train + PR-AUC ≥ 0.79).
 
 ---
 
@@ -31,10 +35,10 @@ rebuilt Docker stack. There are no known live failures today.
   defaulted to 60, near the model's tail.)
 - **Fix (commit `4207ff6`):** the feature engine now falls back to the
   **population AOV** (`₹74.5k`) instead of `avg_return_value` — return value is
-  not order value. Demo profiles carry realistic `avg_order_value` /
-  `last_activity` so the serial returner's ratio stays ~1.0 (HIGH 0.98) while
-  the honest customer uses the neutral fallback (ratio 0.16 → LOW 0.03).
-  Regression tests pin both tiers and assert the ratio stays in-envelope.
+  not order value. `amount_vs_user_aov_ratio` is clamped to the training
+  envelope `[0.15, 4.0]`. Demo profiles carry realistic `avg_order_value` /
+  `last_activity`. Regression tests pin both tiers and assert the ratio stays
+  in-envelope.
 
 ### Failure 2 — Suspicious burst → ALLOW (expected BLOCK)
 
@@ -50,28 +54,35 @@ rebuilt Docker stack. There are no known live failures today.
 
 ---
 
-## The remaining gap (honest, not hidden)
+## The gap is now closed (Option B — train on live features)
 
 The two failures above were **feature-pipeline alignment** bugs. The deeper
-mismatch the plan called out is still real:
+mismatch the plan called out — *the model isn't trained on the features the
+live API computes* — is fixed:
 
-- The production scorer loads `models/return_risk_xgb_v1.json`, trained on the
-  offline DGP's 7 features.
-- The live API feeds it features computed by `ReturnRiskFeatureEngine` from
-  Redis (user rates, merchant baselines, computed txn features) plus a neutral
-  `device_fingerprint_match = 0.5` and a `days_since_last_order` default of 60.
-- These distributions are now **inside the model's training envelope** for the
-  curated demo scenarios (verified 11/11), but the model has **not been
-  retrained on live-distributed feature data**. A real merchant's Redis
-  profiles could still push features outside the envelope.
+- **`scripts/train_live_features.py`** trains XGBoost on the **exact 7-feature
+  vector `ReturnRiskFeatureEngine` produces** (Redis profiles → feature engine
+  → the model's schema), with feature-driven labels (the DGP's
+  `_return_probability` applied to the live feature values + hidden confounders
+  + noise). The split and training protocol are identical to the DGP trainer
+  (per-user chronological 60/20/20).
+- **Held-out test PR-AUC: 0.8139** — above the DGP model's 0.7991 floor,
+  because the model is calibrated to the live distribution (where
+  `device_fingerprint_match` is the neutral 0.5, `days_since_last_order` comes
+  from `last_activity`, and the ratio is clamped).
+- The scorer now loads **`models/return_risk_xgb_live.json`** first
+  (`DEFAULT_XGB_MODEL_PATHS`), so the live demo runs the calibrated model —
+  serial returner **HIGH 0.97**, honest customer **LOW 0.06**, abuse-ring
+  sentinel **HIGH 0.85** (score floor), verified 11/11.
+- `--full-verify` gained a **check 12**: the live-features training must re-run
+  **byte-identical** (determinism on the new model) and meet **PR-AUC ≥ 0.79**.
 
-**Why we didn't retrain the model now:** retraining changes every benchmarked
-number and would invalidate the pinned `--full-verify` evidence. The honest
-sequence is: keep the offline model as the auditable baseline, and **recalibrate
-on real (or live-shaped) merchant data** — the documented first next step
-(README → "What I'd Do Next" #1). The API already logs the feature vector for
-every scored order (`xgb_features`), so the calibration dataset is being
-collected.
+**What remains is real labels, not features.** The model is now calibrated to
+the live feature *distribution*; the final calibration step is the Phase-2
+pilot in `docs/REAL_DATA_ROADMAP.md` — 1,000 real orders to validate the
+assumptions and calibrate the cost model, then A/B the gate. The API already
+logs `xgb_features` for every scored order, so the calibration dataset is
+being collected.
 
 ---
 
@@ -80,5 +91,7 @@ collected.
 1. `tests/unit/return_risk/test_scorer.py` pins honest → LOW (ratio ≤ 4.0) and
    serial → HIGH.
 2. `verify_live_stack.py` asserts the tiers end-to-end against a real Redis.
-3. `--full-verify` determinism + doc-consistency checks keep the numbers and
-   the narrative in lockstep.
+3. `--full-verify` (12 checks) re-trains the live model deterministically, keeps
+   the DGP evidence in lockstep with the manifest, and checks temporal
+   integrity + doc consistency.
+

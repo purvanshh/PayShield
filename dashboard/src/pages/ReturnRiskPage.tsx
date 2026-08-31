@@ -189,9 +189,9 @@ export function ReturnRiskPage() {
       <div className="mb-section-gap border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
         <span className="material-symbols-outlined text-primary text-[20px] mt-0.5">info</span>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Live scoring runs the Stage 1 model on Stage 1-schema features; metrics
-          are from the evaluated DGP hold-out. See{" "}
-          <code className="text-on-surface">CALIBRATION_GAP.md</code>.
+          Live scoring runs a model trained on the live feature pipeline (test
+          PR-AUC 0.8139); headline metrics are from the evaluated DGP hold-out.
+          See <code className="text-on-surface">CALIBRATION_GAP.md</code>.
         </p>
       </div>
 

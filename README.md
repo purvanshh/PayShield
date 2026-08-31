@@ -189,7 +189,7 @@ priors, honestly labelled) while a full-history profile reaches ~97%.
 | Task | Command |
 |---|---|
 | **Setup (once)** — create `.venv-verify` + install pinned deps | `make setup-verify` |
-| **Verify everything** — the 11/11 interview gate | `make verify` |
+| **Verify everything** — the 12/12 interview gate | `make verify` |
 | Train the model | `make train-xgb` |
 | Ablation / tuning / cost ₹ | `make ablation-xgb` · `make tune-xgb` · `make cost` |
 | Run the test suite | `make test` |
@@ -256,12 +256,11 @@ reg_lambda=10` → test PR-AUC **0.8089** / ROC-AUC **0.8477**
 
 All eleven curated live checks pass against the running Docker stack — serial
 returner → HIGH, honest → LOW, chargeback responses, signed webhooks, drift.
-Full table in `scripts/verify_live_stack.py`. The live feature pipeline is kept
-inside the model's training envelope: the scorer's `amount_vs_user_aov_ratio`
-never falls back to `avg_return_value` (a profile with cheap returns but no
-stored AOV previously produced an out-of-distribution ratio of 8.0 that spiked
-honest customers to MEDIUM/HIGH) — see `return_risk/feature_engine.py` and the
-honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
+Full table in `scripts/verify_live_stack.py`. The live scorer runs a model
+**trained on the live feature pipeline** (`scripts/train_live_features.py`, test
+PR-AUC 0.8139) with `amount_vs_user_aov_ratio` clamped to the training envelope
+`[0.15, 4.0]` — see `return_risk/feature_engine.py` and the honest accounting in
+[`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 
 ### For judges (30-second version)
 
@@ -274,16 +273,14 @@ honest accounting in [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 
 ## What I'd Do Next
 
-1. **Retrain XGBoost on the enriched feature pipeline.** The current model is
-   trained on the offline DGP's features; applied to the enriched feature
-   engine it scores 0.82 on the serial/fraud-archetype target (where the
-   hand-weighted scorer reaches 0.93) and ~0.50 on the per-order `returned`
-   label — because that generator's `returned` outcome depends only on the
-   user's latent rate (see `docs/REAL_DATA_VALIDATION_RETROSPECTIVE.md`).
-   The demo path is aligned today (verified 11/11 on the Docker stack), but
-   the model is still not *trained* on live-distributed features — recalibrate
-   on real merchant data (or live-shaped training data) to close that gap,
-   not just add more data.
+1. **Calibrate the live model on real merchant labels.** The live scorer now
+   ships a model **trained on the live feature pipeline**
+   (`scripts/train_live_features.py`, held-out test PR-AUC 0.8139) — the
+   calibration gap documented in `docs/CALIBRATION_GAP.md` is closed at the
+   *distribution* level. The remaining step is the Phase-2 pilot in
+   `docs/REAL_DATA_ROADMAP.md`: 1,000 real orders to validate the 18% return
+   rate and feature importances, calibrate the cost model, then A/B the 0.50
+   gate on live orders.
 2. **A/B test with a Razorpay merchant** — the champion/challenger harness is
    built; needs live orders to validate the 0.50 gate on real return
    distributions.

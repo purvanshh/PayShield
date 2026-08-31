@@ -24,9 +24,9 @@
             └───────────┬────────────────┘
                         ▼
             ┌────────────────────────────┐
-            │  XGBoost primary           │   7-feature Stage 1 model on the
-            │  fallback: weighted scorer │   DGP schema (clamped to envelope)
-            └───────────┬────────────────┘
+            │  XGBoost primary           │   live-features model (PR-AUC 0.8139)
+            │  fallback: weighted scorer │   on the 7-feature schema, clamped
+            └───────────┬────────────────┘   to the training envelope
                         ▼
             ┌────────────────────────────┐
             │  Tier + recommendations    │   LOW → ACCEPT · MEDIUM → review
@@ -70,9 +70,11 @@ are rejected with `400` before any work.
 
 1. **Defense-only tiers** — MEDIUM → review, HIGH → prepaid; no autonomous
    blocks, including the abuse-ring sentinel (score floor, never a block).
-2. **XGBoost primary on the DGP schema** — the live scorer runs the evaluated
-   Stage 1 model on Stage 1 features, clamped to the training envelope so it
-   is never out-of-distribution.
+2. **XGBoost primary, trained on the live feature pipeline** — the live scorer
+   runs `models/return_risk_xgb_live.json` (test PR-AUC 0.8139), trained on the
+   exact 7-feature vector the API computes, clamped to the training envelope so
+   it is never out-of-distribution. The offline DGP models remain the evaluated
+   data-maturity evidence (0.7991 → 0.9497).
 3. **Provenance on every feature** — `value · weight · contribution · source`
    per feature, so any score is explainable down to the penny.
 4. **Reconstruct over re-analyse** — the audit chain is the single source of

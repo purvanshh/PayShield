@@ -22,7 +22,7 @@
 3. `make verify` → **ALL CHECKS PASS (11/11)**,
    including a temporal-integrity check (no look-ahead in DGP/split).
 4. Live Docker: `make up` → `make seed` →
-   `make verify-live` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.98 ·
+   `make verify-live` → **11/11 PASS** (honest customer LOW 0.06 · serial returner HIGH 0.97 ·
    suspicious burst BLOCK).
 5. Open `http://localhost:3000/track2-compliance` → every Track 2 requirement mapped to its
    implementation and its proof (**16/16 verified**).
