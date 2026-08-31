@@ -15,7 +15,7 @@ session can pick up without re-deriving context.
 |---|---|---|
 | Hermetic ML verification | **12/12 PASS** | `python scripts/run_all_scenarios.py --full-verify` → `ALL CHECKS PASS` (incl. temporal-integrity + live-features-model checks) |
 | Live Docker stack | **11/11 PASS** | `seed_demo_data.py` + `verify_live_stack.py` |
-| Test suite | **495 passed, 1 skipped** | `pytest tests/` (47 modules) |
+| Test suite | **498 passed, 1 skipped** | `pytest tests/` (47 modules) |
 | Track 2 compliance map | **16/16 return-risk requirements verified** | `GET /v1/meta/track2-compliance` + `docs/TRACK2_COMPLIANCE.md` (fraud/chargeback are out of scope) |
 | Business case | **₹17.4L → ₹53.5L/month** | `docs/cost_model/calculator.py --all-maturity` |
 | Explainability | **XGBoost waterfall live** | `POST /v1/return/explain` + dashboard Model Waterfall |
@@ -94,7 +94,7 @@ session can pick up without re-deriving context.
 
 ```bash
 # Hermetic (Python 3.11 + pinned requirements)
-python scripts/run_all_scenarios.py --full-verify     # 11/11 PASS
+python scripts/run_all_scenarios.py --full-verify     # 12/12 PASS
 
 # Live Docker stack
 docker compose -f docker/docker-compose.yml up -d --build api redis
@@ -102,11 +102,11 @@ python scripts/seed_demo_data.py
 python scripts/verify_live_stack.py                   # 11/11 PASS
 
 # Tests
-pytest tests/                                         # 495 passed, 1 skipped
+pytest tests/                                         # 498 passed, 1 skipped
 
 # Compliance endpoint (16/16 return-risk verified)
 curl -s -X GET http://localhost:8000/v1/meta/track2-compliance \
-  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 20 (all done)
+  -H "X-API-Key: payshield-dev-key-2026" | jq '.requirements | length'   # 16 (all done)
 
 # Review queue + mark
 curl -s http://localhost:8000/v1/meta/review-queue -H "X-API-Key: payshield-dev-key-2026"

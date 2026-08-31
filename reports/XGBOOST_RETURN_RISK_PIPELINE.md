@@ -184,7 +184,8 @@ generator-design limitation is documented in
 | `return_risk/scorer.py` | XGBoost primary + hand-weighted fallback |
 | `return_risk/feature_engine.py` | ML inference features |
 | `api/schemas/return_risk.py` · `api/routes/return_risk.py` | API surface |
-| `models/return_risk_xgb_best.json` | **Shipped tuned model (Stage 1 PR-AUC 0.8089)** |
+| `models/return_risk_xgb_best.json` | Stage 1 DGP tuned model (PR-AUC 0.8089) — the evaluated evidence |
+| `models/return_risk_xgb_live.json` | **Shipped production model** — trained on the live feature pipeline (test PR-AUC 0.8227 / ROC-AUC 0.8082) via `scripts/train_live_features.py` |
 
 **Reproduce everything:**
 ```bash
