@@ -417,6 +417,33 @@ def verify_temporal_integrity() -> None:
     _run_check_script("scripts/verify_temporal_integrity.py")
 
 
+def verify_live_features() -> None:
+    """Live-features model: byte-identical re-train + test PR-AUC gate (>= 0.79).
+
+    The production scorer ships ``models/return_risk_xgb_live.json``, trained on
+    the exact feature vector the live API computes (scripts/train_live_features.py).
+    This check re-trains it twice and asserts the result JSON is byte-identical
+    (determinism on the new model) and that the held-out test PR-AUC meets the
+    gate — so the shipped production model is reproducible and its quality is
+    pinned, not assumed.
+    """
+    hashes: list[str] = []
+    for _ in range(2):
+        subprocess.run(
+            [sys.executable, "scripts/train_live_features.py"],
+            cwd=ROOT, check=True, stdout=subprocess.DEVNULL,
+        )
+        hashes.append(_file_hash(ROOT / "models" / "live_features_results.json"))
+    assert hashes[0] == hashes[1], (
+        "live-features training is non-deterministic "
+        "(live_features_results.json differs between two identical runs)"
+    )
+    data = _load(ROOT / "models" / "live_features_results.json") or {}
+    pr_auc = data.get("test_pr_auc")
+    assert pr_auc is not None, "live_features_results.json missing test_pr_auc"
+    assert pr_auc >= 0.79, f"live-features test PR-AUC {pr_auc:.4f} < required 0.79"
+
+
 def full_verify() -> int:
     """Run the complete interview-defense check suite. Print PASS/FAIL for each."""
     print("=" * 80)
@@ -433,7 +460,7 @@ def full_verify() -> int:
         return 1
 
     # Generate all artifacts first (skip re-tune if already present, to keep it fast).
-    print("\n[0/12] Generating artifacts (pipeline)...")
+    print("\n[0/13] Generating artifacts (pipeline)...")
     try:
         run_pipeline(skip_tune=True)
     except subprocess.CalledProcessError as e:
@@ -453,6 +480,7 @@ def full_verify() -> int:
         ("Dashboard compat (legacy + maturity keys)", verify_dashboard_compat),
         ("Ablation baseline = 0.8087 (base gen, seed 99)", verify_ablation_baseline),
         ("Temporal integrity (no look-ahead in DGP/split)", verify_temporal_integrity),
+        ("Live-features model: deterministic re-train + PR-AUC >= 0.79", verify_live_features),
     ]
 
     all_pass = True
