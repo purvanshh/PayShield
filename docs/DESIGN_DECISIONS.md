@@ -3,7 +3,13 @@
 Why the risk suite looks the way it does: context, options considered,
 chosen approach, trade-offs.
 
-## 1. Reconstruct, don't re-analyse (chargeback evidence)
+> **Scope.** Track 2 is the **return-risk** surface. Decisions #3 (weighted →
+> now XGBoost primary), #5, #7 and #8 are the return-risk core; #1, #2, #4 and
+> #6 document the chargeback extension's design — kept here because that code
+> still exists, but they are **not** part of the evaluated track (see README →
+> Repository Scope).
+
+## 1. Reconstruct, don't re-analyse (chargeback extension)
 
 **Decision.** The evidence collector reads the tamper-evident audit chain
 and Redis mirrors; it never re-runs L1/L2/L3 at dispute time.

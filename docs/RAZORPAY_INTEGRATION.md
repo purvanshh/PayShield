@@ -1,5 +1,9 @@
 # Razorpay Integration
 
+> **Scope.** Track 2 is the **return-risk** surface. The dispute/chargeback
+> client at the bottom of this page belongs to the chargeback extension —
+> kept here as honest technical history, but **out of scope** for this track.
+
 ## What This Is
 
 PayShield is a **pre-shipping return-risk layer built on Razorpay's
@@ -99,10 +103,11 @@ python -m pytest tests/integration/test_razorpay_webhooks.py -v
 Both suites run hermetic (no network): payload → feature mapping and the
 signed-webhook → score/label flow are pinned by assertions.
 
-## Winning a Chargeback (relation to the disputes client)
+## Extension: Winning a Chargeback (out of scope for Track 2)
 
-Dispute rebuttals reuse the same Razorpay client pattern
-(`chargeback/razorpay_client.py`, mock + real) and their own signed
+The chargeback extension reuses the same Razorpay client pattern
+(`chargeback/razorpay_client.py`, mock + real) and its own signed
 `chargeback.created` webhook. The return-risk scorer reduces *the number of
 disputes a merchant files*; the chargeback responder improves the win rate
-on the ones that do happen.
+on the ones that do happen. This is extension work — see the README's
+Repository Scope.

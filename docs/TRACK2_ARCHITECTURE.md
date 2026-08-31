@@ -1,78 +1,81 @@
-# Track 2 Architecture
+# Track 2 Architecture — Return-Risk
 
-## The three-act risk lifecycle
+> **Scope:** Track 2 is the **return-risk** surface. Fraud (`engine/`, `ml/`)
+> and chargeback (`chargeback/`) extensions exist in the repo as earlier
+> platform work but are **out of scope** for this track — their routes remain
+> mounted but unmeasured, and every number here covers return-risk only.
+
+## The pre-shipping lifecycle
 
 ```
-                    ┌────────────────────────────┐
-                    │      Merchant App          │
-                    └───────────┬────────────────┘
-            ┌───────────────────┼───────────────────┐
-            ▼                   ▼                   ▼
-  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────────┐
-  │ POST /v1/score  │  │ POST /v1/return │  │ POST /v1/chargeback/ │
-  │ (fraud, live)   │  │ /score          │  │ respond              │
-  └────────┬────────┘  └────────┬────────┘  └──────────┬───────────┘
-           │                    │                      │
-  ┌────────▼────────┐  ┌────────▼────────┐  ┌──────────▼───────────┐
-  │ L1 velocity/geo │  │ ReturnRisk      │  │ ChargebackEvidence   │
-  │ L2 GNN (cond.)  │  │ FeatureEngine   │  │ Collector (audit    │
-  │ Ensemble fusion │  │  (Redis profile)│  │  chain re-read)     │
-  └────────┬────────┘  └────────┬────────┘  └──────────┬───────────┘
-           │           ┌────────▼────────┐              │
-           │           │ RulesEngine     │  ┌──────────▼───────────┐
-           │           │ (YAML, reload)  │  │ RebuttalBuilder      │
-           │           └────────┬────────┘  │ (type/narrative/     │
-           │                    │           │  Razorpay payload)   │
-           │           ┌────────▼────────┐  └──────────┬───────────┘
-           │           │ XGBoost primary │              │
-           │           │ fallback:       │  ┌──────────▼───────────┐
-           │           │ weighted scorer │  │ NarrativeGenerator   │
-           │           └────────┬────────┘  │ (rule-based; LLM     │
-           │                    │           │  stack removed)      │
-           │           ┌────────▼────────┐  └──────────┬───────────┘
-           │           │ Tier + recs     │  ┌──────────▼───────────┐
-           └──────────►└─────────────────┘  │ RazorpayClient       │
-                                            │ (mock / real)        │
-                                            └──────────┬───────────┘
-                                                       ▼
-                                           ┌───────────────────────┐
-                                           │ human review → submit │
-                                           │ (chargeback:admin)    │
-                                           └───────────────────────┘
+            ┌────────────────────────────┐
+            │  Razorpay order.paid /      │
+            │  POST /v1/return/score      │
+            └───────────┬────────────────┘
+                        ▼
+            ┌────────────────────────────┐
+            │  ReturnRiskFeatureEngine   │   Redis: user history, merchant
+            │  (user + merchant + txn)   │   baselines, category zsets
+            └───────────┬────────────────┘
+                        ▼
+            ┌────────────────────────────┐
+            │  RulesEngine (YAML, reload)│   9 config-driven rules incl.
+            │  evaluate(features)        │   abuse-ring sentinel R-RULE-09
+            └───────────┬────────────────┘
+                        ▼
+            ┌────────────────────────────┐
+            │  XGBoost primary           │   7-feature Stage 1 model on the
+            │  fallback: weighted scorer │   DGP schema (clamped to envelope)
+            └───────────┬────────────────┘
+                        ▼
+            ┌────────────────────────────┐
+            │  Tier + recommendations    │   LOW → ACCEPT · MEDIUM → review
+            │  + Model Waterfall (explain)│  HIGH → REQUIRE_PREPAID (defense-only)
+            └───────────┬────────────────┘
+                        ▼
+            ┌────────────────────────────┐
+            │  Audit chain (every decision) + human-review queue (MEDIUM)
+            └────────────────────────────┘
 ```
+
+Extensions (out of scope): a fraud path (`POST /v1/score`, L1 velocity/geo +
+conditional L2 GNN + ensemble) and a chargeback responder
+(`POST /v1/chargeback/respond`, evidence reconstruction + admin-gated
+submit) — see the README's Repository Scope for the honest accounting.
 
 ## Shared sinks (one source of truth)
 
-| Sink | Track 2 consumers |
+| Sink | Return-risk consumers |
 |---|---|
-| `store/audit_logs/` — tamper-evident JSONL chain | evidence collector (point-in-time reconstruction), webhook event log |
-| Redis `return_risk:*` | feature engine (profiles, velocity zsets, merchant baselines, category zsets) |
-| Redis `velocity:user:*`, `dfp:*`, `ud:*`, `benford:*` | L1 features + evidence collector device/merchant evidence |
-| Redis `chargeback:rebuttal:{dispute_id}` | draft cache (TTL 30d) + `chargeback:payment_txn:{payment_id}` for webhook auto-assembly |
+| `store/audit_logs/` — tamper-evident JSONL chain | every `RETURN_RISK_SCORED` decision, webhook event log, human-review queue source |
+| Redis `return_risk:*` | feature engine (profiles, return velocity zsets, merchant baselines, category zsets) |
+| Redis `address:{hash}:users` | abuse-ring sentinel (PII-free address-hash sets) |
 | `configs/{feature_registry_return.yaml, return_risk_rules.yaml, rbac.yaml, config.yaml}` | weights, rules, permissions, thresholds — all code-free tuning |
 
 ## Request/response lifecycle
 
-**Return risk** (read-only hot path): score request → concurrent
-user/merchant extraction → txn features → rules (severity-ordered) →
-weighted composite + capped rule adjustment → tier + recommendations →
-response with per-feature contributions; profile refreshed in background.
+**Return risk** (read-only hot path): score request → concurrent user/merchant
+extraction from Redis → transaction features (ratio clamped to the model's
+`[0.15, 4.0]` envelope) → rules (severity-ordered) → XGBoost prediction
+(hand-weighted fallback) → abuse-ring override → tier + recommendations →
+response with per-feature contributions, `engine`, `model_path` and the model
+feature vector; profile refreshed in background. `POST /v1/return/explain`
+replays the same path and returns the Model Waterfall attribution.
 
-**Chargeback** (remedial path): webhook (HMAC-verified) or manual call →
-txn resolved from audit chain → L1 snapshot + device/merchant evidence →
-completeness score → rule-based response type (ACCEPT/REJECT/PARTIAL) →
-narrative (rule-based; the LLM stack was removed in the scope cut) →
-Razorpay payload cached →
-draft returned; only `chargeback:admin` can submit.
+**Webhooks** (signed, HMAC-verified): `order.paid` → score before dispatch;
+`refund.processed` → ground-truth label for retraining. Unverified payloads
+are rejected with `400` before any work.
 
 ## Distinctive design choices (summary — full rationale in docs/DESIGN_DECISIONS.md)
 
-1. Reconstruction over re-analysis — rebuttals use transaction-time
-   knowledge, never hindsight (evidence collector is read-only).
-2. Rules for the binary verdict — chargeback response is a legal claim,
-   not a probability; explainability wins.
-3. Weighted scoring for return risk — no labels yet; explainable,
-   merchant-tunable, rule-guarded.
-4. Draft/submit separation — human-in-the-loop by construction.
-5. Honest numbers — both operating points documented; confidence and
-   completeness degrade loudly when evidence is thin.
+1. **Defense-only tiers** — MEDIUM → review, HIGH → prepaid; no autonomous
+   blocks, including the abuse-ring sentinel (score floor, never a block).
+2. **XGBoost primary on the DGP schema** — the live scorer runs the evaluated
+   Stage 1 model on Stage 1 features, clamped to the training envelope so it
+   is never out-of-distribution.
+3. **Provenance on every feature** — `value · weight · contribution · source`
+   per feature, so any score is explainable down to the penny.
+4. **Reconstruct over re-analyse** — the audit chain is the single source of
+   truth (chargeback extension design; keep for the return-risk label loop).
+5. **Honest numbers** — every headline reproduces from `--full-verify`;
+   confidence and evidence degrade loudly when data is thin.
