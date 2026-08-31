@@ -159,11 +159,14 @@ def chronological_split(df: pd.DataFrame, train_frac: float = 0.6, val_frac: flo
 # --------------------------------------------------------------------------- #
 
 
-def train_xgb(train_df: pd.DataFrame, val_df: pd.DataFrame, features: list[str], seed: int = 42):
+def train_xgb(train_df: pd.DataFrame, val_df: pd.DataFrame, features: list[str], seed: int = 42,
+              scale_pos_weight: float = 2.0):
     """Train with conservative hyperparameters to prevent overfitting.
 
     ``features`` is passed in (7 for basic, 9 for enriched/premium) so the same
-    trainer serves every scenario.
+    trainer serves every scenario. ``scale_pos_weight`` defaults to 2.0 (the
+    DGP scenarios are minority-positive at ~40-42% base rate); the live-features
+    trainer passes 1.0 because its distribution is near-balanced (~49%).
     """
     model = xgb.XGBClassifier(
         n_estimators=200,
@@ -171,7 +174,7 @@ def train_xgb(train_df: pd.DataFrame, val_df: pd.DataFrame, features: list[str],
         learning_rate=0.1,
         subsample=0.8,
         colsample_bytree=0.8,
-        scale_pos_weight=2.0,
+        scale_pos_weight=scale_pos_weight,
         random_state=seed,
         n_jobs=8,
         tree_method="hist",

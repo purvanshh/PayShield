@@ -13,80 +13,80 @@
     "days_since_last_order"
   ],
   "base_rate": 0.4937,
-  "test_pr_auc": 0.813864668567044,
-  "test_roc_auc": 0.7965259116369137,
+  "test_pr_auc": 0.8227190307256701,
+  "test_roc_auc": 0.8081734182249332,
   "decision_gate": 0.7991,
   "decision": "Option B \u2014 ship live-features model + full re-anchor",
   "operating_curve": {
     "0.20": {
-      "flag_rate": 0.8771,
-      "precision": 0.5571,
-      "recall": 0.9639
+      "flag_rate": 0.7981,
+      "precision": 0.5972,
+      "recall": 0.9401
     },
     "0.25": {
-      "flag_rate": 0.8145,
-      "precision": 0.5882,
-      "recall": 0.9449
+      "flag_rate": 0.7272,
+      "precision": 0.6282,
+      "recall": 0.9011
     },
     "0.30": {
-      "flag_rate": 0.761,
-      "precision": 0.6099,
-      "recall": 0.9154
+      "flag_rate": 0.6573,
+      "precision": 0.6569,
+      "recall": 0.8517
     },
     "0.35": {
-      "flag_rate": 0.7123,
-      "precision": 0.6231,
-      "recall": 0.8755
+      "flag_rate": 0.5957,
+      "precision": 0.6885,
+      "recall": 0.8089
     },
     "0.40": {
-      "flag_rate": 0.6627,
-      "precision": 0.6444,
-      "recall": 0.8422
+      "flag_rate": 0.534,
+      "precision": 0.7229,
+      "recall": 0.7614
     },
     "0.45": {
-      "flag_rate": 0.6092,
-      "precision": 0.6693,
-      "recall": 0.8042
+      "flag_rate": 0.4747,
+      "precision": 0.7563,
+      "recall": 0.7082
     },
     "0.50": {
-      "flag_rate": 0.5663,
-      "precision": 0.6936,
-      "recall": 0.7747
+      "flag_rate": 0.4342,
+      "precision": 0.7814,
+      "recall": 0.6692
     },
     "0.60": {
-      "flag_rate": 0.4776,
-      "precision": 0.7417,
-      "recall": 0.6987
+      "flag_rate": 0.3619,
+      "precision": 0.8043,
+      "recall": 0.5741
     },
     "0.70": {
-      "flag_rate": 0.3851,
-      "precision": 0.7897,
-      "recall": 0.5998
+      "flag_rate": 0.2829,
+      "precision": 0.8467,
+      "recall": 0.4724
     }
   },
   "models": [
     {
-      "pr_auc": 0.813864668567044,
-      "average_precision": 0.8139868216139388,
-      "roc_auc": 0.7965259116369137,
-      "precision_at_gate": 0.6936170212765957,
-      "recall_at_gate": 0.7747148288973384,
-      "f1_at_gate": 0.7319263583295914,
+      "pr_auc": 0.8227190307256701,
+      "average_precision": 0.8228322681315708,
+      "roc_auc": 0.8081734182249332,
+      "precision_at_gate": 0.781354051054384,
+      "recall_at_gate": 0.6692015209125475,
+      "f1_at_gate": 0.720942140296979,
       "confusion_matrix": {
-        "tn": 663,
-        "fp": 360,
-        "fn": 237,
-        "tp": 815
+        "tn": 826,
+        "fp": 197,
+        "fn": 348,
+        "tp": 704
       },
       "name": "XGBoost (live features)",
       "feature_importance": {
-        "user_return_rate_30d": 0.221868634223938,
-        "user_return_rate_90d": 0.18069474399089813,
-        "amount_vs_user_aov_ratio": 0.18443246185779572,
-        "category_return_baseline": 0.07669319957494736,
-        "payment_method_risk": 0.2809871733188629,
+        "user_return_rate_30d": 0.23515306413173676,
+        "user_return_rate_90d": 0.19555158913135529,
+        "amount_vs_user_aov_ratio": 0.17418216168880463,
+        "category_return_baseline": 0.06499642878770828,
+        "payment_method_risk": 0.27806633710861206,
         "device_fingerprint_match": 0.0,
-        "days_since_last_order": 0.05532378330826759
+        "days_since_last_order": 0.052050430327653885
       }
     },
     {

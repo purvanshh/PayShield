@@ -31,6 +31,7 @@ async def _seed_serial_returner(redis):
             "total_returns": "10",
             "return_rate_30d": "0.62",
             "return_rate_90d": "0.55",
+            "avg_order_value": "5000",  # realistic AOV -> ratio ~1.2 for a ₹6k order
             "avg_return_value": "3800",
             "cod_refusals": "3",
             "cod_orders": "7",

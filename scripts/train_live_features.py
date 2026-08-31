@@ -239,7 +239,9 @@ def run(n_orders: int = 10000, seed: int = 42, gate: float = 0.50, save: bool = 
     print(f"  Train: {len(train_df)} | Val: {len(val_df)} | Test: {len(test_df)}")
 
     print("Training XGBoost (default hyperparameters) on LIVE features...")
-    model = train_xgb(train_df, val_df, FEATURES, seed=seed)
+    # The live distribution is near-balanced (~49% base rate), so the DGP
+    # trainer's scale_pos_weight=2.0 default is inappropriate — pass 1.0.
+    model = train_xgb(train_df, val_df, FEATURES, seed=seed, scale_pos_weight=1.0)
 
     print("Evaluating XGBoost...")
     xgb_results = evaluate(model, test_df, FEATURES, gate=gate)
