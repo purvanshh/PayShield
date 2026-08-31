@@ -33,7 +33,7 @@ curl -X POST http://localhost:8000/v1/return/score \
        "amount":5500,"category":"fashion","payment_method":"UPI","cod_flag":true}'
 ```
 
-**Expected output:** `risk_tier: HIGH`, `return_risk_score ≈ 0.97`,
+**Expected output:** `risk_tier: HIGH`, `return_risk_score ≈ 0.94`,
 `engine: xgboost`, `R-RULE-01` (serial returner) + `R-RULE-03` (COD refusal)
 fired, recommendations include prepaid-only + manual review.
 
@@ -52,7 +52,7 @@ curl -X POST http://localhost:8000/v1/return/score \
        "amount":12000,"category":"electronics","payment_method":"UPI","cod_flag":false}'
 ```
 
-**Expected output:** `risk_tier: LOW`, `return_risk_score ≈ 0.06`.
+**Expected output:** `risk_tier: LOW`, `return_risk_score ≈ 0.03`.
 
 **Talking points:** every feature in `feature_breakdown` carries
 `value · weight · contribution · source` — we can explain the score down to
@@ -93,7 +93,7 @@ for i in 001 002 003 004; do
 done
 ```
 
-**Expected output:** `U_RING_001..003 → LOW 0.0975`; `U_RING_004 → HIGH 0.85`
+**Expected output:** `U_RING_001..003 → LOW 0.113`; `U_RING_004 → HIGH 0.85`
 with `R-RULE-09` triggered.
 
 **Talking points:** the model alone rates every ring user LOW — the shared
@@ -125,7 +125,7 @@ a fully pinned Python 3.11 stack. The suite also verifies temporal integrity
   mismatch (no COD, different reasons/logistics), then calibrated to Indian
   distributions — see `docs/SIMULATOR_VALIDATION.md`.
 - **Honesty:** the live demo runs a model trained on the live feature pipeline
-  (test PR-AUC 0.8139); headline metrics are the evaluated DGP hold-out
+  (test PR-AUC 0.8227); headline metrics are the evaluated DGP hold-out
   (`docs/CALIBRATION_GAP.md`).
 - **Failure recovery:** fresh users and Redis outages degrade to conservative
   priors with capped confidence and a provenance trail

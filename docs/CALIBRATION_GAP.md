@@ -8,7 +8,7 @@ model-pipeline mismatch caused **two live-verification failures**. Both were
 fixed by aligning the *live feature pipeline* to the model's training envelope
 (commit `4207ff6`), and the deeper distribution gap is now **closed**: the
 production scorer ships a model **trained on the exact feature vector the live
-API computes** (`scripts/train_live_features.py`, test PR-AUC 0.8139). The
+API computes** (`scripts/train_live_features.py`, test PR-AUC 0.8227). The
 remaining honest step is **real merchant labels** (the pilot in
 `docs/REAL_DATA_ROADMAP.md`).
 
@@ -66,13 +66,15 @@ live API computes* — is fixed:
   `_return_probability` applied to the live feature values + hidden confounders
   + noise). The split and training protocol are identical to the DGP trainer
   (per-user chronological 60/20/20).
-- **Held-out test PR-AUC: 0.8139** — above the DGP model's 0.7991 floor,
-  because the model is calibrated to the live distribution (where
+- **Held-out test PR-AUC: 0.8227 / ROC-AUC: 0.8082** — above the DGP model's
+  0.7991 floor, because the model is calibrated to the live distribution (where
   `device_fingerprint_match` is the neutral 0.5, `days_since_last_order` comes
-  from `last_activity`, and the ratio is clamped).
+  from `last_activity`, and the ratio is clamped). Trained with
+  `scale_pos_weight=1.0` — the live distribution is near-balanced (~49% base
+  rate), unlike the minority-positive DGP.
 - The scorer now loads **`models/return_risk_xgb_live.json`** first
   (`DEFAULT_XGB_MODEL_PATHS`), so the live demo runs the calibrated model —
-  serial returner **HIGH 0.97**, honest customer **LOW 0.06**, abuse-ring
+  serial returner **HIGH 0.94**, honest customer **LOW 0.03**, abuse-ring
   sentinel **HIGH 0.85** (score floor), verified 11/11.
 - `--full-verify` gained a **check 12**: the live-features training must re-run
   **byte-identical** (determinism on the new model) and meet **PR-AUC ≥ 0.79**.

@@ -15,7 +15,7 @@ live-data caveat documented).
 
 | # | Requirement | Implementation | Evidence |
 |---|---|---|---|
-| A1 | Score an order **before dispatch** and return an actionable tier | `POST /v1/return/score` → `return_risk/scorer.py` (`LOW/MEDIUM/HIGH` + action + recommendations) | `tests/integration/test_return_risk_api.py`, `tests/unit/return_risk/test_scorer.py`; live check `verify_live_stack.py` (honest → LOW 0.06, serial → HIGH 0.97) |
+| A1 | Score an order **before dispatch** and return an actionable tier | `POST /v1/return/score` → `return_risk/scorer.py` (`LOW/MEDIUM/HIGH` + action + recommendations) | `tests/integration/test_return_risk_api.py`, `tests/unit/return_risk/test_scorer.py`; live check `verify_live_stack.py` (honest → LOW 0.03, serial → HIGH 0.94) |
 | A2 | Learn from data, not just rules — a real model as the primary engine | XGBoost primary (`return_risk/scorer.py`), trained by `scripts/train_xgb_return_risk.py`, transparent hand-weighted fallback | `--full-verify` checks 3–5 (Premium PR-AUC ≥0.94, ROC ≥0.92, Enriched ≥0.88) |
 | A3 | Features come from real user history, not placeholders | `return_risk/feature_engine.py` reads Redis profiles/velocity/merchant baselines; every feature carries a `source` tag | `tests/unit/return_risk/test_feature_engine.py` (provenance assertions), `tests/unit/test_redis_clients.py` |
 | A4 | Explainability: show *why* a score is what it is | `feature_breakdown` (value/normalized/weight/contribution/source) + `rules_triggered` + `recommendations` in every response | `test_scorer.py::test_feature_provenance_in_breakdown`, `test_contributions_sum_to_score` |
@@ -56,7 +56,7 @@ live-data caveat documented).
 | D1 | All headline numbers reproduce from one command | `python scripts/run_all_scenarios.py --full-verify` → 12/12 PASS | `reports/full_verify_output.txt` (committed) |
 | D2 | Byte-identical training (no unseeded RNG, no timestamps) | Determinism check: train × 3 twice, byte-compare result JSONs | `--full-verify` check 2 |
 | D3 | Docs stay in lockstep with measured numbers | `docs/_number_manifest.json` + `scripts/verify_doc_consistency.py` | `--full-verify` check 8 |
-| D4 | Live Docker stack passes its curated scenarios | `scripts/seed_demo_data.py` + `scripts/verify_live_stack.py` → 11/11 PASS | Live run (honest LOW 0.06, serial HIGH 0.97, burst BLOCK) |
+| D4 | Live Docker stack passes its curated scenarios | `scripts/seed_demo_data.py` + `scripts/verify_live_stack.py` → 11/11 PASS | Live run (honest LOW 0.03, serial HIGH 0.94, burst BLOCK) |
 | D5 | Cost model is derived from measured operating points, never hardcoded | `docs/cost_model/calculator.py` (no-fallback), `--full-verify` check 7 | `tests/unit/test_cost_model.py` (₹17.4L pinned) |
 | D6 | Fixed, wheel-universal ML stack for cross-platform reproducibility | `requirements.txt` pins numpy/pandas/scipy/sklearn/xgboost for Python 3.11 (macOS + Linux) | `--full-verify` on a fresh clone reproduces byte-identical numbers |
 | D7 | Feature-waterfall explainability — show *why* a score is what it is | `POST /v1/return/explain` (per-feature gain importance × value, neutral base 0.5) | `tests/integration/test_return_risk_api.py::TestReturnRiskExplain`; dashboard Model Waterfall section |
@@ -65,7 +65,7 @@ live-data caveat documented).
 | D10 | Human-in-the-loop review queue — MEDIUM decisions surfaced for operators | `GET/POST /v1/meta/review-queue` (audit-chain backed, reviewed flag in Redis) + dashboard `/review-queue` | `tests/integration/test_review_queue.py`; live smoke (mark → reflected) |
 | D11 | Guided demo tour — 10-minute judge walkthrough | `GET /v1/meta/demo/guide` + dashboard `/demo-tour` (auto-navigating stops) | `tests/integration/test_track2_compliance.py::TestDemoGuide` |
 | D12 | Calibration simulator — interactive feature sliders, basic vs premium model | `POST /v1/return/simulate` + dashboard `/simulator` | `tests/integration/test_return_risk_api.py::TestReturnRiskSimulate`; live (basic 7-feature vs premium 9-feature) |
-| D13 | Live scorer runs a model trained on the live feature pipeline | `models/return_risk_xgb_live.json` (test PR-AUC 0.8139) via `scripts/train_live_features.py`; wired as `--full-verify` check 12 (deterministic re-train + PR-AUC ≥ 0.79) | `--full-verify` check 12; live run 11/11 |
+| D13 | Live scorer runs a model trained on the live feature pipeline | `models/return_risk_xgb_live.json` (test PR-AUC 0.8227, ROC-AUC 0.8082) via `scripts/train_live_features.py`; wired as `--full-verify` check 12 (deterministic re-train + PR-AUC ≥ 0.79) | `--full-verify` check 12; live run 11/11 |
 
 ---
 

@@ -178,8 +178,8 @@ DEMO_GUIDE = {
             "title": "Return-Risk Scoring",
             "page": "/return-risk",
             "description": (
-                "Score a serial returner (HIGH ~0.97) and an honest electronics customer "
-                "(LOW ~0.06) — a model trained on the live feature pipeline, with a "
+                "Score a serial returner (HIGH ~0.94) and an honest electronics customer "
+                "(LOW ~0.03) — a model trained on the live feature pipeline, with a "
                 "transparent hand-weighted fallback; tiers drive ship / review / prepaid-only."
             ),
             "action": "Run the two demo presets on the Return Risk page.",

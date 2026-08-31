@@ -12,8 +12,8 @@ every claim is pinned by a check in `--full-verify` or the live stack.
 
 | Metric | Value | Gate |
 |---|---|---|
-| Live-features held-out test PR-AUC | **0.8139** | ≥ 0.7991 → **Option B**; < 0.79 → Option A |
-| Live-features test ROC-AUC | **0.7965** | measured |
+| Live-features held-out test PR-AUC | **0.8227** | ≥ 0.7991 → **Option B**; < 0.79 → Option A |
+| Live-features test ROC-AUC | **0.8082** | measured |
 | Re-train determinism | **byte-identical** across two runs (sha256 match) | — |
 
 The model is trained on the **exact 7-feature vector `ReturnRiskFeatureEngine`
@@ -42,9 +42,9 @@ features it actually computes (`device_fingerprint_match` = neutral 0.5,
 
 | Scenario | Score | Tier |
 |---|---|---|
-| Serial returner (`U_SERIAL_001`, COD) | **0.9712** | HIGH |
-| Honest customer (`U_HONEST_001`, electronics) | **0.0589** | LOW |
-| Abuse-ring `U_RING_001..003` | **0.0975** | LOW |
+| Serial returner (`U_SERIAL_001`, COD) | **0.9392** | HIGH |
+| Honest customer (`U_HONEST_001`, electronics) | **0.0296** | LOW |
+| Abuse-ring `U_RING_001..003` | **0.113** | LOW |
 | Abuse-ring `U_RING_004` (shared pincode 560037) | **0.85** | HIGH (R-RULE-09 floor) |
 
 ## 3. Determinism re-verified on the new model
@@ -88,7 +88,7 @@ checks), which is correct — the hermetic suite is 12/12.
 ## 6. The interviewer answer (sharp, no deflection)
 
 > "The live scorer now runs a model **trained on the exact feature vector the
-> live API computes** (`models/return_risk_xgb_live.json`, test PR-AUC 0.8139,
+> live API computes** (`models/return_risk_xgb_live.json`, test PR-AUC 0.8227,
 > `scripts/train_live_features.py`). The old 0.50-on-per-order-labels figure
 > was about a *different generator* whose labels were pure noise. The
 > distribution gap is closed — the remaining calibration is real merchant

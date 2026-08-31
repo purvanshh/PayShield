@@ -258,7 +258,7 @@ All eleven curated live checks pass against the running Docker stack — serial
 returner → HIGH, honest → LOW, chargeback responses, signed webhooks, drift.
 Full table in `scripts/verify_live_stack.py`. The live scorer runs a model
 **trained on the live feature pipeline** (`scripts/train_live_features.py`, test
-PR-AUC 0.8139) with `amount_vs_user_aov_ratio` clamped to the training envelope
+PR-AUC 0.8227) with `amount_vs_user_aov_ratio` clamped to the training envelope
 `[0.15, 4.0]` — see `return_risk/feature_engine.py` and the honest accounting in
 [`docs/CALIBRATION_GAP.md`](docs/CALIBRATION_GAP.md).
 
@@ -275,7 +275,7 @@ PR-AUC 0.8139) with `amount_vs_user_aov_ratio` clamped to the training envelope
 
 1. **Calibrate the live model on real merchant labels.** The live scorer now
    ships a model **trained on the live feature pipeline**
-   (`scripts/train_live_features.py`, held-out test PR-AUC 0.8139) — the
+   (`scripts/train_live_features.py`, held-out test PR-AUC 0.8227) — the
    calibration gap documented in `docs/CALIBRATION_GAP.md` is closed at the
    *distribution* level. The remaining step is the Phase-2 pilot in
    `docs/REAL_DATA_ROADMAP.md`: 1,000 real orders to validate the 18% return

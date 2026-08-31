@@ -190,7 +190,7 @@ export function ReturnRiskPage() {
         <span className="material-symbols-outlined text-primary text-[20px] mt-0.5">info</span>
         <p className="font-body-md text-body-md text-on-surface-variant">
           Live scoring runs a model trained on the live feature pipeline (test
-          PR-AUC 0.8139); headline metrics are from the evaluated DGP hold-out.
+          PR-AUC 0.8227); headline metrics are from the evaluated DGP hold-out.
           See <code className="text-on-surface">CALIBRATION_GAP.md</code>.
         </p>
       </div>

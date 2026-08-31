@@ -10,7 +10,7 @@ reproduction is at the bottom.
 ## The model (measured, never hardcoded)
 
 - ✅ **7-feature XGBoost primary engine** — Stage 1 default PR-AUC 0.7991 / ROC-AUC 0.8431; Stage 3 premium 0.9497 / 0.9612. Proof: `scripts/train_xgb_return_risk.py`, `reports/full_verify_output.txt` (checks 3–5).
-- ✅ **Live scorer runs a model trained on the live feature pipeline** — `models/return_risk_xgb_live.json` (test PR-AUC 0.8139), trained by `scripts/train_live_features.py` on the exact features the API computes. Proof: `return_risk/scorer.py` (`DEFAULT_XGB_MODEL_PATHS`), `--full-verify` check 12.
+- ✅ **Live scorer runs a model trained on the live feature pipeline** — `models/return_risk_xgb_live.json` (test PR-AUC 0.8227 / ROC-AUC 0.8082), trained by `scripts/train_live_features.py` on the exact features the API computes. Proof: `return_risk/scorer.py` (`DEFAULT_XGB_MODEL_PATHS`), `--full-verify` check 12.
 - ✅ **ROC-AUC measured, not hardcoded** (`roc_auc_score`). Proof: `scripts/train_xgb_return_risk.py`.
 - ✅ **Feature surface matches the DGP schema exactly** — `return_risk/scorer.py:36-44` (`XGB_FEATURES`) and `:264-282` (`_xgb_predict` maps live engine output → the 7 model features).
 - ✅ **Live scorer never goes out-of-distribution** — `amount_vs_user_aov_ratio` is clamped to the training envelope `[0.15, 4.0]`. Proof: `return_risk/feature_engine.py:55` + `:350`; regression tests `tests/unit/return_risk/test_feature_engine.py` (`test_extreme_aov_ratio_is_clamped_to_envelope`) and `test_scorer.py` (`test_extreme_aov_order_scores_sane`).

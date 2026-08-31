@@ -157,13 +157,13 @@ curl -s http://localhost:8000/v1/meta/demo/guide -H "X-API-Key: payshield-dev-ke
 
 | Commit | What |
 |---|---|
-| `scripts/train_live_features.py` (new) | Trains XGBoost on the **exact 7-feature vector `ReturnRiskFeatureEngine` produces** (Redis archetype profiles → feature engine → model schema), feature-driven labels, identical per-user chronological split + hyperparameters as the DGP trainer. **Held-out test PR-AUC 0.8139** (≥ the 0.7991 gate → Option B). Deterministic: two runs are byte-identical. |
+| `scripts/train_live_features.py` (new) | Trains XGBoost on the **exact 7-feature vector `ReturnRiskFeatureEngine` produces** (Redis archetype profiles → feature engine → model schema), feature-driven labels, identical per-user chronological split + hyperparameters as the DGP trainer (with `scale_pos_weight=1.0` for the near-balanced live distribution). **Held-out test PR-AUC 0.8227 / ROC-AUC 0.8082** (≥ the 0.7991 gate → Option B). Deterministic: two runs are byte-identical. |
 | `models/return_risk_xgb_live.json` (new) + `models/live_features_results.json` (new) | The shipped production model + its measured metrics, both committed. |
 | `return_risk/scorer.py` | `DEFAULT_XGB_MODEL_PATHS` now loads `return_risk_xgb_live.json` first — the live scorer runs the live-calibrated model (`model_path` in every response). |
 | `scripts/run_all_scenarios.py` | Added **check 12**: the live-features training must re-run byte-identical and meet test PR-AUC ≥ 0.79. `--full-verify` is now **12/12**. |
-| Dashboard banner + demo guide | "Live scoring runs a model trained on the live feature pipeline (test PR-AUC 0.8139)". |
+| Dashboard banner + demo guide | "Live scoring runs a model trained on the live feature pipeline (test PR-AUC 0.8227)". |
 
-**New live scores (seeded demo, shipped model):** serial returner **HIGH 0.9712** · honest customer **LOW 0.0589** · abuse-ring `U_RING_001..003` **LOW 0.0975** / `U_RING_004` **HIGH 0.85** (R-RULE-09 floor). Live stack → **11/11**.
+**New live scores (seeded demo, shipped model):** serial returner **HIGH 0.9392** · honest customer **LOW 0.0296** · abuse-ring `U_RING_001..003` **LOW 0.113** / `U_RING_004` **HIGH 0.85** (R-RULE-09 floor). Live stack → **11/11**.
 
 **Re-anchored everywhere:** `CALIBRATION_GAP.md` (distribution gap closed; real labels remain), README (Run It 12/12 + What I'd Do Next + live-verification note), `JUDGES_CHEAT_SHEET.md`, `SUBMISSION_CHECKLIST.md`, `docs/TRACK2_COMPLIANCE.md` (+D13), `docs/DEMO_DATA.md`, `docs/DEMO_SCRIPT.md`, `docs/TRACK2_ARCHITECTURE.md`, `reports/full_verify_output.txt` (regenerated 12/12). The DGP evidence (PR-AUC 0.7991 → 0.9497, ₹17.4L → ₹53.5L) is unchanged and remains the evaluated data-maturity story; the live model is the calibrated deployment.
 

@@ -24,7 +24,7 @@
             └───────────┬────────────────┘
                         ▼
             ┌────────────────────────────┐
-            │  XGBoost primary           │   live-features model (PR-AUC 0.8139)
+            │  XGBoost primary           │   live-features model (PR-AUC 0.8227)
             │  fallback: weighted scorer │   on the 7-feature schema, clamped
             └───────────┬────────────────┘   to the training envelope
                         ▼
@@ -71,7 +71,7 @@ are rejected with `400` before any work.
 1. **Defense-only tiers** — MEDIUM → review, HIGH → prepaid; no autonomous
    blocks, including the abuse-ring sentinel (score floor, never a block).
 2. **XGBoost primary, trained on the live feature pipeline** — the live scorer
-   runs `models/return_risk_xgb_live.json` (test PR-AUC 0.8139), trained on the
+   runs `models/return_risk_xgb_live.json` (test PR-AUC 0.8227), trained on the
    exact 7-feature vector the API computes, clamped to the training envelope so
    it is never out-of-distribution. The offline DGP models remain the evaluated
    data-maturity evidence (0.7991 → 0.9497).

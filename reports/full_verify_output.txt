@@ -249,7 +249,7 @@ Determinism: running train x3 (run 2)...
   PASS deterministic: return_risk_results_basic.json
   PASS deterministic: return_risk_results_enriched.json
   PASS deterministic: return_risk_results_premium.json
-  [2/12] PASS  Determinism (train x3 twice, byte-identical)  (7.3s)
+  [2/12] PASS  Determinism (train x3 twice, byte-identical)  (7.8s)
   [3/12] PASS  Premium PR-AUC >= 0.94  (0.0s)
   [4/12] PASS  Premium ROC-AUC >= 0.92  (0.0s)
   [5/12] PASS  Enriched PR-AUC >= 0.88  (0.0s)
@@ -257,9 +257,9 @@ Determinism: running train x3 (run 2)...
   [7/12] PASS  No hardcoded fallbacks in calculator  (0.0s)
   [8/12] PASS  Doc consistency (manifest match)  (0.0s)
   [9/12] PASS  Dashboard compat (legacy + maturity keys)  (0.0s)
-  [10/12] PASS  Ablation baseline = 0.8087 (base gen, seed 99)  (1.7s)
-  [11/12] PASS  Temporal integrity (no look-ahead in DGP/split)  (1.1s)
-  [12/12] PASS  Live-features model: deterministic re-train + PR-AUC >= 0.79  (3.5s)
+  [10/12] PASS  Ablation baseline = 0.8087 (base gen, seed 99)  (1.9s)
+  [11/12] PASS  Temporal integrity (no look-ahead in DGP/split)  (1.2s)
+  [12/12] PASS  Live-features model: deterministic re-train + PR-AUC >= 0.79  (4.0s)
 
 ================================================================================
 ALL CHECKS PASS — submission ready.
