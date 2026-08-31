@@ -14,7 +14,7 @@ npx -y @mermaid-js/mermaid-cli -i docs/diagrams/return_risk_feature_breakdown.mm
 |---|---|---|
 | System architecture | `system.mmd` | three endpoints → their engines → shared audit/Redis sinks |
 | Chargeback evidence flow | `chargeback_evidence_flow.mmd` | webhook → verification → reconstruction → rebuttal → draft cache → admin-gated submit |
-| Return-risk breakdown | `return_risk_feature_breakdown.mmd` | the exact 0.83 arithmetic: 7 contributions + capped rule adjustment |
+| Return-risk breakdown | `return_risk_feature_breakdown.mmd` | the transparent hand-weighted decomposition (7 contributions + capped rule adjustment) that accompanies the XGBoost score |
 
 ASCII fallbacks (render anywhere):
 

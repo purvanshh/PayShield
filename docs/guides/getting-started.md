@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11 (the canonical stack — a 3.12+ environment will not reproduce the committed numbers)
 - Docker & Docker Compose (only for the live-stack demo)
 - Redis 7+ (only for the live scorer path)
 
@@ -52,7 +52,7 @@ python docs/cost_model/calculator.py --vertical-sensitivity
 ```bash
 docker compose -f docker/docker-compose.yml up -d --build   # api + redis
 python scripts/seed_demo_data.py                            # seed the curated scenarios
-python scripts/verify_live_stack.py                         # 10 scenarios vs real Redis
+python scripts/verify_live_stack.py                         # 11 curated checks vs real Redis
 ```
 
 Health: `curl http://localhost:8000/health`.

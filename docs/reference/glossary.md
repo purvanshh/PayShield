@@ -4,7 +4,7 @@
 |------|------------|
 | **AOV** | Average Order Value — the merchant's typical order size; `amount_vs_user_aov_ratio` compares an order against it |
 | **Ablation** | Removing a feature and re-training to measure its unique contribution (see `scripts/ablation_study.py`) |
-| **Base rate** | The population return rate before any scoring (e.g. ~37% on the calibrated synthetic vertical) |
+| **Base rate** | The population return rate before any scoring (e.g. ~42% on the calibrated synthetic vertical) |
 | **COD** | Cash on Delivery — highest-return-risk payment method (no money exchanged at checkout) |
 | **Confounder** | An unobserved variable that influences the label (product rating, delivery speed, …) — deliberately hidden in the synthetic DGP |
 | **DGP** | Data-Generating Process — how synthetic return labels are produced |

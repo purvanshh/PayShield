@@ -5,7 +5,7 @@
 - [ ] Clone repository and install dependencies (`pip install -r requirements.txt -r requirements-dev.txt`)
 - [ ] Complete [Getting Started Guide](../guides/getting-started.md)
 - [ ] Run the hermetic evidence scripts: `python scripts/train_xgb_return_risk.py`
-- [ ] Run the test suite: `make test` (455 tests, no services needed)
+- [ ] Run the test suite: `make test` (498 tests, no services needed)
 - [ ] (Optional) Start the live stack: `docker compose -f docker/docker-compose.yml up -d`
 
 ## Day 2: Core Concepts

@@ -22,7 +22,7 @@ payshield/
 ├── data/synthetic/      # return-risk generator (non-circular DGP)
 ├── scripts/             # train/ablation/tune/benchmark/verify — the evidence
 ├── configs/             # YAML configuration (return_risk_rules, feature_registry, RBAC)
-├── tests/               # Test suite (455 tests)
+├── tests/               # Test suite (498 tests)
 │   ├── unit/            # incl. return_risk/ scorer, feature engine, rules
 │   ├── integration/     # API, return-risk, chargeback, security
 │   ├── e2e/             # End-to-end (needs live services)

@@ -11,7 +11,7 @@
 |---|---|---|
 | Fashion / apparel | 25–40% | Sizing mismatch dominates; wardrobing cluster |
 | Footwear | 20–30% | Size/fit abuse, false-to-size |
-| Electronics | 8–15% | Defect-driven, higher *fraud* share per rupee |
+| Electronics | 8–12% | Defect-driven, higher *fraud* share per rupee |
 | Groceries | 2–5% | Perishability; low tolerance for damage |
 | Beauty / personal care | 10–20% | Hygiene-conscious "changed mind" returns |
 | Furniture / large items | 3–8% | Pickup-only; restocking friction |
