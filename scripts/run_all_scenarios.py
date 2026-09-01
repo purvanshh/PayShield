@@ -418,7 +418,7 @@ def verify_temporal_integrity() -> None:
 
 
 def verify_live_features() -> None:
-    """Live-features model: byte-identical re-train + test PR-AUC gate (>= 0.79).
+    """Live-features model: byte-identical re-train + test PR-AUC gate (>= 0.82).
 
     The production scorer ships ``models/return_risk_xgb_live.json``, trained on
     the exact feature vector the live API computes (scripts/train_live_features.py).
@@ -441,7 +441,7 @@ def verify_live_features() -> None:
     data = _load(ROOT / "models" / "live_features_results.json") or {}
     pr_auc = data.get("test_pr_auc")
     assert pr_auc is not None, "live_features_results.json missing test_pr_auc"
-    assert pr_auc >= 0.79, f"live-features test PR-AUC {pr_auc:.4f} < required 0.79"
+    assert pr_auc >= 0.82, f"live-features test PR-AUC {pr_auc:.4f} < required 0.82"
 
 
 def full_verify() -> int:
@@ -480,7 +480,7 @@ def full_verify() -> int:
         ("Dashboard compat (legacy + maturity keys)", verify_dashboard_compat),
         ("Ablation baseline = 0.8087 (base gen, seed 99)", verify_ablation_baseline),
         ("Temporal integrity (no look-ahead in DGP/split)", verify_temporal_integrity),
-        ("Live-features model: deterministic re-train + PR-AUC >= 0.79", verify_live_features),
+        ("Live-features model: deterministic re-train + PR-AUC >= 0.82", verify_live_features),
     ]
 
     all_pass = True

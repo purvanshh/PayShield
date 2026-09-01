@@ -32,7 +32,7 @@ features it actually computes (`device_fingerprint_match` = neutral 0.5,
 | 1 | `scripts/train_live_features.py` — live-pipeline training + decision gate | committed, `--full-verify` check 12 |
 | 2 | Shipped `models/return_risk_xgb_live.json` as the production model | `return_risk/scorer.py` `DEFAULT_XGB_MODEL_PATHS` (live first) |
 | 3 | `models/live_features_results.json` (metrics + operating curve) | committed |
-| 4 | `--full-verify` **check 12**: live model re-trains byte-identical + PR-AUC ≥ 0.79 | `scripts/run_all_scenarios.py` |
+| 4 | `--full-verify` **check 12**: live model re-trains byte-identical + PR-AUC ≥ 0.82 | `scripts/run_all_scenarios.py` |
 | 5 | Live stack re-verified on the shipped model → **11/11** | `verify_live_stack.py` on Docker |
 | 6 | Full suite → **12/12 ALL CHECKS PASS** | `reports/full_verify_output.txt` (regenerated) |
 | 7 | 498 tests pass with the live model as primary | `pytest tests/` |

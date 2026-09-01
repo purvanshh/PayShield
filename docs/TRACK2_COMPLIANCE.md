@@ -65,7 +65,7 @@ live-data caveat documented).
 | D10 | Human-in-the-loop review queue — MEDIUM decisions surfaced for operators | `GET/POST /v1/meta/review-queue` (audit-chain backed, reviewed flag in Redis) + dashboard `/review-queue` | `tests/integration/test_review_queue.py`; live smoke (mark → reflected) |
 | D11 | Guided demo tour — 10-minute judge walkthrough | `GET /v1/meta/demo/guide` + dashboard `/demo-tour` (auto-navigating stops) | `tests/integration/test_track2_compliance.py::TestDemoGuide` |
 | D12 | Calibration simulator — interactive feature sliders, basic vs premium model | `POST /v1/return/simulate` + dashboard `/simulator` | `tests/integration/test_return_risk_api.py::TestReturnRiskSimulate`; live (basic 7-feature vs premium 9-feature) |
-| D13 | Live scorer runs a model trained on the live feature pipeline | `models/return_risk_xgb_live.json` (test PR-AUC 0.8227, ROC-AUC 0.8082) via `scripts/train_live_features.py`; wired as `--full-verify` check 12 (deterministic re-train + PR-AUC ≥ 0.79) | `--full-verify` check 12; live run 11/11 |
+| D13 | Live scorer runs a model trained on the live feature pipeline | `models/return_risk_xgb_live.json` (test PR-AUC 0.8227, ROC-AUC 0.8082) via `scripts/train_live_features.py`; wired as `--full-verify` check 12 (deterministic re-train + PR-AUC ≥ 0.82) | `--full-verify` check 12; live run 11/11 |
 
 ---
 

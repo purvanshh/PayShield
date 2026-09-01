@@ -58,7 +58,7 @@ reproduction is at the bottom.
 - ✅ **Byte-identical training** — DGP train × 3 twice (check 2) and the live-features model re-trains byte-identically (check 12). Proof: `--full-verify`.
 - ✅ **Base generator git-guarded untouched** — Proof: `--full-verify` check 1.
 - ✅ **Temporal integrity / no look-ahead** — per-user chronology + split leakage + latent-sampled first-order features. Proof: `scripts/verify_temporal_integrity.py:80`, `--full-verify` check 11.
-- ✅ **Live model PR-AUC gate** — `--full-verify` check 12 asserts the live-features held-out test PR-AUC ≥ 0.79 and byte-identical re-train.
+- ✅ **Live model PR-AUC gate** — `--full-verify` check 12 asserts the live-features held-out test PR-AUC ≥ 0.82 and byte-identical re-train.
 - ✅ **Docs in lockstep with measured numbers** — manifest-checked. Proof: `--full-verify` check 8.
 - ✅ **Compliance map live in the API** — 16/16 return-risk requirements, none claimed before they exist. Proof: `api/routes/meta.py:46` (`TRACK2_REQUIREMENTS`), `GET /v1/meta/track2-compliance`.
 

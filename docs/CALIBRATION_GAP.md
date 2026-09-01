@@ -15,7 +15,7 @@ remaining honest step is **real merchant labels** (the pilot in
 **Current status:** the live scorer runs `models/return_risk_xgb_live.json`
 (engine: xgboost, `model_path` in every response); `verify_live_stack.py`
 passes **11/11**; the live-features training is a `--full-verify` check
-(deterministic re-train + PR-AUC ≥ 0.79).
+(deterministic re-train + PR-AUC ≥ 0.82).
 
 ---
 
@@ -77,7 +77,7 @@ live API computes* — is fixed:
   serial returner **HIGH 0.94**, honest customer **LOW 0.03**, abuse-ring
   sentinel **HIGH 0.85** (score floor), verified 11/11.
 - `--full-verify` gained a **check 12**: the live-features training must re-run
-  **byte-identical** (determinism on the new model) and meet **PR-AUC ≥ 0.79**.
+  **byte-identical** (determinism on the new model) and meet **PR-AUC ≥ 0.82**.
 
 **What remains is real labels, not features.** The model is now calibrated to
 the live feature *distribution*; the final calibration step is the Phase-2
