@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import client from "../api/client";
 import type { FeatureContribution, ReturnScoreData } from "../types";
 
@@ -121,6 +122,7 @@ function ScoreGauge({ score, tier }: { score: number; tier: string }) {
 }
 
 export function ReturnRiskPage() {
+  const location = useLocation();
   const [presetKey, setPresetKey] = useState(Object.keys(ORDER_PRESETS)[0]);
   const [result, setResult] = useState<ReturnScoreData | null>(null);
   const [explain, setExplain] = useState<ExplainData | null>(null);
@@ -153,6 +155,20 @@ export function ReturnRiskPage() {
     score(presetKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetKey]);
+
+  // Deep-link support: demo steps 3 & 4 land on the same /return-risk route
+  // with a different #hash (model-waterfall / abuse-ring-sentinel). React
+  // Router does not remount the route on a hash-only change, so scroll to the
+  // anchor ourselves — otherwise every step would render the same view.
+  useEffect(() => {
+    const id = location.hash.replace("#", "");
+    if (!id) return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(id);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   const features = topFeatures(result?.feature_breakdown ?? {}, 2);
 
