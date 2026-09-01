@@ -187,7 +187,7 @@ DEMO_GUIDE = {
         {
             "minute": "5-6",
             "title": "Explainability",
-            "page": "/return-risk",
+            "page": "/return-risk#model-waterfall",
             "description": (
                 "Every score decomposes: per-feature value, weight, contribution and source "
                 "tag — plus the XGBoost feature waterfall from POST /v1/return/explain."
@@ -197,7 +197,7 @@ DEMO_GUIDE = {
         {
             "minute": "7-8",
             "title": "Abuse-Ring Sentinel",
-            "page": "/return-risk",
+            "page": "/return-risk#abuse-ring-sentinel",
             "description": (
                 "A shared shipping address plus a return-velocity spike trips the abuse-ring "
                 "sentinel (R-RULE-09) to HIGH even when the model rates the user LOW — "

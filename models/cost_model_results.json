@@ -81,7 +81,7 @@
   "generated_at": "2026-08-29T12:58:42.291180+00:00",
   "maturity_scenarios": {
     "orders": 10000,
-    "generated_at": "2026-08-29T13:03:07.109053+00:00",
+    "generated_at": "2026-09-01T13:37:38.417926+00:00",
     "rows": [
       {
         "maturity": "basic",

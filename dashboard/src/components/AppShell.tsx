@@ -7,14 +7,14 @@ import { useAuthStore } from "../store/authStore";
 
 // Track 2 is return-risk. Fraud and chargeback are out-of-scope extensions:
 // their routes stay reachable by URL but are hidden from the primary nav.
-const SECTION_LINKS = [
-  { to: "/return-risk", label: "Return Risk", end: false },
+const SECTION_LINKS: { to: string; label: string; end: boolean }[] = [
   // { to: "/fraud", label: "Fraud", end: false },
   // { to: "/chargeback", label: "Chargeback", end: false },
 ];
 
 const OPERATIONS = [
   { to: "/cost-model", label: "Cost Model", icon: "calculate", end: false },
+  { to: "/return-risk", label: "Return Risk", icon: "receipt_long", end: false },
   { to: "/drift", label: "Drift Monitor", icon: "monitoring", end: false },
   { to: "/experiments", label: "A/B Experiments", icon: "science", end: false },
   // { to: "/agents", label: "Agents", icon: "psychology", end: false }, // page removed — agents run in background
@@ -138,29 +138,6 @@ export function AppShell() {
 
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Desktop contextual top bar */}
-        <header className="hidden md:flex justify-between items-center w-full px-container-padding-desktop max-w-7xl mx-auto h-20 border-b border-white/10 shrink-0">
-          <div className="flex gap-8">
-            {SECTION_LINKS.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={({ isActive }) =>
-                  `font-label-caps text-label-caps uppercase tracking-widest transition-colors duration-300 ${
-                    isActive
-                      ? "text-primary border-b border-primary pb-1"
-                      : "text-on-surface-variant hover:text-primary"
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </div>
-          <NotificationsButton />
-        </header>
-
         <main className="flex-1 px-container-padding-mobile md:px-container-padding-desktop py-12 max-w-7xl mx-auto w-full">
           <Outlet />
         </main>

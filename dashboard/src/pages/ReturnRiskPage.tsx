@@ -316,7 +316,7 @@ export function ReturnRiskPage() {
 
           {/* Model waterfall (XGBoost attribution) */}
           {explain && (
-            <div className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
+            <div id="model-waterfall" className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
               <button
                 onClick={() => setWaterfallOpen(!waterfallOpen)}
                 className="w-full flex items-center justify-between group"
@@ -367,7 +367,7 @@ export function ReturnRiskPage() {
           )}
 
           {/* Recommendations */}
-          <div className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
+          <div id="abuse-ring-sentinel" className="border-t border-white/10 pt-12 pb-section-gap max-w-4xl">
             <h2 className="font-headline-md text-headline-md text-on-surface mb-8">
               Strategic Recommendations
             </h2>

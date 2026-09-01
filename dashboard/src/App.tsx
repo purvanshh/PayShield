@@ -48,7 +48,7 @@ function App() {
         </Route>
         <Route element={<ProtectedArea />}>
           <Route element={<AppShell />}>
-            <Route path="/" element={<Navigate to="/return-risk" replace />} />
+            <Route path="/" element={<Navigate to="/cost-model" replace />} />
             {/* Track 2 is return-risk. Fraud/chargeback routes are kept in
                 code but commented out of the primary surface (still reachable
                 by URL via the catch-all redirect to /return-risk). */}
