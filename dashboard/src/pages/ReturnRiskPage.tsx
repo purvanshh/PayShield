@@ -163,12 +163,22 @@ export function ReturnRiskPage() {
   useEffect(() => {
     const id = location.hash.replace("#", "");
     if (!id) return;
-    const timer = window.setTimeout(() => {
+    // The #model-waterfall target only exists after the async score/explain
+    // requests resolve, so re-run until the element is present. Also auto-open
+    // the waterfall when deep-linking straight to it.
+    if (id === "model-waterfall") setWaterfallOpen(true);
+    let attempts = 0;
+    const timer = window.setInterval(() => {
       const el = document.getElementById(id);
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-    return () => window.clearTimeout(timer);
-  }, [location.hash]);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.clearInterval(timer);
+        return;
+      }
+      if (++attempts >= 20) window.clearInterval(timer);
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [location.hash, explain]);
 
   const features = topFeatures(result?.feature_breakdown ?? {}, 2);
 
