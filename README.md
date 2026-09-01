@@ -67,6 +67,10 @@ original submission — is preserved here for continuity:
 | **Stage 1 cost at 0.50 gate** | **₹17.4L/month** | Monthly savings on 10k fashion orders, review cost ₹200 |
 | **Stage 3 cost at 0.50 gate** | **₹53.5L/month** | Monthly savings on 10k electronics orders at the premium operating point |
 
+> Without PayShield, the same merchant loses **₹50.31L/month** to returns.
+> PayShield saves **₹17.4L** of that bleed — a 34.5% reduction.
+> Full cost breakdown: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md).
+
 Every stage is trained on a non-circular synthetic DGP: visible features plus
 hidden confounders (packaging, weather, customer mood — and, in Stage 1, product
 rating + delivery speed too) that the model never observes. That makes the
