@@ -16,6 +16,7 @@ Exit is clean on SIGTERM/SIGINT (cancels loops, stops agents, closes redis).
 """
 
 import asyncio
+import json
 import logging
 import signal
 from datetime import datetime, timedelta, timezone
@@ -35,6 +36,8 @@ HEARTBEAT_INTERVAL_SECONDS = 20
 FEED_INTERVAL_SECONDS = 15
 REFLECTION_INTERVAL_SECONDS = 300
 SCORED_EVENT = "RETURN_RISK_SCORED"
+FEED_KEY = "agent:feed:return_risk"
+FEED_BATCH_MAX = 100
 
 # Worker feed identity: registered on the router so agent responses route back.
 WORKER_ID = "worker"
@@ -103,6 +106,61 @@ class AgentWorker:
             await asyncio.sleep(FEED_INTERVAL_SECONDS)
 
     async def _dispatch_new_scored(self) -> None:
+        """Dispatch newly scored orders into the agents.
+
+        Two sources, so the worker runs whether or not it shares the API's
+        audit-log filesystem:
+
+        1. Redis feed (preferred): the API pushes each scored order onto
+           ``agent:feed:return_risk`` (RPUSH). This is what lets the worker live
+           on a *different host/disk* than the API (e.g. Render splits them).
+        2. Audit-file fallback: drains ``RETURN_RISK_SCORED`` entries from the
+           local hash-chained audit log. Used on a single host (docker-compose)
+           and by tests that seed the audit file directly.
+
+        Only the audit file is authoritative for compliance; both paths dispatch
+        the same order payload to the transaction + profile agents.
+        """
+        delivered = 0
+        if self.redis is not None:
+            delivered = await self._dispatch_from_redis_feed()
+        if delivered == 0:
+            try:
+                await self._dispatch_from_audit_file()
+            except Exception as e:  # nosec B110 - feed must never crash the worker
+                logger.warning("agent_feed_file_error: %s", e)
+
+    async def _dispatch_from_redis_feed(self) -> int:
+        """Pop scored orders off the Redis feed (FIFO) and dispatch them."""
+        delivered = 0
+        try:
+            while delivered < FEED_BATCH_MAX:
+                raw = await self.redis.lpop(FEED_KEY)
+                if not raw:
+                    break
+                try:
+                    event = json.loads(raw)
+                except (TypeError, ValueError):
+                    logger.warning("agent_feed_corrupt_event_dropped")
+                    continue
+                await self._route_scored_order(
+                    event.get("user_id", ""),
+                    {
+                        "order_id": event.get("order_id", ""),
+                        "merchant_id": event.get("merchant_id", ""),
+                        "score": float(event.get("score") or 0.0),
+                        "tier": event.get("tier", "LOW"),
+                        "amount": event.get("amount") or 0,
+                    },
+                )
+                delivered += 1
+        except Exception as e:  # nosec B110
+            logger.warning("agent_feed_redis_error: %s", e)
+        if delivered:
+            logger.info("agent_feed_redis_dispatched count=%d", delivered)
+        return delivered
+
+    async def _dispatch_from_audit_file(self) -> None:
         entries = AuditLogReader().get_entries(event_type=SCORED_EVENT)
         if not entries:
             return
@@ -118,23 +176,27 @@ class AgentWorker:
 
         for entry in new_entries:
             payload = entry.get("payload", {})
-            order = {
-                "order_id": payload.get("order_id", ""),
-                "merchant_id": payload.get("merchant_id", ""),
-                "score": float(payload.get("score", 0.0) or 0.0),
-                "tier": payload.get("tier", "LOW"),
-                "amount": payload.get("amount", 0) or 0,
-            }
-            user_id = entry.get("actor", "")
-            content = {"type": "RETURN_RISK_SCORED", "user_id": user_id, "order": order}
-            await self.router.route(AgentMessage(sender=WORKER_ID, recipient="transaction_agent", content=content))
-            await self.router.route(AgentMessage(sender=WORKER_ID, recipient="profile_agent", content=content))
-            logger.info(
-                "agent_feed_dispatched order=%s user=%s score=%.3f",
-                order["order_id"], user_id, order["score"],
+            await self._route_scored_order(
+                entry.get("actor", ""),
+                {
+                    "order_id": payload.get("order_id", ""),
+                    "merchant_id": payload.get("merchant_id", ""),
+                    "score": float(payload.get("score", 0.0) or 0.0),
+                    "tier": payload.get("tier", "LOW"),
+                    "amount": payload.get("amount", 0) or 0,
+                },
             )
 
         self._last_feed_entry = entries[-1].get("timestamp", "")
+
+    async def _route_scored_order(self, user_id: str, order: dict) -> None:
+        content = {"type": "RETURN_RISK_SCORED", "user_id": user_id, "order": order}
+        await self.router.route(AgentMessage(sender=WORKER_ID, recipient="transaction_agent", content=content))
+        await self.router.route(AgentMessage(sender=WORKER_ID, recipient="profile_agent", content=content))
+        logger.info(
+            "agent_feed_dispatched order=%s user=%s score=%.3f",
+            order["order_id"], user_id, order["score"],
+        )
 
     async def _reflection_loop(self) -> None:
         while True:

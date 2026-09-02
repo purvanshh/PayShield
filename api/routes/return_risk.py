@@ -9,6 +9,7 @@ profile refresh (never blocks the score response), audit-chain logging and
 Prometheus instrumentation.
 """
 
+import json
 import logging
 import time
 
@@ -55,6 +56,35 @@ def _get_scorer(redis) -> ReturnRiskScorer:
         feature_engine=ReturnRiskFeatureEngine(redis),
         rules_engine=RulesEngine(),
     )
+
+
+async def _publish_agent_feed(redis, *, user_id, order_id, merchant_id, score, tier, amount) -> None:
+    """Mirror a scored order onto the Redis agent feed.
+
+    The audit chain (local JSONL) stays the compliance record. The background
+    agent worker may run on a different host than the API (e.g. Render splits
+    the two into separate services with separate disks), where it cannot read
+    the API's audit file. Publishing a copy to ``agent:feed:return_risk`` lets
+    the worker consume scored orders over Redis instead. Never raises.
+    """
+    if redis is None:
+        return
+    try:
+        await redis.rpush(
+            "agent:feed:return_risk",
+            json.dumps(
+                {
+                    "user_id": user_id,
+                    "order_id": order_id,
+                    "merchant_id": merchant_id,
+                    "score": float(score),
+                    "tier": tier,
+                    "amount": float(amount or 0.0),
+                }
+            ),
+        )
+    except Exception as e:
+        logger.debug("agent_feed_publish_failed: %s", e)
 
 
 def _address_key(request: ReturnScoreRequest) -> str:
@@ -288,6 +318,15 @@ async def score_return_risk(
             "score": result["return_risk_score"],
             "tier": result["risk_tier"],
         },
+    )
+    await _publish_agent_feed(
+        redis,
+        user_id=request.user_id,
+        order_id=request.order_id,
+        merchant_id=request.merchant_id,
+        score=result["return_risk_score"],
+        tier=result["risk_tier"],
+        amount=request.amount,
     )
 
     elapsed = (time.perf_counter() - start) * 1000

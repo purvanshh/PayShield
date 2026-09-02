@@ -1,0 +1,124 @@
+# Render Blueprint for PayShield.
+#
+# NOTE ON MANAGED DATA (not provisioned by this file):
+#   Postgres, Redis and Neo4j cannot be fully provisioned inside one blueprint
+#   on Render. Create them in the Render dashboard / Neo4j Aura first, then set
+#   the connection env vars below. Use `sync: false` values and fill them in the
+#   Render UI after this blueprint is applied (or set them before first deploy).
+#
+# Apply with:  render blueprint apply  (or use the Render dashboard "New Blueprint").
+#
+# Secrets with `generateValue: true` are auto-created by Render on first apply.
+
+services:
+  # ---------------------------------------------------------------- API (Web)
+  - type: web
+    name: payshield-api
+    runtime: docker
+    dockerfilePath: docker/Dockerfile.api
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: REDIS_HOST
+        sync: false # e.g. the internal host Render prints for your Redis instance (hostname, NOT a redis:// URL)
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_DB
+        value: "0"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false # postgresql+asyncpg://<user>:<pass>@<host>:5432/<db> from your Render Postgres
+      - key: NEO4J_URI
+        sync: false # bolt+s://<host>:7687 from Neo4j Aura
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PAYSHIELD_DEV_API_KEY
+        generateValue: true # sent as the X-API-Key header by the dashboard / callers
+      - key: ENCRYPTION_KEY
+        generateValue: true # AES-256 key; must match the API & Worker if shared
+      - key: FRONTEND_URL
+        sync: false # must be https://payshield-dashboard.onrender.com (CORS allow-list)
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false # dashboard login
+      - key: ENABLE_LLM_INVESTIGATOR
+        value: "false"
+      - key: ENABLE_HUMAN_REVIEW
+        value: "true"
+      - key: DATA_REGION
+        value: IN
+      - key: ENFORCE_RBAC
+        value: "true"
+      - key: AUDIT_LOG_DIR
+        value: /app/store/audit_logs
+    disks:
+      - name: payshield-audit
+        mountPath: /app/store/audit_logs
+        sizeGB: 1
+      - name: payshield-explanations
+        mountPath: /app/models/production/explanations
+        sizeGB: 1
+      - name: payshield-reports
+        mountPath: /app/compliance/reports
+        sizeGB: 1
+
+  # ------------------------------------------------- Worker (Background)
+  - type: worker
+    name: payshield-worker
+    runtime: docker
+    dockerfilePath: docker/Dockerfile.worker
+    plan: starter
+    envVars:
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_DB
+        value: "0"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false # set to the SAME value Render generated for payshield-api
+      - key: ENCRYPTION_KEY
+        sync: false # SAME as the API service
+      - key: ENABLE_LLM_INVESTIGATOR
+        value: "false"
+      - key: ENABLE_HUMAN_REVIEW
+        value: "true"
+      - key: DATA_REGION
+        value: IN
+      - key: AUDIT_LOG_DIR
+        value: /app/store/audit_logs
+    disks:
+      - name: payshield-worker-feedback
+        mountPath: /app/store/feedback
+        sizeGB: 1
+
+  # ------------------------------------------------------ Dashboard (Node SPA)
+  - type: web
+    name: payshield-dashboard
+    runtime: node
+    rootDir: dashboard
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npx serve -s dist -l $PORT
+    envVars:
+      # NOTE: Vite (not Create React App) -> vars MUST be VITE_*, set at BUILD time.
+      - key: VITE_API_URL
+        sync: false # e.g. https://payshield-api.onrender.com  (no trailing slash)
+      - key: VITE_WS_URL
+        sync: false # e.g. wss://payshield-api.onrender.com

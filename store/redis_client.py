@@ -194,6 +194,21 @@ class AsyncRedisClient:
         except RedisUnavailableError:
             return 0
 
+    async def rpush(self, key: str, *values: str) -> int:
+        try:
+            return await self.pool.circuit_breaker.call(self._client.rpush, key, *values)
+        except RedisUnavailableError:
+            return 0
+
+    async def lpop(self, key: str) -> str | None:
+        try:
+            raw = await self.pool.circuit_breaker.call(self._client.lpop, key)
+            if isinstance(raw, bytes):
+                return raw.decode("utf-8")
+            return raw
+        except RedisUnavailableError:
+            return None
+
     async def ltrim(self, key: str, start: int, end: int) -> bool:
         try:
             return await self.pool.circuit_breaker.call(self._client.ltrim, key, start, end)
