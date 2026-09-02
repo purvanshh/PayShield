@@ -15,6 +15,7 @@ Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md). Honest ledger:
 [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
 **Demo video:** [Watch on Google Drive](https://drive.google.com/file/d/1krjzYXWv_cQ0OmDLeVwPX-03Gxy29obM/view?usp=sharing)
+**Dashboard video:** [Watch on Google Drive](https://drive.google.com/file/d/12ffDyV5NWpQ5R3q8u-2XcWdVE3L9UJD4/view?usp=sharing)
 
 **The numbers — Progressive Merchant Maturity:**
 
