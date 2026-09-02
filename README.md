@@ -14,6 +14,8 @@ order before it ships — LOW / MEDIUM / HIGH → ship / review / prepaid-only.
 Business case: [`BUSINESS_IMPACT.md`](BUSINESS_IMPACT.md). Honest ledger:
 [`MISTAKES_AND_LEARNINGS.md`](MISTAKES_AND_LEARNINGS.md).
 
+**Demo video:** [Watch on Google Drive](https://drive.google.com/file/d/1krjzYXWv_cQ0OmDLeVwPX-03Gxy29obM/view?usp=sharing)
+
 **The numbers — Progressive Merchant Maturity:**
 
 PayShield is evaluated across **three named merchant-maturity scenarios**, each a
