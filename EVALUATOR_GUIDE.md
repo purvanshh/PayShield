@@ -77,7 +77,7 @@ caveats, both documented:
 
 ```bash
 make setup-verify      # once: create .venv-verify + install pinned deps
-make verify            # the whole evidence suite (11/11)
+make verify            # the whole evidence suite (12/12)
 make train-xgb         # train + baseline comparison
 make ablation-xgb      # feature evidence
 make tune-xgb          # 144-combo hyperparameter search

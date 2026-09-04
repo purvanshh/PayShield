@@ -6,20 +6,24 @@
 
 ## 30-Second Summary
 
+- **Covers two of the four example directions:** return-risk scorer (primary) + abuse-ring
+  sentinel (rule layer).
 - **What it is:** a pre-shipping **return-risk scorer** for Indian e-commerce on Razorpay's
   infrastructure. Fraud and chargeback extensions exist in the repo but are **out of scope**
-  for this track — this is a focused return-risk story.
+  for this track — a focused choice that still spans two named directions.
 - **Impact:** **₹17.4L/month** (Stage 1 fashion) → **₹53.5L/month** (Stage 3 premium electronics)
   at the 0.50 review gate — measured, reproducible.
 - **Defense-only:** `MEDIUM → FLAG_FOR_REVIEW`, `HIGH → REQUIRE_PREPAID` — no autonomous blocks.
 - **Honest metrics:** a wrong MEDIUM flag costs **₹200** (review time), a wrong HIGH block
   **₹3,180** (lost order) — both explicitly in the cost model.
+- **Measured on held-out test set:** precision **0.644**, recall **0.812** (Stage 1,
+  2,000-order hold-out, gate 0.50) — measured, never hardcoded.
 
 ## 5-Minute Demo
 
 1. `make setup-verify` (once) then `.venv-verify/bin/python scripts/train_xgb_return_risk.py --scenario premium` → **PR-AUC 0.9497** (measured).
 2. `make cost` → **₹53.5L/month** premium electronics.
-3. `make verify` → **ALL CHECKS PASS (11/11)**,
+3. `make verify` → **ALL CHECKS PASS (12/12)**,
    including a temporal-integrity check (no look-ahead in DGP/split).
 4. Live Docker: `make up` → `make seed` →
    `make verify-live` → **11/11 PASS** (honest customer LOW 0.03 · serial returner HIGH 0.94 ·
@@ -42,7 +46,7 @@
    and [`docs/THREE_HARD_BUGS.md`](docs/THREE_HARD_BUGS.md) for the debugging stories.
 6. [`docs/INTERVIEW_DEFENSE.md`](docs/INTERVIEW_DEFENSE.md) — prepared answers to the hard questions.
 
-## Why This Wins Track 2
+## How This Meets the Bar
 
 - **Business-quantified** — ₹17.4L → ₹53.5L/month, FP/FN costs explicitly modeled (₹200 / ₹3,180).
 - **Stage-maturity framework** — Stage 1 → 2 → 3 (Basic / Enriched / Premium), each a named,

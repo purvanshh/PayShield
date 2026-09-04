@@ -38,7 +38,7 @@ Key variables (see `.env.example` for the full list):
 
 The return-risk evidence is fully reproducible with zero services. Use the
 canonical Python 3.11 venv (`.venv-verify`) — create it once with
-`make setup-verify` — or just run `make verify` for the full 11/11 gate:
+`make setup-verify` — or just run `make verify` for the full 12/12 gate:
 
 ```bash
 make setup-verify                # creates .venv-verify + installs pinned deps

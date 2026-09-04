@@ -109,7 +109,7 @@ coordinated-abuse detection on the return-risk surface.
 python scripts/run_all_scenarios.py --full-verify
 ```
 
-**Expected output:** `ALL CHECKS PASS — submission ready.` (11/11).
+**Expected output:** `ALL CHECKS PASS — submission ready.` (12/12).
 
 **Talking points:** every headline number — PR-AUC 0.7991 → 0.9497 across the
 three maturity stages, ₹17.4L → ₹53.5L/month — reproduces from one command on
